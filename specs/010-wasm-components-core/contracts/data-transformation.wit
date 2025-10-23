@@ -1,0 +1,71 @@
+// WIT Contract Templates for Data Transformation Operations
+// Category: data/
+// Priority: P5
+
+// Note: This file uses the same common types as string-operations.wit
+// Refer to string-operations.wit for type definitions
+
+// ============================================================================
+// Component-Specific Specifications
+// ============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. JSON Stringify
+// -----------------------------------------------------------------------------
+// Package: example-json-stringify
+// Inputs: data (any - Record, List, or primitive)
+// Outputs: json (string)
+// Behavior: Serializes data to JSON text format
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "data", data-type: any-type, optional: false, description: "Data to serialize" },
+//   ]
+//   get-outputs() -> [
+//     { name: "json", data-type: string-type, optional: false, description: "JSON text" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 2. To String
+// -----------------------------------------------------------------------------
+// Package: example-to-string
+// Inputs: value (any - number, boolean, or string)
+// Outputs: text (string)
+// Behavior: Converts value to string representation
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: any-type, optional: false, description: "Value to convert" },
+//   ]
+//   get-outputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "String representation" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 3. Parse Number
+// -----------------------------------------------------------------------------
+// Package: example-parse-number
+// Inputs: text (string)
+// Outputs: number (f32)
+// Behavior: Parses text to numeric value
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "Text to parse" },
+//   ]
+//   get-outputs() -> [
+//     { name: "number", data-type: f32-type, optional: false, description: "Parsed number" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 4. Format Template
+// -----------------------------------------------------------------------------
+// Package: example-format-template
+// Inputs: template (string with {0}, {1}, ... placeholders), values (list<string>)
+// Outputs: result (string)
+// Behavior: Substitutes values into template
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "template", data-type: string-type, optional: false, description: "Template with {0}, {1}, ... placeholders" },
+//     { name: "values", data-type: list-type, optional: false, description: "Values to substitute" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: string-type, optional: false, description: "Formatted string" }
+//   ]

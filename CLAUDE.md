@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-21
 - Rust 1.75+ (stable channel with wasm32-wasip2 target) + serde_json (JSON parsing), wasmtime 27.0 (component-model runtime), wit-bindgen (WIT interface generation) (008-json-parser-a)
 - N/A (stateless component - processes inputs to outputs) (008-json-parser-a)
 - File system (components directory structure) (009-reorginize-components-currently)
+- Rust 1.75+ (stable channel with wasm32-wasip2 target) + wit-bindgen 0.30, serde (for list/data serialization), standard library (no external crates for core operations) (010-wasm-components-core)
+- N/A (stateless components - all data flows through inputs/outputs) (010-wasm-components-core)
 
 ## Project Structure
 ```
@@ -45,9 +47,9 @@ Rust 1.75+ (stable channel with wasm32-wasip2 target): Follow standard conventio
 - **Example Nodes**: See `src/builtin/continuous_example.rs` for timer and combiner examples
 
 ## Recent Changes
+- 010-wasm-components-core: Added Rust 1.75+ (stable channel with wasm32-wasip2 target) + wit-bindgen 0.30, serde (for list/data serialization), standard library (no external crates for core operations)
 - 009-reorginize-components-currently: Added Rust 1.75+ (stable channel with wasm32-wasip2 target)
 - 009-reorginize-components-currently: Added Rust 1.75+ (stable channel with wasm32-wasip2 target)
-- 008-json-parser-a: Added Rust 1.75+ (stable channel with wasm32-wasip2 target) + serde_json (JSON parsing), wasmtime 27.0 (component-model runtime), wit-bindgen (WIT interface generation)
 
 <!-- MANUAL ADDITIONS START -->
 

@@ -1,0 +1,122 @@
+// WIT Contract Templates for List Operations
+// Category: collections/
+// Priority: P4
+
+// Note: This file uses the same common types as string-operations.wit
+// Refer to string-operations.wit for type definitions
+
+// ============================================================================
+// Component-Specific Specifications
+// ============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. List Length
+// -----------------------------------------------------------------------------
+// Package: example-list-length
+// Inputs: list (list<any>)
+// Outputs: length (u32)
+// Behavior: Returns number of elements
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "Input list" },
+//   ]
+//   get-outputs() -> [
+//     { name: "length", data-type: u32-type, optional: false, description: "Number of elements" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 2. List Get
+// -----------------------------------------------------------------------------
+// Package: example-list-get
+// Inputs: list (list<any>), index (u32)
+// Outputs: element (any)
+// Behavior: Retrieves element at index
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "Input list" },
+//     { name: "index", data-type: u32-type, optional: false, description: "Index (0-based)" },
+//   ]
+//   get-outputs() -> [
+//     { name: "element", data-type: any-type, optional: false, description: "Element at index" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 3. List Append
+// -----------------------------------------------------------------------------
+// Package: example-list-append
+// Inputs: list (list<any>), value (any)
+// Outputs: result (list<any>)
+// Behavior: Appends value to end of list (immutable)
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "Input list" },
+//     { name: "value", data-type: any-type, optional: false, description: "Value to append" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: list-type, optional: false, description: "New list with value appended" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 4. List Join
+// -----------------------------------------------------------------------------
+// Package: example-list-join
+// Inputs: list (list<string>), delimiter (string)
+// Outputs: result (string)
+// Behavior: Joins list elements with delimiter
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "List of strings" },
+//     { name: "delimiter", data-type: string-type, optional: false, description: "Separator" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: string-type, optional: false, description: "Joined string" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 5. List Slice
+// -----------------------------------------------------------------------------
+// Package: example-list-slice
+// Inputs: list (list<any>), start (u32), end (u32, optional)
+// Outputs: result (list<any>)
+// Behavior: Extracts range of elements
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "Input list" },
+//     { name: "start", data-type: u32-type, optional: false, description: "Start index (inclusive)" },
+//     { name: "end", data-type: u32-type, optional: true, description: "End index (exclusive, to end if omitted)" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: list-type, optional: false, description: "Sliced list" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 6. List Contains
+// -----------------------------------------------------------------------------
+// Package: example-list-contains
+// Inputs: list (list<any>), value (any)
+// Outputs: result (bool)
+// Behavior: Checks if list contains value
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "Input list" },
+//     { name: "value", data-type: any-type, optional: false, description: "Value to search for" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if found" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 7. List Index Of
+// -----------------------------------------------------------------------------
+// Package: example-list-index-of
+// Inputs: list (list<any>), value (any)
+// Outputs: index (i32)
+// Behavior: Returns index of value, or -1 if not found
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "list", data-type: list-type, optional: false, description: "Input list" },
+//     { name: "value", data-type: any-type, optional: false, description: "Value to search for" },
+//   ]
+//   get-outputs() -> [
+//     { name: "index", data-type: i32-type, optional: false, description: "Index or -1 if not found" }
+//   ]
