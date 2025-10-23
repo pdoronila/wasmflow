@@ -1,0 +1,151 @@
+// WIT Contract Templates for Math Operations
+// Category: math/
+// Priority: P3
+
+// Note: This file uses the same common types as string-operations.wit
+// Refer to string-operations.wit for type definitions
+
+// ============================================================================
+// Component-Specific Specifications
+// ============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. Math Power
+// -----------------------------------------------------------------------------
+// Package: example-math-power
+// Inputs: base (f32), exponent (f32)
+// Outputs: result (f32)
+// Behavior: Raises base to the power of exponent
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "base", data-type: f32-type, optional: false, description: "Base number" },
+//     { name: "exponent", data-type: f32-type, optional: false, description: "Exponent" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "base ^ exponent" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 2. Math Square Root
+// -----------------------------------------------------------------------------
+// Package: example-math-sqrt
+// Inputs: value (f32)
+// Outputs: result (f32)
+// Behavior: Calculates square root
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: f32-type, optional: false, description: "Input number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Square root" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 3. Math Absolute Value
+// -----------------------------------------------------------------------------
+// Package: example-math-abs
+// Inputs: value (f32)
+// Outputs: result (f32)
+// Behavior: Returns absolute value
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: f32-type, optional: false, description: "Input number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Absolute value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 4. Math Min
+// -----------------------------------------------------------------------------
+// Package: example-math-min
+// Inputs: input1 (f32), input2 (f32), input3..N (f32, optional)
+// Outputs: result (f32)
+// Behavior: Returns minimum value
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "input1", data-type: f32-type, optional: false, description: "First number" },
+//     { name: "input2", data-type: f32-type, optional: false, description: "Second number" },
+//     { name: "input3", data-type: f32-type, optional: true, description: "Third number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Minimum value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 5. Math Max
+// -----------------------------------------------------------------------------
+// Package: example-math-max
+// Inputs: input1 (f32), input2 (f32), input3..N (f32, optional)
+// Outputs: result (f32)
+// Behavior: Returns maximum value
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "input1", data-type: f32-type, optional: false, description: "First number" },
+//     { name: "input2", data-type: f32-type, optional: false, description: "Second number" },
+//     { name: "input3", data-type: f32-type, optional: true, description: "Third number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Maximum value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 6. Math Floor
+// -----------------------------------------------------------------------------
+// Package: example-math-floor
+// Inputs: value (f32)
+// Outputs: result (f32)
+// Behavior: Rounds down to nearest integer
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: f32-type, optional: false, description: "Input number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Floored value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 7. Math Ceiling
+// -----------------------------------------------------------------------------
+// Package: example-math-ceil
+// Inputs: value (f32)
+// Outputs: result (f32)
+// Behavior: Rounds up to nearest integer
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: f32-type, optional: false, description: "Input number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Ceiling value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 8. Math Round
+// -----------------------------------------------------------------------------
+// Package: example-math-round
+// Inputs: value (f32)
+// Outputs: result (f32)
+// Behavior: Rounds to nearest integer
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: f32-type, optional: false, description: "Input number" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Rounded value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 9. Math Trigonometry
+// -----------------------------------------------------------------------------
+// Package: example-math-trig
+// Inputs: angle (f32), operation (string: "sin" | "cos" | "tan")
+// Outputs: result (f32)
+// Behavior: Calculates trigonometric function
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "angle", data-type: f32-type, optional: false, description: "Angle in radians" },
+//     { name: "operation", data-type: string-type, optional: false, description: "Operation: sin, cos, or tan" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: f32-type, optional: false, description: "Trigonometric result" }
+//   ]

@@ -1,0 +1,198 @@
+// WIT Contract Templates for String Operations
+// Category: core/
+// Priority: P1
+
+// ============================================================================
+// Common Types (shared across all components)
+// ============================================================================
+
+record component-info {
+    name: string,
+    description: string,
+    category: string,
+    version: string,
+}
+
+enum data-type {
+    u32-type,
+    i32-type,
+    f32-type,
+    string-type,
+    bool-type,
+    list-type,
+    binary-type,
+    any-type,
+}
+
+record port-spec {
+    name: string,
+    data-type: data-type,
+    optional: bool,
+    description: string,
+}
+
+variant node-value {
+    u32(u32),
+    i32(s32),
+    f32(float32),
+    string(string),
+    bool(bool),
+    list(list<node-value>),
+    binary(list<u8>),
+}
+
+record input-value {
+    name: string,
+    value: node-value,
+}
+
+record output-value {
+    name: string,
+    value: node-value,
+}
+
+record execution-error {
+    message: string,
+    input-name: option<string>,
+    recovery-hint: option<string>,
+}
+
+// ============================================================================
+// Component Interfaces
+// ============================================================================
+
+interface metadata {
+    get-info: func() -> component-info;
+    get-inputs: func() -> list<port-spec>;
+    get-outputs: func() -> list<port-spec>;
+    get-capabilities: func() -> option<list<string>>;
+}
+
+interface execution {
+    execute: func(inputs: list<input-value>) -> result<list<output-value>, execution-error>;
+}
+
+// ============================================================================
+// World Definition (used by all string operation components)
+// ============================================================================
+
+world component {
+    export metadata;
+    export execution;
+}
+
+// ============================================================================
+// Component-Specific Specifications
+// ============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. String Concat
+// -----------------------------------------------------------------------------
+// Package: example-string-concat
+// Inputs: input1 (string), input2 (string), input3..N (string, optional)
+// Outputs: result (string)
+// Behavior: Concatenates all input strings in order
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "input1", data-type: string-type, optional: false, description: "First string" },
+//     { name: "input2", data-type: string-type, optional: false, description: "Second string" },
+//     { name: "input3", data-type: string-type, optional: true, description: "Third string" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: string-type, optional: false, description: "Concatenated string" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 2. String Split
+// -----------------------------------------------------------------------------
+// Package: example-string-split
+// Inputs: text (string), delimiter (string)
+// Outputs: parts (list<string>)
+// Behavior: Splits string on delimiter
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "String to split" },
+//     { name: "delimiter", data-type: string-type, optional: false, description: "Delimiter" },
+//   ]
+//   get-outputs() -> [
+//     { name: "parts", data-type: list-type, optional: false, description: "List of substrings" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 3. String Length
+// -----------------------------------------------------------------------------
+// Package: example-string-length
+// Inputs: text (string)
+// Outputs: length (u32)
+// Behavior: Returns character count (Unicode-aware)
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "Input string" },
+//   ]
+//   get-outputs() -> [
+//     { name: "length", data-type: u32-type, optional: false, description: "Character count" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 4. String Trim
+// -----------------------------------------------------------------------------
+// Package: example-string-trim
+// Inputs: text (string)
+// Outputs: result (string)
+// Behavior: Removes leading and trailing whitespace
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "Input string" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: string-type, optional: false, description: "Trimmed string" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 5. String Case
+// -----------------------------------------------------------------------------
+// Package: example-string-case
+// Inputs: text (string), operation (string: "uppercase" | "lowercase" | "titlecase")
+// Outputs: result (string)
+// Behavior: Converts string case based on operation
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "Input string" },
+//     { name: "operation", data-type: string-type, optional: false, description: "Operation: uppercase, lowercase, or titlecase" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: string-type, optional: false, description: "Transformed string" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 6. String Contains
+// -----------------------------------------------------------------------------
+// Package: example-string-contains
+// Inputs: text (string), substring (string)
+// Outputs: result (bool)
+// Behavior: Checks if text contains substring
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "String to search in" },
+//     { name: "substring", data-type: string-type, optional: false, description: "Substring to find" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if found" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 7. String Substring
+// -----------------------------------------------------------------------------
+// Package: example-string-substring
+// Inputs: text (string), start (u32), length (u32, optional)
+// Outputs: result (string)
+// Behavior: Extracts substring from start index with optional length
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "text", data-type: string-type, optional: false, description: "Input string" },
+//     { name: "start", data-type: u32-type, optional: false, description: "Start index (0-based)" },
+//     { name: "length", data-type: u32-type, optional: true, description: "Number of characters (to end if omitted)" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: string-type, optional: false, description: "Extracted substring" }
+//   ]

@@ -1,0 +1,123 @@
+// WIT Contract Templates for Comparison & Logic Operations
+// Category: core/
+// Priority: P2
+
+// Note: This file uses the same common types as string-operations.wit
+// Refer to string-operations.wit for type definitions
+
+// ============================================================================
+// Component-Specific Specifications
+// ============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. Compare
+// -----------------------------------------------------------------------------
+// Package: example-compare
+// Inputs: left (any), right (any), operation (string)
+// Outputs: result (bool)
+// Behavior: Compares two values using operation
+// Operations: "equals", "not-equals", "greater-than", "less-than", "greater-or-equal", "less-or-equal"
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "left", data-type: any-type, optional: false, description: "First value" },
+//     { name: "right", data-type: any-type, optional: false, description: "Second value" },
+//     { name: "operation", data-type: string-type, optional: false, description: "Comparison operation" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "Comparison result" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 2. Boolean AND
+// -----------------------------------------------------------------------------
+// Package: example-boolean-and
+// Inputs: input1 (bool), input2 (bool), input3..N (bool, optional)
+// Outputs: result (bool)
+// Behavior: Logical AND of all inputs
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "input1", data-type: bool-type, optional: false, description: "First boolean" },
+//     { name: "input2", data-type: bool-type, optional: false, description: "Second boolean" },
+//     { name: "input3", data-type: bool-type, optional: true, description: "Third boolean" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if all inputs are true" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 3. Boolean OR
+// -----------------------------------------------------------------------------
+// Package: example-boolean-or
+// Inputs: input1 (bool), input2 (bool), input3..N (bool, optional)
+// Outputs: result (bool)
+// Behavior: Logical OR of all inputs
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "input1", data-type: bool-type, optional: false, description: "First boolean" },
+//     { name: "input2", data-type: bool-type, optional: false, description: "Second boolean" },
+//     { name: "input3", data-type: bool-type, optional: true, description: "Third boolean" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if any input is true" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 4. Boolean NOT
+// -----------------------------------------------------------------------------
+// Package: example-boolean-not
+// Inputs: input (bool)
+// Outputs: result (bool)
+// Behavior: Logical NOT (negation)
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "input", data-type: bool-type, optional: false, description: "Boolean to negate" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "Negated value" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 5. Boolean XOR
+// -----------------------------------------------------------------------------
+// Package: example-boolean-xor
+// Inputs: left (bool), right (bool)
+// Outputs: result (bool)
+// Behavior: Logical XOR (exclusive or)
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "left", data-type: bool-type, optional: false, description: "First boolean" },
+//     { name: "right", data-type: bool-type, optional: false, description: "Second boolean" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if inputs differ" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 6. Is Null
+// -----------------------------------------------------------------------------
+// Package: example-is-null
+// Inputs: value (any, optional)
+// Outputs: result (bool)
+// Behavior: Checks if value is null/undefined
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: any-type, optional: true, description: "Value to check" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if null" }
+//   ]
+
+// -----------------------------------------------------------------------------
+// 7. Is Empty
+// -----------------------------------------------------------------------------
+// Package: example-is-empty
+// Inputs: value (any)
+// Outputs: result (bool)
+// Behavior: Checks if string or list is empty
+// Example metadata implementation:
+//   get-inputs() -> [
+//     { name: "value", data-type: any-type, optional: false, description: "String or list to check" },
+//   ]
+//   get-outputs() -> [
+//     { name: "result", data-type: bool-type, optional: false, description: "True if empty" }
+//   ]
