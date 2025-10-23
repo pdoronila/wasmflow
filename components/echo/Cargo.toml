@@ -1,0 +1,21 @@
+[package]
+name = "echo"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+# This is a standalone crate, not part of the parent workspace
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.30"
+
+[build-dependencies]
+wit-component = "0.215"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
