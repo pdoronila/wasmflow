@@ -3,13 +3,16 @@
 //! This component adds two numbers together.
 //! It demonstrates a pure computation component with no special capabilities.
 
-#[allow(warnings)]
-mod bindings;
+// Generate bindings from WIT files
+wit_bindgen::generate!({
+    path: "wit",
+    world: "component",
+});
 
-use bindings::exports::wasmflow::node::metadata::Guest as MetadataGuest;
-use bindings::exports::wasmflow::node::execution::Guest as ExecutionGuest;
-use bindings::wasmflow::node::types::*;
-use bindings::wasmflow::node::host;
+use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+use wasmflow::node::types::*;
+use wasmflow::node::host;
 
 struct Component;
 
@@ -101,4 +104,4 @@ impl ExecutionGuest for Component {
     }
 }
 
-bindings::export!(Component with_types_in bindings);
+export!(Component);

@@ -3,13 +3,16 @@
 //! This component multiplies an input number by 2.
 //! It demonstrates the basic structure of a WasmFlow component using proper WIT bindings.
 
-#[allow(warnings)]
-mod bindings;
+// Generate bindings from WIT files
+wit_bindgen::generate!({
+    path: "wit",
+    world: "component",
+});
 
-use bindings::exports::wasmflow::node::execution::Guest as ExecutionGuest;
-use bindings::exports::wasmflow::node::metadata::Guest as MetadataGuest;
-use bindings::wasmflow::node::host;
-use bindings::wasmflow::node::types::*;
+use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+use wasmflow::node::host;
+use wasmflow::node::types::*;
 
 struct Component;
 
@@ -80,4 +83,4 @@ impl ExecutionGuest for Component {
     }
 }
 
-bindings::export!(Component with_types_in bindings);
+export!(Component);
