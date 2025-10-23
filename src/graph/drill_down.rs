@@ -18,7 +18,7 @@ pub enum ViewContext {
     /// Drilled down into a composite node to view its internal structure
     DrillDown {
         /// ID of the composite node being viewed
-        composite_node_id: NodeId,
+        _composite_node_id: NodeId,
         /// Display name of the composite node (for breadcrumb)
         composite_node_name: String,
         /// Internal nodes snapshot (cloned from composition_data)
@@ -85,7 +85,11 @@ impl ViewStack {
         };
 
         self.stack.push(context);
-        log::info!("Drilled down into composite node {} (depth: {})", composite_node_id, self.depth());
+        log::info!(
+            "Drilled down into composite node {} (depth: {})",
+            composite_node_id,
+            self.depth()
+        );
         Ok(())
     }
 
@@ -124,7 +128,10 @@ impl ViewStack {
             .map(|(depth, context)| {
                 let name = match context {
                     ViewContext::MainCanvas => "Main Canvas".to_string(),
-                    ViewContext::DrillDown { composite_node_name, .. } => composite_node_name.clone(),
+                    ViewContext::DrillDown {
+                        composite_node_name,
+                        ..
+                    } => composite_node_name.clone(),
                 };
                 (name, depth)
             })

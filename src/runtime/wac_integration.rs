@@ -6,7 +6,7 @@
 //! T022-T025: Full WAC composition implementation with error handling,
 //! logging, and validation.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::Path;
 // Note: wac-graph 0.8.0 API differs from research.md examples
 // The actual API needs to be verified with real WASM components
