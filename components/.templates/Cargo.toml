@@ -1,5 +1,5 @@
 [package]
-name = "example-COMPONENT-NAME"  # Replace with actual name
+name = "COMPONENT-NAME"  # Replace with actual name
 version = "1.0.0"
 edition = "2021"
 

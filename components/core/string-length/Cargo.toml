@@ -1,5 +1,5 @@
 [package]
-name = "example-string-length"
+name = "string-length"
 version = "1.0.0"
 edition = "2021"
 

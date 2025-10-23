@@ -1,17 +1,22 @@
 set shell := ["nu", "-c"]
 set unstable
 
-# Build all components in math category
+build component:
+  just --justfile {{component}}/Justfile build
+
+install component:
+  just --justfile {{component}}/Justfile install
+
+list-all:
+    ls | where type == dir | get name
+
+# Build all components in core category
 build-all:
-    ls | where type == dir | get name | each { |component| cd $component; cargo build --target wasm32-wasip2 --release }
+    ls | where type == dir | get name | each { |component| just build $component }
 
 # Install all components to bin/
 install-all:
-    mkdir -p ../bin
-    ls | where type == dir | get name | each { |component|
-        let wasm_name = ($component | str replace '-' '_')
-        cp ($component + "/target/wasm32-wasip2/release/" + $wasm_name + ".wasm") ("../bin/" + $wasm_name + ".wasm")
-    }
+  ls | where type == dir | get name | each { |component| just install $component }
 
 # Test all components
 test-all:

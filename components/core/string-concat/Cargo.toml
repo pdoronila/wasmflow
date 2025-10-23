@@ -1,5 +1,5 @@
 [package]
-name = "example-string-concat"
+name = "string-concat"
 version = "1.0.0"
 edition = "2021"
 

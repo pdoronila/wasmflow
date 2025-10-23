@@ -1,5 +1,5 @@
 [package]
-name = "example-string-substring"
+name = "string-substring"
 version = "1.0.0"
 edition = "2021"
 
