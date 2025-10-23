@@ -43,6 +43,17 @@ impl ConstantNode {
         )
         .with_output("value".to_string(), data_type, format!("Constant {} value", type_name))
     }
+
+    /// Get the component specification for the unified constant node
+    pub fn unified_spec() -> ComponentSpec {
+        ComponentSpec::new_builtin(
+            "builtin:constant:unified".to_string(),
+            "Constant".to_string(),
+            "Outputs a constant value with configurable type".to_string(),
+            Some("Constants".to_string()),
+        )
+        .with_output("value".to_string(), DataType::Any, "Constant value".to_string())
+    }
 }
 
 /// Helper functions to create common constant nodes
@@ -75,7 +86,15 @@ impl ConstantNode {
 
 /// Register all constant node types
 pub fn register_constant_nodes(registry: &mut crate::graph::node::ComponentRegistry) {
-    // Register constants with custom footer view
+    // Register unified constant with custom footer view
+    let unified_footer_view = crate::builtin::views::UnifiedConstantFooterView::new();
+
+    registry.register_builtin(
+        ConstantNode::unified_spec()
+            .with_footer_view(unified_footer_view)
+    );
+
+    // Keep the old individual constant types for backward compatibility
     let footer_view = crate::builtin::views::ConstantNodeFooterView::new();
 
     // Register constants with footer view (footer contains both value display and editing)
