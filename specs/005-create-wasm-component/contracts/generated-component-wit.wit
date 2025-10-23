@@ -1,0 +1,320 @@
+// WIT Contract: Generated User Components
+// Contract Stability: STABLE (v1.0.0)
+// Last Updated: 2025-10-18
+//
+// This WIT interface defines the contract that ALL generated user components
+// must implement. It matches the existing wasmflow component model.
+
+package wasmflow:node@1.0.0;
+
+/// Core data types for node I/O
+interface types {
+    /// Supported primitive types for node ports
+    enum data-type {
+        f32-type,
+        i32-type,
+        u32-type,
+        string-type,
+        boolean-type,
+    }
+
+    /// Value types for node execution
+    variant value {
+        f32-val(float32),
+        i32-val(s32),
+        u32-val(u32),
+        string-val(string),
+        boolean-val(bool),
+    }
+
+    /// Port specification for inputs/outputs
+    record port-spec {
+        name: string,
+        data-type: data-type,
+        optional: bool,
+        description: string,
+    }
+
+    /// Component metadata
+    record component-info {
+        name: string,
+        version: string,
+        description: string,
+        author: string,
+        category: option<string>,
+    }
+
+    /// Execution error with recovery hints
+    record execution-error {
+        message: string,
+        input-name: option<string>,
+        recovery-hint: option<string>,
+    }
+}
+
+/// Host functions available to components
+interface host {
+    /// Log a message to the host console
+    ///
+    /// # Arguments
+    /// - level: "debug", "info", "warn", or "error"
+    /// - message: Log message content
+    log: func(level: string, message: string);
+
+    // Future: get-env, read-file, http-request (with capabilities)
+}
+
+/// Metadata interface - provides component information
+interface metadata {
+    use types.{component-info, port-spec};
+
+    /// Get component metadata
+    get-info: func() -> component-info;
+
+    /// Get input port specifications
+    get-inputs: func() -> list<port-spec>;
+
+    /// Get output port specifications
+    get-outputs: func() -> list<port-spec>;
+
+    /// Get required capabilities (optional)
+    ///
+    /// # Format
+    /// - "network:domain.com" - Network access to specific domain
+    /// - "file-read:/path" - Read access to path
+    /// - "file-write:/path" - Write access to path
+    ///
+    /// # Returns
+    /// None if no special capabilities required
+    get-capabilities: func() -> option<list<string>>;
+}
+
+/// Execution interface - performs component logic
+interface execution {
+    use types.{value, execution-error};
+
+    /// Execute component logic
+    ///
+    /// # Arguments
+    /// - inputs: List of (name, value) tuples for input ports
+    ///
+    /// # Returns
+    /// - Ok: List of (name, value) tuples for output ports
+    /// - Err: Execution error with details
+    execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
+}
+
+/// World definition for standard components
+world component {
+    /// Import host functions
+    import host;
+
+    /// Export metadata interface
+    export metadata;
+
+    /// Export execution interface
+    export execution;
+}
+
+/// Optional UI interface for components with custom visualizations
+interface ui {
+    /// Colored text element
+    record colored-text {
+        text: string,
+        r: u8,
+        g: u8,
+        b: u8,
+    }
+
+    /// Key-value pair element
+    record key-value-pair {
+        key: string,
+        value: string,
+    }
+
+    /// Horizontal layout item
+    variant ui-element-item {
+        label(string),
+        colored-label(colored-text),
+    }
+
+    /// Horizontal layout
+    record horizontal-layout {
+        elements: list<ui-element-item>,
+    }
+
+    /// UI element types
+    variant ui-element {
+        label(string),
+        colored-label(colored-text),
+        key-value(key-value-pair),
+        horizontal(horizontal-layout),
+        separator,
+    }
+
+    /// Footer view (displayed below node in canvas)
+    record footer-view {
+        elements: list<ui-element>,
+    }
+
+    /// Get footer view for current outputs
+    ///
+    /// # Arguments
+    /// - outputs: Current output values from last execution
+    ///
+    /// # Returns
+    /// - Some: Custom footer view
+    /// - None: Use default footer (show outputs as text)
+    get-footer-view: func(outputs: list<tuple<string, types.value>>) -> option<footer-view>;
+}
+
+/// Extended world for components with custom UI
+world component-with-ui {
+    import host;
+    export metadata;
+    export execution;
+    export ui;
+}
+
+//
+// USAGE EXAMPLES FOR GENERATED COMPONENTS
+//
+
+/// Example 1: Simple computation component (no UI)
+///
+/// ```rust
+/// // Generated component structure
+/// wit_bindgen::generate!({
+///     path: "wit",
+///     world: "component",
+/// });
+///
+/// use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+/// use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+/// use wasmflow::node::types::*;
+/// use wasmflow::node::host;
+///
+/// struct Component;
+///
+/// impl MetadataGuest for Component {
+///     fn get_info() -> ComponentInfo {
+///         ComponentInfo {
+///             name: "TripleNumber".to_string(),
+///             version: "0.1.0".to_string(),
+///             description: "Multiplies by 3".to_string(),
+///             author: "User".to_string(),
+///             category: Some("User-Defined".to_string()),
+///         }
+///     }
+///
+///     fn get_inputs() -> Vec<PortSpec> {
+///         vec![PortSpec {
+///             name: "value".to_string(),
+///             data_type: DataType::F32Type,
+///             optional: false,
+///             description: "Input number".to_string(),
+///         }]
+///     }
+///
+///     fn get_outputs() -> Vec<PortSpec> {
+///         vec![PortSpec {
+///             name: "result".to_string(),
+///             data_type: DataType::F32Type,
+///             optional: false,
+///             description: "Tripled value".to_string(),
+///         }]
+///     }
+///
+///     fn get_capabilities() -> Option<Vec<String>> {
+///         None // No special capabilities
+///     }
+/// }
+///
+/// impl ExecutionGuest for Component {
+///     fn execute(inputs: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, ExecutionError> {
+///         host::log("info", "TripleNumber executing");
+///
+///         // Extract input
+///         let value = inputs.iter()
+///             .find(|(name, _)| name == "value")
+///             .and_then(|(_, val)| match val {
+///                 Value::F32Val(f) => Some(*f),
+///                 _ => None,
+///             })
+///             .ok_or_else(|| ExecutionError {
+///                 message: "Missing 'value' input".to_string(),
+///                 input_name: Some("value".to_string()),
+///                 recovery_hint: Some("Connect an F32 value".to_string()),
+///             })?;
+///
+///         // USER CODE INJECTED HERE
+///         let result = value * 3.0;
+///
+///         Ok(vec![("result".to_string(), Value::F32Val(result))])
+///     }
+/// }
+///
+/// export!(Component);
+/// ```
+
+/// Example 2: Network-enabled component
+///
+/// ```rust
+/// impl MetadataGuest for Component {
+///     fn get_capabilities() -> Option<Vec<String>> {
+///         Some(vec![
+///             "network:api.example.com".to_string(),
+///         ])
+///     }
+/// }
+/// ```
+
+/// Example 3: Component with custom UI
+///
+/// ```rust
+/// use exports::wasmflow::node::ui::Guest as UiGuest;
+/// use exports::wasmflow::node::ui::{FooterView, UiElement, ColoredText};
+///
+/// impl UiGuest for Component {
+///     fn get_footer_view(outputs: Vec<(String, Value)>) -> Option<FooterView> {
+///         Some(FooterView {
+///             elements: vec![
+///                 UiElement::ColoredLabel(ColoredText {
+///                     text: "Custom footer!".to_string(),
+///                     r: 100, g: 200, b: 255,
+///                 }),
+///             ],
+///         })
+///     }
+/// }
+/// ```
+
+//
+// CONTRACT VALIDATION RULES
+//
+
+/// Rule 1: All exported interfaces must be implemented
+///   - metadata::get-info MUST return valid component-info
+///   - metadata::get-inputs MUST return at least one input OR
+///     metadata::get-outputs MUST return at least one output
+///   - execution::execute MUST be implemented
+
+/// Rule 2: Type safety
+///   - Port names in execute() MUST match names in get-inputs/get-outputs
+///   - Value types MUST match port data-types
+///   - Optional ports MAY be omitted from inputs
+
+/// Rule 3: Capability enforcement
+///   - Components using network/file I/O MUST declare capabilities
+///   - Host will DENY access if capability not declared
+///   - Capabilities MUST use format: "category:value"
+
+/// Rule 4: Error handling
+///   - execute() SHOULD return Err for invalid inputs
+///   - ExecutionError SHOULD include recovery-hint when possible
+///   - Panics are NOT acceptable in release builds
+
+/// Rule 5: Determinism (optional, recommended)
+///   - Pure computation components SHOULD be deterministic
+///   - Same inputs SHOULD produce same outputs
+///   - Random/time-based values SHOULD be inputs, not internal state

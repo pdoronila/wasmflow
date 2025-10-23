@@ -1,0 +1,9 @@
+# Cargo configuration for WasmFlow
+
+[build]
+# Add wasm32-wasip2 target for component development
+# Developers should install this target with:
+# rustup target add wasm32-wasip2
+
+[target.wasm32-wasip2]
+rustflags = ["-C", "target-feature=+simd128"]

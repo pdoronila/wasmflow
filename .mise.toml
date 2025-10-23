@@ -1,0 +1,96 @@
+# Mise configuration for WasmFlow development
+# Install mise: https://mise.jdx.dev/getting-started.html
+
+[tools]
+# Core language runtimes
+# Use system Rust (already has wasm32-wasip2 installed)
+# Comment out rust to use system version:
+# rust = "1.81"
+python = "3.11"                  # For Python WASM components
+node = "20"                      # For JavaScript WASM components
+
+# Additional tools
+"cargo:cargo-component" = "latest"    # Rust WASM component compiler
+"cargo:wasm-tools" = "latest"         # WebAssembly tooling
+"npm:@bytecodealliance/componentize-js" = "latest"  # JavaScript WASM compiler
+
+[tasks.install-python-tools]
+description = "Install Python WASM compilation tools"
+run = "pip install componentize-py"
+
+[tasks.install-rust-target]
+description = "Install wasm32-wasip2 target for Rust"
+run = "rustup target add wasm32-wasip2"
+
+[tasks.setup]
+description = "Complete setup for WasmFlow development"
+depends = ["install-rust-target", "install-python-tools"]
+run = """
+echo "✓ Rust toolchain installed"
+echo "✓ Python tools installed"
+echo "✓ Node.js tools installed"
+echo ""
+echo "WasmFlow is ready for development!"
+echo ""
+echo "To compile components:"
+echo "  - Rust: cargo-component (installed)"
+echo "  - Python: componentize-py (installed)"
+echo "  - JavaScript: componentize-js (installed)"
+echo ""
+echo "Run 'cargo run' to start the application"
+"""
+
+[tasks.verify]
+description = "Verify all tools are installed correctly"
+run = """
+echo "Checking tool installations..."
+echo ""
+echo "Rust:"
+rustc --version
+cargo --version
+echo ""
+echo "Rust WASM target:"
+rustup target list | grep wasm32-wasip2 | grep installed || echo "  ⚠ wasm32-wasip2 not installed (run: mise run install-rust-target)"
+echo ""
+echo "Python:"
+python --version
+pip --version
+componentize-py --version 2>/dev/null || echo "  ⚠ componentize-py not installed (run: mise run install-python-tools)"
+echo ""
+echo "Node.js:"
+node --version
+npm --version
+componentize-js --version 2>/dev/null || echo "  ⚠ componentize-js not installed (should be auto-installed)"
+echo ""
+echo "WASM Tools:"
+cargo-component --version 2>/dev/null || echo "  ⚠ cargo-component not installed (should be auto-installed)"
+wasm-tools --version 2>/dev/null || echo "  ⚠ wasm-tools not installed (should be auto-installed)"
+"""
+
+[tasks.clean]
+description = "Clean build artifacts and temporary files"
+run = """
+cargo clean
+rm -rf target/
+rm -rf /tmp/wasmflow-builds/*
+rm -rf /tmp/wasmflow-compiled/*
+echo "✓ Cleaned build artifacts"
+"""
+
+[tasks.dev]
+description = "Run WasmFlow in development mode"
+run = "cargo run"
+
+[tasks.build]
+description = "Build WasmFlow in release mode"
+run = "cargo build --release"
+
+[tasks.test]
+description = "Run all tests"
+run = "cargo test"
+
+[env]
+# Ensure cargo bin is in PATH
+_.path = ["$HOME/.cargo/bin", "$PATH"]
+# Set RUST_LOG for better debugging
+RUST_LOG = "info"

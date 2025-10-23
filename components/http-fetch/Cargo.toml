@@ -1,0 +1,28 @@
+[package]
+name = "example-http-fetch"
+version = "1.0.0"
+edition = "2021"
+authors = ["WasmFlow Example"]
+
+[workspace]
+# This is a standalone package, not part of the parent workspace
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "wasmflow:node"
+
+[package.metadata.component.target]
+world = "component-with-ui"
+
+[dependencies]
+wit-bindgen = { version = "0.33.0", default-features = false, features = ["macros", "realloc"] }
+
+[profile.release]
+opt-level = "s"  # Optimize for size
+lto = true
+strip = true
+
+[build-dependencies]
+wit-bindgen = "0.33.0"

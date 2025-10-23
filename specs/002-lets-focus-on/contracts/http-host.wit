@@ -1,0 +1,57 @@
+// HTTP Host Functions for WasmFlow Components
+// Extension to the base wasmflow:node interface for HTTP-enabled components
+//
+// Usage: Components that need HTTP access import this interface and call
+// the http-get function. The host runtime validates capabilities before
+// executing the request.
+
+package wasmflow:http@1.0.0;
+
+/// HTTP-specific host functions (extends wasmflow:node/host)
+interface http-host {
+    /// HTTP response from host
+    record http-response {
+        /// HTTP status code (200, 404, 500, etc.)
+        status: u32,
+
+        /// Response body as UTF-8 text
+        body: string,
+
+        /// Response headers as JSON-encoded map
+        /// Example: "{\"content-type\":\"application/json\",\"content-length\":\"123\"}"
+        headers: string,
+
+        /// Final URL after following redirects
+        final-url: string,
+    }
+
+    /// Perform an HTTP GET request
+    ///
+    /// Parameters:
+    ///   - url: Target HTTP/HTTPS endpoint
+    ///   - timeout-ms: Request timeout in milliseconds (1000-300000)
+    ///
+    /// Returns:
+    ///   - Success: http-response with status, body, headers
+    ///   - Error: string describing the failure (capability denied, network error, etc.)
+    ///
+    /// Security:
+    ///   - URL domain must be in component's approved capabilities
+    ///   - Redirects only followed within approved domains
+    ///   - Response size limited to 10MB
+    ///
+    /// Example:
+    ///   let response = http-get("https://api.example.com/data", 30000)?;
+    ///   // response.status = 200
+    ///   // response.body = "{\"result\": \"ok\"}"
+    http-get: func(url: string, timeout-ms: u32) -> result<http-response, string>;
+}
+
+/// World for HTTP-enabled components
+/// Extends the base wasmflow:node/component world with HTTP capabilities
+world http-component {
+    import http-host;
+    import wasmflow:node/host;  // Still have access to log, get-temp-dir
+    export wasmflow:node/metadata;
+    export wasmflow:node/execution;
+}

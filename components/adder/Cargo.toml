@@ -1,0 +1,30 @@
+[package]
+name = "example-adder"
+version = "1.0.0"
+edition = "2021"
+authors = ["WasmFlow Example"]
+
+[lib]
+crate-type = ["cdylib"]
+
+# Configure cargo-component to use wasm32-wasip2
+[package.metadata.component]
+package = "wasmflow:node"
+
+[package.metadata.component.target]
+path = "wit"
+
+[dependencies]
+# Component model bindings
+cargo-component-bindings = "0.6"
+wit-bindgen-rt = "0.44"
+
+[profile.release]
+opt-level = "s"  # Optimize for size
+lto = true
+strip = true
+
+[package.metadata.component.bindings]
+
+[workspace]
+# This is an independent component, not part of the main workspace

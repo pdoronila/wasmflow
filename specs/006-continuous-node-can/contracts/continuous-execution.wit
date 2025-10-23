@@ -1,0 +1,241 @@
+// WIT Interface for Continuous Execution Nodes
+// Feature: 006-continuous-node-can
+// Version: 1.0.0
+
+package wasmflow:continuous@1.0.0;
+
+/// Core types for continuous execution
+interface types {
+    /// Execution mode for a node
+    enum execution-mode {
+        /// Single execution (traditional node behavior)
+        single,
+        /// Continuous execution (runs until stopped)
+        continuous,
+    }
+
+    /// Current state of a continuous execution
+    enum execution-state {
+        /// Not running
+        idle,
+        /// Starting up
+        starting,
+        /// Actively running
+        running,
+        /// Graceful shutdown in progress
+        stopping,
+        /// Successfully stopped
+        stopped,
+        /// Error occurred
+        error,
+    }
+
+    /// Error information for continuous execution
+    record continuous-error {
+        /// Error message
+        message: string,
+        /// Optional source location (file:line)
+        source-location: option<string>,
+        /// Timestamp when error occurred (ISO 8601)
+        timestamp: string,
+        /// Error category
+        category: error-category,
+    }
+
+    /// Categories of errors
+    enum error-category {
+        /// General execution failure
+        execution-failed,
+        /// Permission denied (capability violation)
+        permission-denied,
+        /// Operation timed out
+        timeout,
+        /// Network error
+        network-error,
+        /// Component panic/trap
+        component-trap,
+    }
+
+    /// Execution statistics
+    record execution-stats {
+        /// Number of iterations completed
+        iterations: u64,
+        /// Total execution time (milliseconds)
+        total-duration-ms: u64,
+        /// Average iteration time (milliseconds)
+        avg-iteration-ms: option<f64>,
+        /// Last iteration time (milliseconds)
+        last-iteration-ms: option<u64>,
+    }
+}
+
+/// Component interface for continuous execution support
+interface continuous-component {
+    use types.{execution-mode, continuous-error, execution-stats};
+    use wasmflow:types@1.0.0.{node-value};
+
+    /// Query if this component supports continuous execution
+    ///
+    /// Returns:
+    ///   - true if component can run continuously
+    ///   - false if component only supports single execution
+    supports-continuous: func() -> bool;
+
+    /// Initialize continuous execution
+    ///
+    /// Called once when continuous execution starts.
+    /// Component should set up any long-lived resources (servers, listeners).
+    ///
+    /// Parameters:
+    ///   - inputs: Initial input values
+    ///
+    /// Returns:
+    ///   - Ok if initialization succeeded
+    ///   - Err with details if initialization failed
+    initialize-continuous: func(inputs: list<tuple<string, node-value>>) -> result<_, continuous-error>;
+
+    /// Execute one iteration of continuous processing
+    ///
+    /// Called repeatedly while continuous execution is active.
+    /// Should complete quickly (<100ms recommended) to allow responsive shutdown.
+    ///
+    /// Parameters:
+    ///   - inputs: Current input values (may have changed since last iteration)
+    ///
+    /// Returns:
+    ///   - Ok with output values if iteration succeeded
+    ///   - Err with details if iteration failed (stops continuous execution)
+    execute-iteration: func(inputs: list<tuple<string, node-value>>) -> result<list<tuple<string, node-value>>, continuous-error>;
+
+    /// Check if component should continue running
+    ///
+    /// Called before each iteration to allow component to request stop.
+    /// Component can return false to gracefully stop (e.g., server shutdown signal received).
+    ///
+    /// Returns:
+    ///   - true to continue execution
+    ///   - false to stop gracefully
+    should-continue: func() -> bool;
+
+    /// Cleanup continuous execution resources
+    ///
+    /// Called when continuous execution stops (user request or error).
+    /// Component should release resources (close servers, flush buffers).
+    /// Must complete within 2 seconds or will be force-terminated.
+    ///
+    /// Returns:
+    ///   - Ok if cleanup succeeded
+    ///   - Err with details if cleanup encountered issues (logged but not blocking)
+    cleanup-continuous: func() -> result<_, continuous-error>;
+
+    /// Get execution statistics
+    ///
+    /// Optional. Provides runtime metrics for monitoring/debugging.
+    ///
+    /// Returns:
+    ///   - Execution statistics if available
+    get-stats: func() -> option<execution-stats>;
+}
+
+/// Host interface for controlling continuous execution
+///
+/// This interface is provided BY the host (WasmFlow runtime) TO components,
+/// allowing components to interact with the execution environment.
+interface continuous-host {
+    use types.{execution-state};
+
+    /// Request execution to stop
+    ///
+    /// Component calls this to request graceful shutdown from within execute-iteration.
+    /// Useful for server components that receive shutdown signals.
+    request-stop: func();
+
+    /// Get current execution state
+    ///
+    /// Returns the current state from the host's perspective.
+    get-state: func() -> execution-state;
+
+    /// Log a message during continuous execution
+    ///
+    /// Parameters:
+    ///   - level: Log level (info, warn, error)
+    ///   - message: Log message
+    log: func(level: log-level, message: string);
+
+    /// Update progress indicator
+    ///
+    /// Optional. Allows component to report progress (e.g., "Processed 100 requests").
+    ///
+    /// Parameters:
+    ///   - progress: Human-readable progress string
+    update-progress: func(progress: string);
+}
+
+/// Log levels for continuous execution logging
+enum log-level {
+    info,
+    warn,
+    error,
+}
+
+/// World for components that support continuous execution
+///
+/// Components implementing this world can run in both single and continuous modes.
+world continuous-node {
+    import continuous-host;
+    export continuous-component;
+}
+
+/// Example HTTP Server Component
+///
+/// This is a reference example showing how to implement a continuous HTTP server.
+interface http-server-example {
+    use types.{continuous-error};
+    use wasmflow:types@1.0.0.{node-value};
+
+    /// Configuration for HTTP server
+    record server-config {
+        /// Port to listen on
+        port: u16,
+        /// Host address (default: 127.0.0.1)
+        host: option<string>,
+        /// Maximum concurrent connections
+        max-connections: option<u32>,
+    }
+
+    /// HTTP server statistics
+    record server-stats {
+        /// Total requests handled
+        total-requests: u64,
+        /// Requests per second (recent)
+        requests-per-second: f64,
+        /// Active connections
+        active-connections: u32,
+        /// Uptime (milliseconds)
+        uptime-ms: u64,
+    }
+
+    /// Example implementation outline (not executable WIT, just documentation)
+    ///
+    /// initialize-continuous:
+    ///   1. Parse server-config from inputs
+    ///   2. Bind to port (requires network capability)
+    ///   3. Start accepting connections in background
+    ///   4. Return Ok
+    ///
+    /// execute-iteration:
+    ///   1. Check for new HTTP requests (non-blocking)
+    ///   2. Process any pending requests
+    ///   3. Update stats
+    ///   4. Return stats as outputs
+    ///
+    /// should-continue:
+    ///   1. Check if server is healthy
+    ///   2. Return true unless shutdown signal received
+    ///
+    /// cleanup-continuous:
+    ///   1. Stop accepting new connections
+    ///   2. Wait for active requests to complete (max 2s)
+    ///   3. Close server socket
+    ///   4. Return Ok
+}

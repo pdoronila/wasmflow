@@ -1,0 +1,244 @@
+{
+  "_comment": "This is a JSON representation of an HTTP Fetch demo graph for documentation purposes.",
+  "_note": "Actual .wfg files are binary (bincode format). This shows the logical structure.",
+  "_usage": "Load this graph concept in WasmFlow by creating the nodes and connections manually in the UI.",
+
+  "id": "550e8400-e29b-41d5-a716-446655440000",
+  "name": "HTTP Fetch Demo",
+  "version": 1,
+
+  "metadata": {
+    "created_at": "2025-10-14T00:00:00Z",
+    "modified_at": "2025-10-14T00:00:00Z",
+    "author": "WasmFlow Examples",
+    "description": "Demonstrates HTTP Fetch component making a GET request to httpbin.org"
+  },
+
+  "nodes": {
+    "node_1_id": {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "component_id": "builtin:constant:string",
+      "display_name": "URL",
+      "position": {
+        "x": 100.0,
+        "y": 200.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_1_id",
+          "name": "value",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "String": "https://httpbin.org/get"
+          }
+        }
+      ],
+      "metadata": {
+        "author": "WasmFlow",
+        "version": "1.0.0",
+        "description": "Constant string value"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_2_id": {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "component_id": "user:http-fetch",
+      "display_name": "HTTP Fetch",
+      "position": {
+        "x": 400.0,
+        "y": 200.0
+      },
+      "inputs": [
+        {
+          "id": "in_url_id",
+          "name": "url",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_timeout_id",
+          "name": "timeout",
+          "data_type": "U32",
+          "direction": "Input",
+          "optional": true,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_body_id",
+          "name": "body",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "out_status_id",
+          "name": "status",
+          "data_type": "U32",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "out_headers_id",
+          "name": "headers",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": true,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "WasmFlow Examples",
+        "version": "1.0.0",
+        "description": "Fetches data from HTTP endpoints using WASI HTTP"
+      },
+      "capabilities": {
+        "Network": [
+          "httpbin.org",
+          "api.example.com"
+        ]
+      },
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_3_id": {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "component_id": "builtin:constant:u32",
+      "display_name": "Timeout (Optional)",
+      "position": {
+        "x": 100.0,
+        "y": 350.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_timeout_id",
+          "name": "value",
+          "data_type": "U32",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "U32": 30
+          }
+        }
+      ],
+      "metadata": {
+        "author": "WasmFlow",
+        "version": "1.0.0",
+        "description": "Constant U32 value for timeout"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    }
+  },
+
+  "connections": [
+    {
+      "id": "conn_1_id",
+      "from_node": "11111111-1111-1111-1111-111111111111",
+      "from_port": "out_1_id",
+      "to_node": "22222222-2222-2222-2222-222222222222",
+      "to_port": "in_url_id"
+    },
+    {
+      "id": "conn_2_id",
+      "from_node": "33333333-3333-3333-3333-333333333333",
+      "from_port": "out_timeout_id",
+      "to_node": "22222222-2222-2222-2222-222222222222",
+      "to_port": "in_timeout_id"
+    }
+  ],
+
+  "capability_grants": {
+    "22222222-2222-2222-2222-222222222222": {
+      "node_id": "22222222-2222-2222-2222-222222222222",
+      "capability": "network:httpbin.org",
+      "granted_at": "2025-10-14T00:00:00Z",
+      "granted_by": "user"
+    }
+  },
+
+  "_graph_explanation": {
+    "nodes": {
+      "URL (Constant)": "Provides the HTTP URL to fetch (https://httpbin.org/get)",
+      "Timeout (Constant)": "Optional timeout in seconds (30s)",
+      "HTTP Fetch": "Makes the HTTP GET request using WASI HTTP Preview 2"
+    },
+    "connections": [
+      "URL.value -> HTTP Fetch.url: Provides the target URL",
+      "Timeout.value -> HTTP Fetch.timeout: Sets request timeout (optional)"
+    ],
+    "outputs": {
+      "HTTP Fetch.body": "JSON response body from httpbin.org",
+      "HTTP Fetch.status": "HTTP status code (200 for success)",
+      "HTTP Fetch.headers": "Response headers as JSON (optional)"
+    },
+    "security": {
+      "capability_grants": "User has approved network access to httpbin.org",
+      "validation": "Component validates URLs against declared capabilities before making requests"
+    }
+  },
+
+  "_example_execution_result": {
+    "HTTP Fetch.body": "{\"args\": {}, \"headers\": {\"Host\": \"httpbin.org\", ...}, \"origin\": \"...\", \"url\": \"https://httpbin.org/get\"}",
+    "HTTP Fetch.status": 200,
+    "HTTP Fetch.headers": "{\"content-type\": \"application/json\", \"content-length\": \"...\", ...}"
+  },
+
+  "_variations": [
+    {
+      "name": "Error Handling Test",
+      "description": "Test with invalid URL to see error handling",
+      "url_value": "not-a-valid-url",
+      "expected_result": "Error: Invalid URL format: missing scheme"
+    },
+    {
+      "name": "Timeout Test",
+      "description": "Test with slow endpoint and short timeout",
+      "url_value": "https://httpbin.org/delay/10",
+      "timeout_value": 5,
+      "expected_result": "Error: Request timed out after 5 seconds"
+    },
+    {
+      "name": "Capability Denial Test",
+      "description": "Test with unauthorized domain",
+      "url_value": "https://google.com",
+      "expected_result": "Error: Access denied: google.com not in approved capabilities"
+    },
+    {
+      "name": "JSON Parsing Pipeline",
+      "description": "Add a JSON Parser node to parse the response body",
+      "additional_nodes": "JSON Parser (downstream from HTTP Fetch.body)",
+      "expected_result": "Structured data extracted from JSON response"
+    }
+  ],
+
+  "_quickstart": {
+    "1_build_component": "cd examples/example-http-fetch && cargo build --target wasm32-wasip2 --release",
+    "2_copy_component": "cp target/wasm32-wasip2/release/example_http_fetch.wasm ../../components/",
+    "3_launch_wasmflow": "cargo run --release",
+    "4_create_graph": [
+      "Add a Constant (String) node, set value to 'https://httpbin.org/get'",
+      "Add HTTP Fetch component from palette",
+      "Connect Constant.value -> HTTP Fetch.url",
+      "(Optional) Add Constant (U32) node for timeout",
+      "(Optional) Connect Timeout.value -> HTTP Fetch.timeout"
+    ],
+    "5_grant_capability": "Approve network access to httpbin.org when prompted",
+    "6_execute": "Click Execute button in menu bar",
+    "7_view_results": "See JSON response in HTTP Fetch.body output, status code 200"
+  }
+}

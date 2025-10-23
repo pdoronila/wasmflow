@@ -1,0 +1,44 @@
+# Generic WasmFlow Component Builder
+# Auto-detects component name from directory
+
+# Auto-detect component name from directory
+component_name := replace(file_name(justfile_directory()), "-", "_")
+component_display := file_name(justfile_directory())
+
+# Build the component (default)
+build: clean
+    @echo "Building {{component_display}} component..."
+    cargo build --target wasm32-wasip2 --release
+    @echo "✓ Component built: target/wasm32-wasip2/release/{{component_name}}.wasm"
+
+# Install the component to WasmFlow components directory
+install: build
+    @echo "Installing component to ../../components/"
+    mkdir -p ../../components
+    cp target/wasm32-wasip2/release/{{component_name}}.wasm \
+       ../../components/{{component_name}}.wasm
+    @echo "✓ Component installed"
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Run tests
+test:
+    cargo test
+
+# Check without building
+check:
+    cargo check --target wasm32-wasip2
+
+# Install prerequisites
+setup:
+    @echo "Installing prerequisites..."
+    rustup target add wasm32-wasip2
+    @echo "✓ Prerequisites installed"
+
+# Show component information
+info:
+    @echo "Component name: {{component_name}}"
+    @echo "Display name: {{component_display}}"
+    @echo "Directory: {{justfile_directory()}}"

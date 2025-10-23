@@ -1,0 +1,106 @@
+// WIT Interface for JSON Parser Node Component
+// Package: wasmflow:json-parser
+// Version: 0.1.0
+//
+// This component extracts values from JSON strings using key path notation.
+// Supports dot notation (metadata.author) and bracket notation (runs[1]).
+
+package wasmflow:json-parser@0.1.0;
+
+/// JSON Parser interface
+interface parser {
+    /// Represents an extracted JSON value with type preservation
+    variant json-value {
+        /// String value
+        string(string),
+
+        /// Numeric value (all JSON numbers represented as f64)
+        number(float64),
+
+        /// Boolean value
+        boolean(bool),
+
+        /// Object value (serialized as JSON string for further processing)
+        object(string),
+
+        /// Array value (serialized as JSON string for further processing)
+        array(string),
+
+        /// Explicit null value
+        null,
+    }
+
+    /// Error kind categorization for structured error handling
+    enum error-kind {
+        /// JSON string is malformed or invalid (FR-008)
+        invalid-json,
+
+        /// Key path does not exist in the parsed JSON (FR-009)
+        path-not-found,
+
+        /// Key path syntax is invalid (FR-010)
+        malformed-path,
+
+        /// Array index is out of bounds (FR-011)
+        index-out-of-bounds,
+
+        /// Type mismatch (e.g., indexing non-array, property on primitive)
+        type-mismatch,
+    }
+
+    /// Structured error information for failed extractions
+    record parse-error {
+        /// Human-readable error message with actionable context
+        message: string,
+
+        /// Error kind for programmatic error handling
+        kind: error-kind,
+
+        /// Optional additional context (path segment, index, etc.)
+        context: option<string>,
+    }
+
+    /// Extract a value from JSON using a key path
+    ///
+    /// # Parameters
+    /// - `json-string`: A valid JSON string to parse
+    /// - `key-path`: Path to the desired value using dot/bracket notation
+    ///
+    /// # Returns
+    /// - `Ok(json-value)`: Successfully extracted value with preserved type
+    /// - `Err(parse-error)`: Extraction failed with detailed error information
+    ///
+    /// # Key Path Syntax
+    /// - Simple property: `version`
+    /// - Nested property: `metadata.author` (dot notation)
+    /// - Array index: `runs[1]` (bracket notation, zero-based)
+    /// - Combined: `runs[1].time` (mixed notation)
+    ///
+    /// # Examples
+    /// ```
+    /// // Extract top-level property
+    /// parse("{\"version\": 1}", "version") → Ok(number(1.0))
+    ///
+    /// // Extract nested property
+    /// parse("{\"metadata\": {\"author\": \"me\"}}", "metadata.author") → Ok(string("me"))
+    ///
+    /// // Extract array element
+    /// parse("{\"runs\": [10, 20, 30]}", "runs[1]") → Ok(number(20.0))
+    ///
+    /// // Extract property from array element
+    /// parse("{\"runs\": [{\"id\": 1}, {\"id\": 2}]}", "runs[1].id") → Ok(number(2.0))
+    ///
+    /// // Error: path not found
+    /// parse("{}", "missing") → Err(parse-error { kind: path-not-found, ... })
+    ///
+    /// // Error: invalid JSON
+    /// parse("{invalid", "key") → Err(parse-error { kind: invalid-json, ... })
+    /// ```
+    parse: func(json-string: string, key-path: string) -> result<json-value, parse-error>;
+}
+
+/// World definition for the JSON parser component
+world json-parser {
+    /// Export the parser interface
+    export parser;
+}

@@ -1,0 +1,46 @@
+# Rust
+/target/
+**/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Build artifacts
+/dist/
+/build/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.temp
+
+# Component artifacts
+/components/*.wasm
+
+# Auto-generated WIT bindings
+**/src/bindings.rs
+
+# Test outputs
+/test-output/
+
+# Mise
+.mise.local.toml
+.mise/
+.rtx/

@@ -1,0 +1,7 @@
+[build]
+# Use wasm32-wasip2 target by default for this component
+target = "wasm32-wasip2"
+
+[target.wasm32-wasip2]
+# Component model flags
+rustflags = ["-C", "target-feature=+bulk-memory,+mutable-globals"]

@@ -1,0 +1,92 @@
+// WasmFlow Node Interface
+// This defines the contract that all WasmFlow components must implement
+
+package wasmflow:node@1.0.0;
+
+/// Data types supported by WasmFlow
+interface types {
+    /// Data type specification for ports
+    variant data-type {
+        u32-type,
+        i32-type,
+        f32-type,
+        string-type,
+        binary-type,
+        list-type,
+        any-type,
+    }
+
+    /// Values that flow through node connections
+    variant value {
+        u32-val(u32),
+        i32-val(s32),
+        f32-val(f32),
+        string-val(string),
+        binary-val(list<u8>),
+    }
+
+    /// Port specification
+    record port-spec {
+        name: string,
+        data-type: data-type,
+        optional: bool,
+        description: string,
+    }
+
+    /// Component metadata
+    record component-info {
+        name: string,
+        version: string,
+        description: string,
+        author: string,
+        category: option<string>,
+    }
+
+    /// Execution error
+    record execution-error {
+        message: string,
+        input-name: option<string>,
+        recovery-hint: option<string>,
+    }
+}
+
+/// Host functions provided by WasmFlow
+interface host {
+    /// Log a message to the console
+    log: func(level: string, message: string);
+
+    /// Get temporary directory path
+    get-temp-dir: func() -> result<string, string>;
+}
+
+/// Metadata interface - provides component information
+interface metadata {
+    use types.{component-info, port-spec};
+
+    /// Get component information
+    get-info: func() -> component-info;
+
+    /// Get input port specifications
+    get-inputs: func() -> list<port-spec>;
+
+    /// Get output port specifications
+    get-outputs: func() -> list<port-spec>;
+
+    /// Get required capabilities
+    get-capabilities: func() -> option<list<string>>;
+}
+
+/// Execution interface - performs the actual computation
+interface execution {
+    use types.{value, execution-error};
+
+    /// Execute the component with given inputs
+    execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
+}
+
+/// Main world that components must implement
+world component {
+    import host;
+    export metadata;
+    export execution;
+}

@@ -1,0 +1,116 @@
+// WIT Interface Definition for Composite Nodes
+// Feature: 007-rectangle-selection-tool
+// Purpose: Define the contract for composed WebAssembly components
+
+package wasmflow:composite@0.1.0;
+
+/// A port definition for inputs/outputs
+record port-definition {
+    /// Name of the port (e.g., "data-input", "result-output")
+    name: string,
+
+    /// Type signature of the port (WIT type string)
+    /// Examples: "u32", "string", "list<u8>", "result<string, error>"
+    type-signature: string,
+
+    /// Optional description of what this port represents
+    description: option<string>,
+}
+
+/// Metadata about a composition
+record composition-metadata {
+    /// When the composition was created (ISO 8601 timestamp)
+    created-at: string,
+
+    /// Number of components composed together
+    component-count: u32,
+
+    /// Names of all components in the composition
+    component-names: list<string>,
+
+    /// Size of the composed WASM binary in bytes
+    composition-size-bytes: u64,
+}
+
+/// Mapping from external port to internal node port
+record port-mapping {
+    /// Name of the port as exposed externally
+    external-name: string,
+
+    /// ID of the internal node this port connects to (opaque string)
+    internal-node-id: string,
+
+    /// Name of the port on the internal node
+    internal-port-name: string,
+
+    /// Type of the port (must match internal port type)
+    port-type: string,
+}
+
+/// Information about a composite node's internal structure
+/// This is metadata only - not part of the executable interface
+record composite-info {
+    /// Unique identifier for this composite
+    id: string,
+
+    /// User-visible name of the composite
+    name: string,
+
+    /// List of exposed input ports
+    exposed-inputs: list<port-definition>,
+
+    /// List of exposed output ports
+    exposed-outputs: list<port-definition>,
+
+    /// Metadata about the composition
+    metadata: composition-metadata,
+}
+
+/// Interface for composite node introspection
+/// This allows tools to query composite node structure without executing it
+interface composite-introspection {
+    /// Get information about a composite node
+    ///
+    /// Returns None if the component is not a composite or doesn't support introspection
+    get-composite-info: func() -> option<composite-info>;
+
+    /// Check if this component is a composite
+    is-composite: func() -> bool;
+
+    /// Get the number of internal components
+    get-component-count: func() -> u32;
+
+    /// List all component names in the composition
+    list-component-names: func() -> list<string>;
+}
+
+/// World for composite components
+///
+/// Note: The actual functional interface of a composite component is determined
+/// by WAC composition - this world defines metadata/introspection only.
+///
+/// The composed component will have:
+/// - Imports: Any unresolved imports from the socket component
+/// - Exports: The socket component's exports (+ optional introspection interface)
+world composite-component {
+    /// Optional: Export introspection interface for tooling
+    export composite-introspection;
+
+    // The actual functional exports depend on the socket component
+    // and are determined at composition time by WAC
+}
+
+/// Example socket component world (would be in actual component, not here)
+/// This shows how a component might look before composition
+///
+/// world example-socket {
+///     import data-processor: func(data: list<u8>) -> list<u8>;
+///     export process: func(input: string) -> string;
+/// }
+///
+/// After composition with a plug that exports data-processor:
+/// world example-composed {
+///     // No imports (satisfied by plug)
+///     export process: func(input: string) -> string;
+///     export composite-introspection; // Added by composition
+/// }

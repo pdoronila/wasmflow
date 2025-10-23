@@ -1,0 +1,204 @@
+// WIT Interface Definition for WasmFlow Node Components
+// Version: 1.0.0
+//
+// This contract defines the interface that all custom node components must implement.
+// Built-in nodes follow the same interface for consistency.
+
+package wasmflow:node@1.0.0;
+
+/// Core types for data flow between nodes
+interface types {
+    /// Supported data types for node values
+    variant data-type {
+        u32-type,
+        i32-type,
+        f32-type,
+        string-type,
+        binary-type,
+        list-type(data-type),
+        record-type(list<tuple<string, data-type>>),
+        any-type,  // Accepts any type (for generic nodes)
+    }
+
+    /// Runtime value that flows through connections
+    variant value {
+        u32-val(u32),
+        i32-val(s32),
+        f32-val(f32),
+        string-val(string),
+        binary-val(list<u8>),
+        list-val(list<value>),
+        record-val(list<tuple<string, value>>),
+    }
+
+    /// Input/output port specification
+    record port-spec {
+        name: string,
+        data-type: data-type,
+        optional: bool,
+        description: string,
+    }
+
+    /// Component metadata
+    record component-info {
+        name: string,
+        version: string,
+        description: string,
+        author: string,
+        category: option<string>,  // e.g., "Math", "Text", "File I/O"
+    }
+
+    /// Execution error information
+    record execution-error {
+        message: string,
+        input-name: option<string>,  // Which input caused the error (if applicable)
+        recovery-hint: option<string>,  // Suggestion for fixing the error
+    }
+}
+
+/// Component metadata interface (queried when loading component)
+interface metadata {
+    use types.{component-info, port-spec};
+
+    /// Get component information (name, version, author, etc.)
+    get-info: func() -> component-info;
+
+    /// Get list of input port specifications
+    get-inputs: func() -> list<port-spec>;
+
+    /// Get list of output port specifications
+    get-outputs: func() -> list<port-spec>;
+
+    /// Get required capabilities (optional, defaults to no capabilities)
+    /// Returns list of capability strings, e.g., ["file-read:/data", "network:api.example.com"]
+    get-capabilities: func() -> option<list<string>>;
+}
+
+/// Node execution interface (called during graph execution)
+interface execution {
+    use types.{value, execution-error};
+
+    /// Execute the node with provided inputs, return computed outputs
+    ///
+    /// Inputs: List of (port-name, value) tuples
+    /// Returns: Ok(outputs) with list of (port-name, value) tuples, or Err(execution-error)
+    ///
+    /// Contract:
+    /// - All non-optional input ports must be present in inputs list
+    /// - Output list must contain all declared output ports
+    /// - Output values must match declared data types
+    /// - Function should complete within 30 seconds (host enforces timeout)
+    execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
+}
+
+/// Host functions provided by WasmFlow runtime to components
+interface host {
+    /// Log a message to the host console (for debugging)
+    /// Level: "debug", "info", "warn", "error"
+    log: func(level: string, message: string);
+
+    /// Get a temporary directory path that component can write to
+    /// Only available if component has temporary storage capability
+    get-temp-dir: func() -> result<string, string>;
+}
+
+/// Main component world - all node components must implement this
+world node {
+    // Component exports (required)
+    export metadata;
+    export execution;
+
+    // Host imports (available to component)
+    import host;
+
+    // WASI imports (conditionally available based on capabilities)
+    // Components request these via get-capabilities()
+    import wasi:filesystem/types@0.2.0;
+    import wasi:filesystem/preopens@0.2.0;
+    import wasi:io/streams@0.2.0;
+    import wasi:http/outgoing-handler@0.2.0;
+    import wasi:http/types@0.2.0;
+}
+
+/// Example usage in Rust component:
+///
+/// ```rust
+/// use wasmflow::node::*;
+///
+/// struct Adder;
+///
+/// impl Guest for Adder {
+///     fn get_info() -> ComponentInfo {
+///         ComponentInfo {
+///             name: "Add".to_string(),
+///             version: "1.0.0".to_string(),
+///             description: "Adds two numbers".to_string(),
+///             author: "WasmFlow".to_string(),
+///             category: Some("Math".to_string()),
+///         }
+///     }
+///
+///     fn get_inputs() -> Vec<PortSpec> {
+///         vec![
+///             PortSpec {
+///                 name: "a".to_string(),
+///                 data_type: DataType::F32Type,
+///                 optional: false,
+///                 description: "First number".to_string(),
+///             },
+///             PortSpec {
+///                 name: "b".to_string(),
+///                 data_type: DataType::F32Type,
+///                 optional: false,
+///                 description: "Second number".to_string(),
+///             },
+///         ]
+///     }
+///
+///     fn get_outputs() -> Vec<PortSpec> {
+///         vec![PortSpec {
+///             name: "sum".to_string(),
+///             data_type: DataType::F32Type,
+///             optional: false,
+///             description: "Sum of inputs".to_string(),
+///         }]
+///     }
+///
+///     fn get_capabilities() -> Option<Vec<String>> {
+///         None  // No system access required
+///     }
+///
+///     fn execute(inputs: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, ExecutionError> {
+///         // Extract inputs
+///         let a = inputs.iter()
+///             .find(|(name, _)| name == "a")
+///             .and_then(|(_, val)| match val {
+///                 Value::F32Val(f) => Some(*f),
+///                 _ => None,
+///             })
+///             .ok_or_else(|| ExecutionError {
+///                 message: "Missing or invalid input 'a'".to_string(),
+///                 input_name: Some("a".to_string()),
+///                 recovery_hint: Some("Connect a number output to input 'a'".to_string()),
+///             })?;
+///
+///         let b = inputs.iter()
+///             .find(|(name, _)| name == "b")
+///             .and_then(|(_, val)| match val {
+///                 Value::F32Val(f) => Some(*f),
+///                 _ => None,
+///             })
+///             .ok_or_else(|| ExecutionError {
+///                 message: "Missing or invalid input 'b'".to_string(),
+///                 input_name: Some("b".to_string()),
+///                 recovery_hint: Some("Connect a number output to input 'b'".to_string()),
+///             })?;
+///
+///         // Compute result
+///         let sum = a + b;
+///
+///         // Return output
+///         Ok(vec![("sum".to_string(), Value::F32Val(sum))])
+///     }
+/// }
+/// ```
