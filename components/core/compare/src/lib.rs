@@ -40,7 +40,7 @@ impl MetadataGuest for Component {
                 name: "operation".to_string(),
                 data_type: DataType::StringType,
                 optional: false,
-                description: "Comparison operation: equals, not-equals, greater-than, less-than, greater-or-equal, less-or-equal".to_string(),
+                description: "Comparison operation: equals/==, not-equals/!=, greater-than/>, less-than/<, greater-or-equal/>=, less-or-equal/<=".to_string(),
             },
         ]
     }
@@ -131,51 +131,51 @@ fn compare_values(left: &Value, right: &Value, operation: &str) -> Result<bool, 
 
 fn compare_numbers(left: f64, right: f64, operation: &str) -> Result<bool, ExecutionError> {
     match operation {
-        "equals" => Ok((left - right).abs() < f64::EPSILON),
-        "not-equals" => Ok((left - right).abs() >= f64::EPSILON),
-        "greater-than" => Ok(left > right),
-        "less-than" => Ok(left < right),
-        "greater-or-equal" => Ok(left >= right),
-        "less-or-equal" => Ok(left <= right),
+        "equals" | "==" => Ok((left - right).abs() < f64::EPSILON),
+        "not-equals" | "!=" => Ok((left - right).abs() >= f64::EPSILON),
+        "greater-than" | ">" => Ok(left > right),
+        "less-than" | "<" => Ok(left < right),
+        "greater-or-equal" | ">=" => Ok(left >= right),
+        "less-or-equal" | "<=" => Ok(left <= right),
         _ => Err(ExecutionError {
             message: format!("Invalid operation: {}", operation),
             input_name: Some("operation".to_string()),
-            recovery_hint: Some("Use: equals, not-equals, greater-than, less-than, greater-or-equal, or less-or-equal".to_string()),
+            recovery_hint: Some("Use: equals/==, not-equals/!=, greater-than/>, less-than/<, greater-or-equal/>=, or less-or-equal/<=".to_string()),
         }),
     }
 }
 
 fn compare_strings(left: &str, right: &str, operation: &str) -> Result<bool, ExecutionError> {
     match operation {
-        "equals" => Ok(left == right),
-        "not-equals" => Ok(left != right),
-        "greater-than" => Ok(left > right),
-        "less-than" => Ok(left < right),
-        "greater-or-equal" => Ok(left >= right),
-        "less-or-equal" => Ok(left <= right),
+        "equals" | "==" => Ok(left == right),
+        "not-equals" | "!=" => Ok(left != right),
+        "greater-than" | ">" => Ok(left > right),
+        "less-than" | "<" => Ok(left < right),
+        "greater-or-equal" | ">=" => Ok(left >= right),
+        "less-or-equal" | "<=" => Ok(left <= right),
         _ => Err(ExecutionError {
             message: format!("Invalid operation: {}", operation),
             input_name: Some("operation".to_string()),
-            recovery_hint: Some("Use: equals, not-equals, greater-than, less-than, greater-or-equal, or less-or-equal".to_string()),
+            recovery_hint: Some("Use: equals/==, not-equals/!=, greater-than/>, less-than/<, greater-or-equal/>=, or less-or-equal/<=".to_string()),
         }),
     }
 }
 
 fn compare_booleans(left: bool, right: bool, operation: &str) -> Result<bool, ExecutionError> {
     match operation {
-        "equals" => Ok(left == right),
-        "not-equals" => Ok(left != right),
-        "greater-than" | "less-than" | "greater-or-equal" | "less-or-equal" => {
+        "equals" | "==" => Ok(left == right),
+        "not-equals" | "!=" => Ok(left != right),
+        "greater-than" | ">" | "less-than" | "<" | "greater-or-equal" | ">=" | "less-or-equal" | "<=" => {
             Err(ExecutionError {
                 message: "Boolean values can only be compared for equality".to_string(),
                 input_name: Some("operation".to_string()),
-                recovery_hint: Some("Use 'equals' or 'not-equals' for boolean comparisons".to_string()),
+                recovery_hint: Some("Use 'equals'/'==' or 'not-equals'/'!=' for boolean comparisons".to_string()),
             })
         }
         _ => Err(ExecutionError {
             message: format!("Invalid operation: {}", operation),
             input_name: Some("operation".to_string()),
-            recovery_hint: Some("Use: equals or not-equals for booleans".to_string()),
+            recovery_hint: Some("Use: equals/== or not-equals/!= for booleans".to_string()),
         }),
     }
 }
@@ -248,5 +248,61 @@ mod tests {
         ];
         let result = Component::execute(inputs);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_symbolic_equals() {
+        let inputs = vec![
+            ("left".to_string(), Value::U32Val(5)),
+            ("right".to_string(), Value::U32Val(5)),
+            ("operation".to_string(), Value::StringVal("==".to_string())),
+        ];
+        let result = Component::execute(inputs).unwrap();
+        match &result[0].1 {
+            Value::BoolVal(b) => assert_eq!(*b, true),
+            _ => panic!("Expected bool output"),
+        }
+    }
+
+    #[test]
+    fn test_symbolic_greater_than() {
+        let inputs = vec![
+            ("left".to_string(), Value::U32Val(10)),
+            ("right".to_string(), Value::U32Val(5)),
+            ("operation".to_string(), Value::StringVal(">".to_string())),
+        ];
+        let result = Component::execute(inputs).unwrap();
+        match &result[0].1 {
+            Value::BoolVal(b) => assert_eq!(*b, true),
+            _ => panic!("Expected bool output"),
+        }
+    }
+
+    #[test]
+    fn test_symbolic_less_or_equal() {
+        let inputs = vec![
+            ("left".to_string(), Value::U32Val(5)),
+            ("right".to_string(), Value::U32Val(10)),
+            ("operation".to_string(), Value::StringVal("<=".to_string())),
+        ];
+        let result = Component::execute(inputs).unwrap();
+        match &result[0].1 {
+            Value::BoolVal(b) => assert_eq!(*b, true),
+            _ => panic!("Expected bool output"),
+        }
+    }
+
+    #[test]
+    fn test_symbolic_string_comparison() {
+        let inputs = vec![
+            ("left".to_string(), Value::StringVal("abc".to_string())),
+            ("right".to_string(), Value::StringVal("xyz".to_string())),
+            ("operation".to_string(), Value::StringVal("<".to_string())),
+        ];
+        let result = Component::execute(inputs).unwrap();
+        match &result[0].1 {
+            Value::BoolVal(b) => assert_eq!(*b, true),
+            _ => panic!("Expected bool output"),
+        }
     }
 }
