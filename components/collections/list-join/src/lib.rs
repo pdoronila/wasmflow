@@ -6,7 +6,6 @@ wit_bindgen::generate!({
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;
 use exports::wasmflow::node::execution::Guest as ExecutionGuest;
 use wasmflow::node::types::*;
-use wasmflow::node::host;
 
 struct Component;
 
@@ -108,22 +107,9 @@ impl ExecutionGuest for Component {
             }
         };
 
-        // Convert all list elements to strings
-        let mut strings = Vec::new();
-        for (i, value) in list_values.iter().enumerate() {
-            match value {
-                Value::StringVal(s) => strings.push(s.clone()),
-                _ => {
-                    return Err(ExecutionError {
-                        message: format!("List element at index {} is not a string: {:?}", i, value),
-                        input_name: Some("list".to_string()),
-                        recovery_hint: Some("Ensure all list elements are strings".to_string()),
-                    });
-                }
-            }
-        }
-
-        let result = strings.join(delimiter);
+        // Join the string list with the delimiter
+        // list_values is already a Vec<String> from StringListVal
+        let result = list_values.join(delimiter);
 
         Ok(vec![("result".to_string(), Value::StringVal(result))])
     }

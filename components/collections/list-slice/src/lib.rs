@@ -158,11 +158,11 @@ mod tests {
             (
                 "list".to_string(),
                 Value::StringListVal(vec![
-                    Value::U32Val(10),
-                    Value::U32Val(20),
-                    Value::U32Val(30),
-                    Value::U32Val(40),
-                    Value::U32Val(50),
+                    "apple".to_string(),
+                    "banana".to_string(),
+                    "cherry".to_string(),
+                    "date".to_string(),
+                    "elderberry".to_string(),
                 ]),
             ),
             ("start".to_string(), Value::U32Val(1)),
@@ -175,11 +175,11 @@ mod tests {
 
         if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 3);
-            assert_eq!(list[0], Value::U32Val(20));
-            assert_eq!(list[1], Value::U32Val(30));
-            assert_eq!(list[2], Value::U32Val(40));
+            assert_eq!(list[0], "banana");
+            assert_eq!(list[1], "cherry");
+            assert_eq!(list[2], "date");
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 
@@ -189,9 +189,9 @@ mod tests {
             (
                 "list".to_string(),
                 Value::StringListVal(vec![
-                    Value::StringVal("a".to_string()),
-                    Value::StringVal("b".to_string()),
-                    Value::StringVal("c".to_string()),
+                    "a".to_string(),
+                    "b".to_string(),
+                    "c".to_string(),
                 ]),
             ),
             ("start".to_string(), Value::U32Val(1)),
@@ -203,10 +203,10 @@ mod tests {
 
         if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 2);
-            assert_eq!(list[0], Value::StringVal("b".to_string()));
-            assert_eq!(list[1], Value::StringVal("c".to_string()));
+            assert_eq!(list[0], "b");
+            assert_eq!(list[1], "c");
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 
@@ -215,7 +215,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::StringListVal(vec![Value::U32Val(1), Value::U32Val(2)]),
+                Value::StringListVal(vec!["one".to_string(), "two".to_string()]),
             ),
             ("start".to_string(), Value::U32Val(5)),
         ];
@@ -226,7 +226,7 @@ mod tests {
         if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 0); // Empty list
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 
@@ -236,9 +236,9 @@ mod tests {
             (
                 "list".to_string(),
                 Value::StringListVal(vec![
-                    Value::U32Val(1),
-                    Value::U32Val(2),
-                    Value::U32Val(3),
+                    "one".to_string(),
+                    "two".to_string(),
+                    "three".to_string(),
                 ]),
             ),
             ("start".to_string(), Value::U32Val(2)),
@@ -250,7 +250,7 @@ mod tests {
         if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 0); // Empty list when start > end
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 }

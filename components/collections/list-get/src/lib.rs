@@ -143,10 +143,10 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
-                    Value::StringVal("first".to_string()),
-                    Value::StringVal("second".to_string()),
-                    Value::StringVal("third".to_string()),
+                Value::StringListVal(vec![
+                    "first".to_string(),
+                    "second".to_string(),
+                    "third".to_string(),
                 ]),
             ),
             ("index".to_string(), Value::U32Val(0)),
@@ -163,10 +163,10 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
-                    Value::U32Val(10),
-                    Value::U32Val(20),
-                    Value::U32Val(30),
+                Value::StringListVal(vec![
+                    "apple".to_string(),
+                    "banana".to_string(),
+                    "cherry".to_string(),
                 ]),
             ),
             ("index".to_string(), Value::U32Val(1)),
@@ -175,7 +175,7 @@ mod tests {
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].0, "element");
-        assert_eq!(result[0].1, Value::U32Val(20));
+        assert_eq!(result[0].1, Value::StringVal("banana".to_string()));
     }
 
     #[test]
@@ -183,7 +183,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![Value::U32Val(1), Value::U32Val(2)]),
+                Value::StringListVal(vec!["one".to_string(), "two".to_string()]),
             ),
             ("index".to_string(), Value::U32Val(5)),
         ];
