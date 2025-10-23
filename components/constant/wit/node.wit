@@ -1,0 +1,114 @@
+package component:constant;
+
+interface types {
+    variant data-type {
+        u32-type,
+        i32-type,
+        f32-type,
+        string-type,
+        binary-type,
+        list-type,
+        any-type,
+    }
+
+    variant value {
+        u32-val(u32),
+        i32-val(s32),
+        f32-val(f32),
+        string-val(string),
+        binary-val(list<u8>),
+    }
+
+    record port-spec {
+        name: string,
+        data-type: data-type,
+        optional: bool,
+        description: string,
+    }
+
+    record component-info {
+        name: string,
+        version: string,
+        description: string,
+        author: string,
+        category: string,
+    }
+
+    record execution-error {
+        message: string,
+        input-name: option<string>,
+        recovery-hint: option<string>,
+    }
+}
+
+interface metadata {
+    use types.{component-info, port-spec};
+
+    get-info: func() -> component-info;
+    get-inputs: func() -> list<port-spec>;
+    get-outputs: func() -> list<port-spec>;
+    get-capabilities: func() -> option<list<string>>;
+}
+
+interface execution {
+    use types.{value, execution-error};
+
+    execute: func(
+        inputs: list<tuple<string, value>>
+    ) -> result<list<tuple<string, value>>, execution-error>;
+}
+
+interface ui {
+    use types.{value};
+
+    enum color {
+        gray,
+        red,
+        yellow,
+        green,
+        blue,
+        cyan,
+        magenta,
+        white,
+        orange,
+        purple,
+        pink,
+    }
+
+    variant ui-element-item {
+        label(string),
+        colored-label(tuple<string, color>),
+        separator,
+    }
+
+    variant ui-element {
+        label(string),
+        colored-label(tuple<string, color>),
+        key-value(tuple<string, string>),
+        separator,
+        horizontal(list<ui-element-item>),
+        vertical(list<ui-element>),
+    }
+
+    record footer-view {
+        elements: list<ui-element>,
+    }
+
+    get-footer-view: func(
+        outputs: list<tuple<string, value>>
+    ) -> option<footer-view>;
+}
+
+interface host {
+    use types.{value};
+
+    log: func(level: string, message: string);
+    get-input: func(name: string) -> option<value>;
+}
+
+world component-with-ui {
+    import host;
+    export metadata;
+    export execution;
+    export ui;
+}
