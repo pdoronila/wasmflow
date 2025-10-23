@@ -257,18 +257,21 @@ world component-with-ui {
 
 **Components using component-with-ui:**
 - `footer-view` - Example component demonstrating custom UI rendering
-- `http-fetch` - Shows HTTP response with color-coded status, headers, body
+- `http-fetch` - Shows HTTP response with color-coded status, headers, body (also requires WASI HTTP imports)
+- `json-parser` - Displays extracted JSON values with custom formatting
 
 **Components using standard component:**
 - `echo` - Pass-through component
 - `adder` - Math operation
 - `double-number` - Math operation
-- `json-parser` - JSON parsing
 - `file-reader` - File reading
 - All string components (string-concat, string-trim, etc.)
 
+**IMPORTANT:** When creating new component categories (math, collections, data, etc.), see the "Component World Selection Guidelines" section in `CLAUDE.md` to choose the correct template.
+
 ## Additional Resources
 
+- **Component World Selection Guide:** `CLAUDE.md` (see "Component World Selection Guidelines")
 - WIT Specification: `wit/node.wit`
 - Component Development Guide: `COMPONENT_DEVELOPMENT.md`
 - String Components Guide: `components/core/COMPONENT_UPDATE_GUIDE.md`

@@ -166,4 +166,160 @@ egui::Grid::new("id")
 - `src/ui/wit_ui_renderer.rs` - WASM component footer rendering
 - `src/builtin/views.rs` - Builtin node footer views (ConstantNodeFooterView, MathNodeFooterView)
 
+## Component World Selection Guidelines
+
+### Critical: Choosing the Correct Component World
+
+**Location**: `components/.templates/` contains two WIT templates
+
+When creating new WASM components, you MUST choose the correct world type. Using the wrong template will cause component loading failures or missing functionality.
+
+### Available Templates
+
+**1. Standard Component World** (`components/.templates/node.wit`)
+```wit
+world component {
+    import host;
+    export metadata;
+    export execution;
+}
+```
+
+**2. Component with UI World** (`components/.templates/node-with-ui.wit`)
+```wit
+world component-with-ui {
+    import host;
+    export metadata;
+    export execution;
+    export ui;  // Additional UI interface for custom footer rendering
+}
+```
+
+### Decision Criteria
+
+**Use `component-with-ui` world when:**
+- ✅ Component needs to display custom formatted output in the footer (colors, layouts, key-value pairs)
+- ✅ Component processes data that benefits from visual presentation (HTTP responses, JSON parsing results, formatted data)
+- ✅ Component implements the `ui::Guest` trait with `get_footer_view()` method
+
+**Use standard `component` world when:**
+- ✅ Component performs pure computation (math, string operations, type conversions)
+- ✅ Component's outputs are simple values that don't need custom rendering
+- ✅ Component doesn't need visual feedback beyond the default port value display
+
+### Component Categories by World Type
+
+**Standard `component` world:**
+- Math operations: `adder`, `double-number`, `multiplier`, `divider`, etc.
+- String operations: `string-concat`, `string-trim`, `string-length`, `string-case`, etc.
+- Type conversions: `convert-f32-to-u32`, `convert-u32-to-f32`, etc.
+- Simple I/O: `echo`, `file-reader`
+- Collections: `list-filter`, `list-map`, `list-reduce`, etc.
+- Data transformations without UI needs
+
+**`component-with-ui` world:**
+- `json-parser` - Displays extracted JSON values with formatting
+- `http-fetch` - Shows HTTP status, headers, and response body with color coding
+- `footer-view` - Example component demonstrating custom UI rendering
+- Any component that needs rich output visualization
+
+### Special Cases
+
+**HTTP/Network Components:**
+Components that need WASI HTTP imports (like `http-fetch`) require a custom WIT file that includes BOTH:
+- The `component-with-ui` world (for UI rendering)
+- WASI imports (for network functionality)
+
+See `components/http-fetch/wit/node.wit` for the pattern.
+
+### Common Mistakes to Avoid
+
+**❌ Batch Updating WIT Files Without Checking World Type**
+
+**Problem:** During version updates or migrations, blindly copying the standard template to all components will break UI components.
+
+**Example of what went wrong:**
+```bash
+# This breaks json-parser, footer-view, and http-fetch:
+for component in components/*/; do
+    cp components/.templates/node.wit "$component/wit/node.wit"
+done
+```
+
+**✅ Correct approach:**
+```bash
+# Check if component has ui::Guest implementation first
+if grep -q "impl UiGuest" "$component/src/lib.rs"; then
+    cp components/.templates/node-with-ui.wit "$component/wit/node.wit"
+else
+    cp components/.templates/node.wit "$component/wit/node.wit"
+fi
+```
+
+**❌ Using standard `component` world for components with `impl UiGuest`**
+
+**Symptom:**
+```
+error: no world named `component-with-ui` in package
+```
+
+**Solution:** Copy `node-with-ui.wit` template instead.
+
+**❌ Using `component-with-ui` world for simple components**
+
+**Problem:** Adds unnecessary complexity and requires implementing unused `ui::Guest` trait.
+
+**Solution:** Use standard `node.wit` template.
+
+### How to Identify What a Component Needs
+
+**Check the component's source code** (`src/lib.rs`):
+
+```rust
+// Standard component - uses only these traits:
+impl MetadataGuest for Component { ... }
+impl ExecutionGuest for Component { ... }
+
+// Component with UI - adds this trait:
+impl UiGuest for Component {
+    fn get_footer_view(outputs: Vec<(String, Value)>) -> Option<FooterView> {
+        // Custom UI rendering logic
+    }
+}
+```
+
+**Check the wit_bindgen configuration:**
+```rust
+// Standard component:
+wit_bindgen::generate!({
+    path: "wit",
+    world: "component",  // ← Look here
+});
+
+// Component with UI:
+wit_bindgen::generate!({
+    path: "wit",
+    world: "component-with-ui",  // ← Look here
+});
+```
+
+### Verification Checklist
+
+Before building a new component category (math, collections, etc.):
+
+- [ ] Determine if components need custom UI rendering
+- [ ] Choose appropriate template (`node.wit` or `node-with-ui.wit`)
+- [ ] Copy template to `components/<name>/wit/node.wit`
+- [ ] Update component code to match world type
+- [ ] Verify `wit_bindgen::generate!` world matches WIT file
+- [ ] Build and test component loads in UI
+
+### Files to Reference
+
+- **Standard template:** `components/.templates/node.wit`
+- **UI template:** `components/.templates/node-with-ui.wit`
+- **Standard example:** `components/adder/` (simple math operation)
+- **UI example:** `components/json-parser/` (formatted output)
+- **Special case:** `components/http-fetch/` (UI + WASI imports)
+
 <!-- MANUAL ADDITIONS END -->
