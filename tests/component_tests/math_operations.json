@@ -1,0 +1,402 @@
+{
+  "_comment": "Integration test for WASM Components Core Library - Math Operations",
+  "_note": "This demonstrates all 9 math components (P3) working together in a mathematical computation pipeline.",
+  "_usage": "Load this graph in WasmFlow to validate User Story 3 acceptance scenarios.",
+
+  "id": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "name": "Math Operations Integration Test",
+  "version": 1,
+
+  "metadata": {
+    "created_at": "2025-10-23T00:00:00Z",
+    "modified_at": "2025-10-23T00:00:00Z",
+    "author": "WASM Components Core Library",
+    "description": "Validates all 9 math components: power, sqrt, abs, min, max, floor, ceil, round, trig"
+  },
+
+  "nodes": {
+    "constant_2": {
+      "id": "30000000-0000-0000-0000-000000000001",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Number 2.0",
+      "position": {"x": 100.0, "y": 100.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_2",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": 2.0}
+      }],
+      "metadata": {"description": "Constant value 2.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_3": {
+      "id": "30000000-0000-0000-0000-000000000002",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Number 3.0",
+      "position": {"x": 100.0, "y": 200.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_3",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": 3.0}
+      }],
+      "metadata": {"description": "Constant value 3.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "power_node": {
+      "id": "30000000-0000-0000-0000-000000000003",
+      "component_id": "user:math-power",
+      "display_name": "Power: 2^3",
+      "position": {"x": 400.0, "y": 150.0},
+      "inputs": [
+        {"id": "in_base", "name": "base", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_exp", "name": "exponent", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_power",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "2^3 = 8"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "sqrt_node": {
+      "id": "30000000-0000-0000-0000-000000000004",
+      "component_id": "user:math-sqrt",
+      "display_name": "Square Root of 8",
+      "position": {"x": 700.0, "y": 150.0},
+      "inputs": [
+        {"id": "in_sqrt", "name": "value", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_sqrt",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "sqrt(8) ≈ 2.828"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_neg5": {
+      "id": "30000000-0000-0000-0000-000000000005",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Number -5.0",
+      "position": {"x": 100.0, "y": 400.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_neg5",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": -5.0}
+      }],
+      "metadata": {"description": "Constant value -5.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "abs_node": {
+      "id": "30000000-0000-0000-0000-000000000006",
+      "component_id": "user:math-abs",
+      "display_name": "Absolute Value of -5",
+      "position": {"x": 400.0, "y": 400.0},
+      "inputs": [
+        {"id": "in_abs", "name": "value", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_abs",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "abs(-5) = 5"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_10": {
+      "id": "30000000-0000-0000-0000-000000000007",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Number 10.0",
+      "position": {"x": 100.0, "y": 600.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_10",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": 10.0}
+      }],
+      "metadata": {"description": "Constant value 10.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_1": {
+      "id": "30000000-0000-0000-0000-000000000008",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Number 1.0",
+      "position": {"x": 100.0, "y": 700.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_1",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": 1.0}
+      }],
+      "metadata": {"description": "Constant value 1.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "min_node": {
+      "id": "30000000-0000-0000-0000-000000000009",
+      "component_id": "user:math-min",
+      "display_name": "Min(5, 10, 1)",
+      "position": {"x": 400.0, "y": 650.0},
+      "inputs": [
+        {"id": "in_min1", "name": "input1", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_min2", "name": "input2", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_min3", "name": "input3", "data_type": "F32", "direction": "Input", "optional": true, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_min",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "min(5, 10, 1) = 1"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "max_node": {
+      "id": "30000000-0000-0000-0000-000000000010",
+      "component_id": "user:math-max",
+      "display_name": "Max(5, 10, 1)",
+      "position": {"x": 700.0, "y": 650.0},
+      "inputs": [
+        {"id": "in_max1", "name": "input1", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_max2", "name": "input2", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_max3", "name": "input3", "data_type": "F32", "direction": "Input", "optional": true, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_max",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "max(5, 10, 1) = 10"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_pi": {
+      "id": "30000000-0000-0000-0000-000000000011",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Pi (3.14159)",
+      "position": {"x": 100.0, "y": 900.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_pi",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": 3.14159}
+      }],
+      "metadata": {"description": "Constant value π"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_sin_op": {
+      "id": "30000000-0000-0000-0000-000000000012",
+      "component_id": "builtin:constant:string",
+      "display_name": "Operation: sin",
+      "position": {"x": 100.0, "y": 1000.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_sin_op",
+        "name": "value",
+        "data_type": "String",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"String": "sin"}
+      }],
+      "metadata": {"description": "Trig operation: sine"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "trig_node": {
+      "id": "30000000-0000-0000-0000-000000000013",
+      "component_id": "user:math-trig",
+      "display_name": "Sin(π) ≈ 0",
+      "position": {"x": 400.0, "y": 950.0},
+      "inputs": [
+        {"id": "in_angle", "name": "angle", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_trig_op", "name": "operation", "data_type": "String", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_trig",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "sin(π) ≈ 0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_3point7": {
+      "id": "30000000-0000-0000-0000-000000000014",
+      "component_id": "builtin:constant:f32",
+      "display_name": "Number 3.7",
+      "position": {"x": 100.0, "y": 1200.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_3_7",
+        "name": "value",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"F32": 3.7}
+      }],
+      "metadata": {"description": "Constant value 3.7"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "floor_node": {
+      "id": "30000000-0000-0000-0000-000000000015",
+      "component_id": "user:math-floor",
+      "display_name": "Floor(3.7) = 3",
+      "position": {"x": 400.0, "y": 1200.0},
+      "inputs": [
+        {"id": "in_floor", "name": "value", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_floor",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "floor(3.7) = 3.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "ceil_node": {
+      "id": "30000000-0000-0000-0000-000000000016",
+      "component_id": "user:math-ceil",
+      "display_name": "Ceil(3.7) = 4",
+      "position": {"x": 700.0, "y": 1200.0},
+      "inputs": [
+        {"id": "in_ceil", "name": "value", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_ceil",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "ceil(3.7) = 4.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "round_node": {
+      "id": "30000000-0000-0000-0000-000000000017",
+      "component_id": "user:math-round",
+      "display_name": "Round(3.7) = 4",
+      "position": {"x": 1000.0, "y": 1200.0},
+      "inputs": [
+        {"id": "in_round", "name": "value", "data_type": "F32", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_round",
+        "name": "result",
+        "data_type": "F32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "round(3.7) = 4.0"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    }
+  },
+
+  "connections": [
+    {"from_node": "constant_2", "from_port": "out_2", "to_node": "power_node", "to_port": "in_base"},
+    {"from_node": "constant_3", "from_port": "out_3", "to_node": "power_node", "to_port": "in_exp"},
+    {"from_node": "power_node", "from_port": "out_power", "to_node": "sqrt_node", "to_port": "in_sqrt"},
+    {"from_node": "constant_neg5", "from_port": "out_neg5", "to_node": "abs_node", "to_port": "in_abs"},
+    {"from_node": "abs_node", "from_port": "out_abs", "to_node": "min_node", "to_port": "in_min1"},
+    {"from_node": "constant_10", "from_port": "out_10", "to_node": "min_node", "to_port": "in_min2"},
+    {"from_node": "constant_1", "from_port": "out_1", "to_node": "min_node", "to_port": "in_min3"},
+    {"from_node": "abs_node", "from_port": "out_abs", "to_node": "max_node", "to_port": "in_max1"},
+    {"from_node": "constant_10", "from_port": "out_10", "to_node": "max_node", "to_port": "in_max2"},
+    {"from_node": "constant_1", "from_port": "out_1", "to_node": "max_node", "to_port": "in_max3"},
+    {"from_node": "constant_pi", "from_port": "out_pi", "to_node": "trig_node", "to_port": "in_angle"},
+    {"from_node": "constant_sin_op", "from_port": "out_sin_op", "to_node": "trig_node", "to_port": "in_trig_op"},
+    {"from_node": "constant_3point7", "from_port": "out_3_7", "to_node": "floor_node", "to_port": "in_floor"},
+    {"from_node": "constant_3point7", "from_port": "out_3_7", "to_node": "ceil_node", "to_port": "in_ceil"},
+    {"from_node": "constant_3point7", "from_port": "out_3_7", "to_node": "round_node", "to_port": "in_round"}
+  ],
+
+  "checksum": 0
+}
