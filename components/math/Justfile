@@ -1,0 +1,22 @@
+set shell := ["nu", "-c"]
+set unstable
+
+# Build all components in math category
+build-all:
+    ls | where type == dir | get name | each { |component| cd $component; cargo build --target wasm32-wasip2 --release }
+
+# Install all components to bin/
+install-all:
+    mkdir -p ../bin
+    ls | where type == dir | get name | each { |component|
+        let wasm_name = ($component | str replace '-' '_')
+        cp ($component + "/target/wasm32-wasip2/release/" + $wasm_name + ".wasm") ("../bin/" + $wasm_name + ".wasm")
+    }
+
+# Test all components
+test-all:
+    ls | where type == dir | get name | each { |component| cd $component; cargo test }
+
+# Clean all build artifacts
+clean-all:
+    ls | where type == dir | get name | each { |component| cd $component; cargo clean }

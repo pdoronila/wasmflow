@@ -1,0 +1,4 @@
+world component {
+    export metadata;
+    export execution;
+}

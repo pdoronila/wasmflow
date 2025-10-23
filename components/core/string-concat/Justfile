@@ -1,0 +1,20 @@
+component_name := replace(file_name(justfile_directory()), "-", "_")
+
+build:
+    cargo build --target wasm32-wasip2 --release
+
+install:
+    mkdir -p ../bin
+    cp target/wasm32-wasip2/release/{{component_name}}.wasm ../bin/
+
+clean:
+    cargo clean
+
+test:
+    cargo test
+
+check:
+    cargo check --target wasm32-wasip2
+
+setup:
+    rustup target add wasm32-wasip2

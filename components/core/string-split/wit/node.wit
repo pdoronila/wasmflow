@@ -1,0 +1,9 @@
+// Standard WIT interface for all core library components
+// Copy this file to each component's wit/ directory
+
+world component {
+    export metadata;
+    export execution;
+}
+
+// Interfaces are imported from wasmflow standard types
