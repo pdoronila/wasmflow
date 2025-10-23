@@ -32,13 +32,13 @@ These components were built with the new specification:
 
 ### 🔄 Need Rebuilding (v1.0.0 → v1.1.0)
 These components have updated WIT specs but need rebuilding:
-- echo (code updated)
+- echo (code updated for new Value variants)
 - adder
 - double-number
 - http-fetch
 - json-parser
 - file-reader
-- footer-view
+- footer-view (uses `component-with-ui` world, not standard `component` world)
 
 ## How to Rebuild Old Components
 
@@ -190,10 +190,40 @@ error: failed to get `wit-bindgen` as a dependency
 ## Files Changed
 
 - ✅ `wit/node.wit` - Root WIT specification (1.0.0 → 1.1.0)
-- ✅ `components/.templates/node.wit` - Template for new components
+- ✅ `components/.templates/node.wit` - Template for standard components
+- ✅ `components/.templates/node-with-ui.wit` - Template for UI components (NEW)
 - ✅ All old component WIT files (`components/*/wit/node.wit`)
+- ✅ `components/footer-view/wit/node.wit` - Restored component-with-ui world
 - ✅ `components/echo/src/lib.rs` - Code updated for new Value variants
 - ✅ Runtime type system (`src/graph/node.rs`, `src/runtime/wasm_host.rs`, etc.)
+
+## Component Worlds
+
+There are two WIT world types:
+
+### Standard Component World
+Most components use the standard `component` world:
+```wit
+world component {
+    import host;
+    export metadata;
+    export execution;
+}
+```
+**Template:** `components/.templates/node.wit`
+
+### Component with UI World
+Components that provide custom footer rendering use `component-with-ui`:
+```wit
+world component-with-ui {
+    import host;
+    export metadata;
+    export execution;
+    export ui;  // Additional UI interface
+}
+```
+**Template:** `components/.templates/node-with-ui.wit`
+**Example:** `components/footer-view`
 
 ## Additional Resources
 

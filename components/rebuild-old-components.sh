@@ -8,6 +8,9 @@ echo "========================================"
 echo "Rebuilding Old Components for v1.1.0"
 echo "========================================"
 echo ""
+echo "Note: footer-view uses component-with-ui world"
+echo "      All others use standard component world"
+echo ""
 
 OLD_COMPONENTS=(
   "echo"
