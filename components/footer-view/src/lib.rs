@@ -112,7 +112,11 @@ impl UiGuest for Component {
                 Value::I32Val(v) => format!("{}", v),
                 Value::U32Val(v) => format!("{}", v),
                 Value::StringVal(s) => s,
+                Value::BoolVal(b) => format!("{}", b),
                 Value::BinaryVal(_) => "<binary data>".to_string(),
+                Value::StringListVal(list) => format!("[{} strings]", list.len()),
+                Value::U32ListVal(list) => format!("[{} u32s]", list.len()),
+                Value::F32ListVal(list) => format!("[{} f32s]", list.len()),
             };
 
             elements.push(UiElement::KeyValue(KeyValuePair {
