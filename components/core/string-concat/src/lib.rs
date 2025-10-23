@@ -1,64 +1,59 @@
+// Generate bindings from WIT files
 wit_bindgen::generate!({
-    world: "component",
     path: "./wit",
+    world: "component",
 });
 
-use exports::metadata::Guest as MetadataGuest;
-use exports::execution::Guest as ExecutionGuest;
-use exports::{
-    ComponentInfo, PortSpec, DataType, InputValue, OutputValue,
-    ExecutionError, NodeValue,
-};
-
-export!(Component);
+use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+use wasmflow::node::types::*;
+use wasmflow::node::host;
 
 struct Component;
 
-// ============================================================================
-// Metadata Interface
-// ============================================================================
-
+// Implement the metadata interface
 impl MetadataGuest for Component {
     fn get_info() -> ComponentInfo {
         ComponentInfo {
             name: "String Concat".to_string(),
-            description: "Joins multiple strings into a single string".to_string(),
-            category: "Text".to_string(),
             version: "1.0.0".to_string(),
+            description: "Joins multiple strings into a single string".to_string(),
+            author: "WasmFlow Core Library".to_string(),
+            category: Some("Core".to_string()),
         }
     }
 
     fn get_inputs() -> Vec<PortSpec> {
         vec![
             PortSpec {
-                name: "input1".to_string(),
+                name: "text1".to_string(),
                 data_type: DataType::StringType,
                 optional: false,
                 description: "First string".to_string(),
             },
             PortSpec {
-                name: "input2".to_string(),
+                name: "text2".to_string(),
                 data_type: DataType::StringType,
                 optional: false,
                 description: "Second string".to_string(),
             },
             PortSpec {
-                name: "input3".to_string(),
+                name: "text3".to_string(),
                 data_type: DataType::StringType,
                 optional: true,
-                description: "Third string".to_string(),
+                description: "Third string (optional)".to_string(),
             },
             PortSpec {
-                name: "input4".to_string(),
+                name: "text4".to_string(),
                 data_type: DataType::StringType,
                 optional: true,
-                description: "Fourth string".to_string(),
+                description: "Fourth string (optional)".to_string(),
             },
             PortSpec {
-                name: "input5".to_string(),
+                name: "text5".to_string(),
                 data_type: DataType::StringType,
                 optional: true,
-                description: "Fifth string".to_string(),
+                description: "Fifth string (optional)".to_string(),
             },
         ]
     }
@@ -73,29 +68,28 @@ impl MetadataGuest for Component {
     }
 
     fn get_capabilities() -> Option<Vec<String>> {
-        None  // Pure computation, no capabilities needed
+        None // Pure computation - no special capabilities needed
     }
 }
 
-// ============================================================================
-// Execution Interface
-// ============================================================================
-
+// Implement the execution interface
 impl ExecutionGuest for Component {
-    fn execute(inputs: Vec<InputValue>) -> Result<Vec<OutputValue>, ExecutionError> {
-        // Extract all string inputs
+    fn execute(inputs: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, ExecutionError> {
+        host::log("debug", "String Concat executing");
+
+        // Extract all string inputs (required and optional)
         let mut strings = Vec::new();
 
-        for input in &inputs {
-            match &input.value {
-                NodeValue::String(s) => strings.push(s.clone()),
-                _ => {
-                    return Err(ExecutionError {
-                        message: format!("Expected string, got {:?}", input.value),
-                        input_name: Some(input.name.clone()),
-                        recovery_hint: Some("Provide string values".to_string()),
-                    });
-                }
+        for name in &["text1", "text2", "text3", "text4", "text5"] {
+            if let Some((_, Value::StringVal(s))) = inputs.iter().find(|(n, _)| n == name) {
+                strings.push(s.clone());
+            } else if name == &"text1" || name == &"text2" {
+                // Required inputs
+                return Err(ExecutionError {
+                    message: format!("Missing required input '{}'", name),
+                    input_name: Some(name.to_string()),
+                    recovery_hint: Some("Provide a string value".to_string()),
+                });
             }
         }
 
@@ -103,16 +97,11 @@ impl ExecutionGuest for Component {
         let result = strings.join("");
 
         // Return output
-        Ok(vec![OutputValue {
-            name: "result".to_string(),
-            value: NodeValue::String(result),
-        }])
+        Ok(vec![("result".to_string(), Value::StringVal(result))])
     }
 }
 
-// ============================================================================
-// Unit Tests
-// ============================================================================
+export!(Component);
 
 #[cfg(test)]
 mod tests {
@@ -121,21 +110,16 @@ mod tests {
     #[test]
     fn test_concat_two_strings() {
         let inputs = vec![
-            InputValue {
-                name: "input1".to_string(),
-                value: NodeValue::String("Hello".to_string()),
-            },
-            InputValue {
-                name: "input2".to_string(),
-                value: NodeValue::String(" World".to_string()),
-            },
+            ("text1".to_string(), Value::StringVal("Hello".to_string())),
+            ("text2".to_string(), Value::StringVal(" World".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, "result");
 
-        match &result[0].value {
-            NodeValue::String(s) => assert_eq!(s, "Hello World"),
+        match &result[0].1 {
+            Value::StringVal(s) => assert_eq!(s, "Hello World"),
             _ => panic!("Expected string output"),
         }
     }
@@ -143,23 +127,14 @@ mod tests {
     #[test]
     fn test_concat_multiple_strings() {
         let inputs = vec![
-            InputValue {
-                name: "input1".to_string(),
-                value: NodeValue::String("a".to_string()),
-            },
-            InputValue {
-                name: "input2".to_string(),
-                value: NodeValue::String("b".to_string()),
-            },
-            InputValue {
-                name: "input3".to_string(),
-                value: NodeValue::String("c".to_string()),
-            },
+            ("text1".to_string(), Value::StringVal("a".to_string())),
+            ("text2".to_string(), Value::StringVal("b".to_string())),
+            ("text3".to_string(), Value::StringVal("c".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::String(s) => assert_eq!(s, "abc"),
+        match &result[0].1 {
+            Value::StringVal(s) => assert_eq!(s, "abc"),
             _ => panic!("Expected string output"),
         }
     }
@@ -167,19 +142,13 @@ mod tests {
     #[test]
     fn test_concat_with_empty_string() {
         let inputs = vec![
-            InputValue {
-                name: "input1".to_string(),
-                value: NodeValue::String("".to_string()),
-            },
-            InputValue {
-                name: "input2".to_string(),
-                value: NodeValue::String("test".to_string()),
-            },
+            ("text1".to_string(), Value::StringVal("".to_string())),
+            ("text2".to_string(), Value::StringVal("test".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::String(s) => assert_eq!(s, "test"),
+        match &result[0].1 {
+            Value::StringVal(s) => assert_eq!(s, "test"),
             _ => panic!("Expected string output"),
         }
     }
