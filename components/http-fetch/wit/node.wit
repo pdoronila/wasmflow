@@ -1,5 +1,5 @@
-// WasmFlow Node Interface with UI Support
-// This defines the contract for components that provide custom UI rendering
+// WasmFlow Node Interface with WASI HTTP Support
+// This defines the contract for HTTP fetch component with network capabilities
 
 package wasmflow:node@1.1.0;
 
@@ -161,6 +161,16 @@ interface ui {
 /// Main world that components must implement
 world component {
     import host;
+
+    // WASI HTTP imports for network functionality
+    import wasi:http/types@0.2.0;
+    import wasi:http/outgoing-handler@0.2.0;
+
+    // WASI IO imports (required by HTTP)
+    import wasi:io/streams@0.2.0;
+    import wasi:io/poll@0.2.0;
+    import wasi:io/error@0.2.0;
+
     export metadata;
     export execution;
 }
@@ -168,6 +178,16 @@ world component {
 /// Extended world with optional UI support
 world component-with-ui {
     import host;
+
+    // WASI HTTP imports for network functionality
+    import wasi:http/types@0.2.0;
+    import wasi:http/outgoing-handler@0.2.0;
+
+    // WASI IO imports (required by HTTP)
+    import wasi:io/streams@0.2.0;
+    import wasi:io/poll@0.2.0;
+    import wasi:io/error@0.2.0;
+
     export metadata;
     export execution;
     export ui;
