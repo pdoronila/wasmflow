@@ -1,9 +1,86 @@
-// Standard WIT interface for all core library components
-// Copy this file to each component's wit/ directory
+package wasmflow:component@0.1.0;
 
+/// Node value types for data flow
+variant node-value {
+    string(string),
+    u32(u32),
+    i32(s32),
+    f32(float32),
+    bool(bool),
+    list(list<node-value>),
+    record(list<tuple<string, node-value>>),
+    none,
+}
+
+/// Data types for port specifications
+enum data-type {
+    string,
+    u32,
+    i32,
+    f32,
+    bool,
+    list,
+    record,
+}
+
+/// Port specification
+record port-spec {
+    name: string,
+    data-type: data-type,
+    optional: bool,
+    description: string,
+}
+
+/// Component information
+record component-info {
+    name: string,
+    version: string,
+    description: string,
+    author: string,
+}
+
+/// Input value for execution
+record input-value {
+    name: string,
+    value: option<node-value>,
+}
+
+/// Output value from execution
+record output-value {
+    name: string,
+    value: node-value,
+}
+
+/// Execution error
+record execution-error {
+    message: string,
+    input-name: string,
+    recovery-hint: string,
+}
+
+/// Metadata interface - provides component information
+interface metadata {
+    /// Get component information
+    get-info: func() -> component-info;
+
+    /// Get input port specifications
+    get-inputs: func() -> list<port-spec>;
+
+    /// Get output port specifications
+    get-outputs: func() -> list<port-spec>;
+
+    /// Get component capabilities (e.g., "none", "network", "filesystem")
+    get-capabilities: func() -> string;
+}
+
+/// Execution interface - handles component execution
+interface execution {
+    /// Execute the component with given inputs
+    execute: func(inputs: list<input-value>) -> result<list<output-value>, execution-error>;
+}
+
+/// Component world - exports metadata and execution interfaces
 world component {
     export metadata;
     export execution;
 }
-
-// Interfaces are imported from wasmflow standard types
