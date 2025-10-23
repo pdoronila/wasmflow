@@ -7,6 +7,9 @@ build component:
 install component:
   just --justfile {{component}}/Justfile install
 
+list-all:
+    ls | where type == dir | get name
+
 build-all:
   ls | where type == dir | get name | each { |component| just build $component }
 
