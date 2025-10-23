@@ -73,7 +73,11 @@ impl ExecutionGuest for Component {
             Value::I32Val(_) => "i32",
             Value::F32Val(_) => "f32",
             Value::StringVal(_) => "string",
+            Value::BoolVal(_) => "bool",
             Value::BinaryVal(_) => "binary",
+            Value::StringListVal(_) => "string-list",
+            Value::U32ListVal(_) => "u32-list",
+            Value::F32ListVal(_) => "f32-list",
         };
         host::log("debug", &format!("Echoing {} value", value_type));
 
