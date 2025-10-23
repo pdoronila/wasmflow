@@ -33,12 +33,12 @@ These components were built with the new specification:
 ### 🔄 Need Rebuilding (v1.0.0 → v1.1.0)
 These components have updated WIT specs but need rebuilding:
 - echo (code updated for new Value variants)
-- adder
-- double-number
-- http-fetch
-- json-parser
-- file-reader
-- footer-view (uses `component-with-ui` world, not standard `component` world)
+- adder (standard `component` world)
+- double-number (standard `component` world, removed extra WIT files)
+- http-fetch (uses `component-with-ui` world for HTTP response display)
+- json-parser (standard `component` world)
+- file-reader (standard `component` world)
+- footer-view (uses `component-with-ui` world for custom rendering)
 
 ## How to Rebuild Old Components
 
@@ -223,6 +223,8 @@ error: package wasmflow:node@1.1.0 is defined in two different locations:
 - ✅ `components/.templates/node-with-ui.wit` - Template for UI components (NEW)
 - ✅ All old component WIT files (`components/*/wit/node.wit`)
 - ✅ `components/footer-view/wit/node.wit` - Restored component-with-ui world
+- ✅ `components/http-fetch/wit/node.wit` - Restored component-with-ui world
+- ✅ `components/footer-view/src/lib.rs` - Code updated for new Value variants
 - ✅ `components/echo/src/lib.rs` - Code updated for new Value variants
 - ✅ Runtime type system (`src/graph/node.rs`, `src/runtime/wasm_host.rs`, etc.)
 
@@ -252,7 +254,18 @@ world component-with-ui {
 }
 ```
 **Template:** `components/.templates/node-with-ui.wit`
-**Example:** `components/footer-view`
+
+**Components using component-with-ui:**
+- `footer-view` - Example component demonstrating custom UI rendering
+- `http-fetch` - Shows HTTP response with color-coded status, headers, body
+
+**Components using standard component:**
+- `echo` - Pass-through component
+- `adder` - Math operation
+- `double-number` - Math operation
+- `json-parser` - JSON parsing
+- `file-reader` - File reading
+- All string components (string-concat, string-trim, etc.)
 
 ## Additional Resources
 
