@@ -1,13 +1,13 @@
+// Generate bindings from WIT files
 wit_bindgen::generate!({
-    world: "component",
     path: "./wit",
+    world: "component",
 });
 
-use exports::metadata::Guest as MetadataGuest;
-use exports::execution::Guest as ExecutionGuest;
-use exports::{ComponentInfo, PortSpec, DataType, InputValue, OutputValue, ExecutionError, NodeValue};
-
-export!(Component);
+use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+use wasmflow::node::types::*;
+use wasmflow::node::host;
 
 struct Component;
 
@@ -15,9 +15,10 @@ impl MetadataGuest for Component {
     fn get_info() -> ComponentInfo {
         ComponentInfo {
             name: "String Case".to_string(),
-            description: "Converts string case (uppercase, lowercase, titlecase)".to_string(),
-            category: "Text".to_string(),
             version: "1.0.0".to_string(),
+            description: "Converts string case (uppercase, lowercase, titlecase)".to_string(),
+            author: "WasmFlow Core Library".to_string(),
+            category: Some("Core".to_string()),
         }
     }
 
@@ -52,6 +53,49 @@ impl MetadataGuest for Component {
     }
 }
 
+impl ExecutionGuest for Component {
+    fn execute(inputs: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, ExecutionError> {
+        host::log("debug", "String Case executing");
+
+        let text = inputs
+            .iter()
+            .find(|(n, _)| n == "text")
+            .and_then(|(_, v)| if let Value::StringVal(s) = v { Some(s.clone()) } else { None })
+            .ok_or_else(|| ExecutionError {
+                message: "Missing or invalid 'text' input".to_string(),
+                input_name: Some("text".to_string()),
+                recovery_hint: Some("Provide a string value".to_string()),
+            })?;
+
+        let operation = inputs
+            .iter()
+            .find(|(n, _)| n == "operation")
+            .and_then(|(_, v)| if let Value::StringVal(s) = v { Some(s.clone()) } else { None })
+            .ok_or_else(|| ExecutionError {
+                message: "Missing or invalid 'operation' input".to_string(),
+                input_name: Some("operation".to_string()),
+                recovery_hint: Some("Provide 'uppercase', 'lowercase', or 'titlecase'".to_string()),
+            })?;
+
+        let result = match operation.as_str() {
+            "uppercase" => text.to_uppercase(),
+            "lowercase" => text.to_lowercase(),
+            "titlecase" => titlecase(&text),
+            _ => {
+                return Err(ExecutionError {
+                    message: format!("Invalid operation: '{}'", operation),
+                    input_name: Some("operation".to_string()),
+                    recovery_hint: Some("Use 'uppercase', 'lowercase', or 'titlecase'".to_string()),
+                });
+            }
+        };
+
+        Ok(vec![("result".to_string(), Value::StringVal(result))])
+    }
+}
+
+export!(Component);
+
 fn titlecase(s: &str) -> String {
     let mut result = String::new();
     let mut capitalize_next = true;
@@ -61,64 +105,14 @@ fn titlecase(s: &str) -> String {
             result.push(c);
             capitalize_next = true;
         } else if capitalize_next {
-            for upper in c.to_uppercase() {
-                result.push(upper);
-            }
+            result.extend(c.to_uppercase());
             capitalize_next = false;
         } else {
-            for lower in c.to_lowercase() {
-                result.push(lower);
-            }
+            result.extend(c.to_lowercase());
         }
     }
 
     result
-}
-
-impl ExecutionGuest for Component {
-    fn execute(inputs: Vec<InputValue>) -> Result<Vec<OutputValue>, ExecutionError> {
-        let text = inputs.iter()
-            .find(|i| i.name == "text")
-            .and_then(|i| match &i.value {
-                NodeValue::String(s) => Some(s),
-                _ => None,
-            })
-            .ok_or_else(|| ExecutionError {
-                message: "Missing or invalid 'text' input".to_string(),
-                input_name: Some("text".to_string()),
-                recovery_hint: Some("Provide a string value".to_string()),
-            })?;
-
-        let operation = inputs.iter()
-            .find(|i| i.name == "operation")
-            .and_then(|i| match &i.value {
-                NodeValue::String(s) => Some(s),
-                _ => None,
-            })
-            .ok_or_else(|| ExecutionError {
-                message: "Missing or invalid 'operation' input".to_string(),
-                input_name: Some("operation".to_string()),
-                recovery_hint: Some("Provide operation: uppercase, lowercase, or titlecase".to_string()),
-            })?;
-
-        let result = match operation.as_str() {
-            "uppercase" => text.to_uppercase(),
-            "lowercase" => text.to_lowercase(),
-            "titlecase" => titlecase(text),
-            _ => {
-                return Err(ExecutionError {
-                    message: format!("Invalid operation '{}'. Must be 'uppercase', 'lowercase', or 'titlecase'", operation),
-                    input_name: Some("operation".to_string()),
-                    recovery_hint: Some("Use one of: uppercase, lowercase, titlecase".to_string()),
-                });
-            }
-        };
-
-        Ok(vec![OutputValue {
-            name: "result".to_string(),
-            value: NodeValue::String(result),
-        }])
-    }
 }
 
 #[cfg(test)]
@@ -128,19 +122,12 @@ mod tests {
     #[test]
     fn test_uppercase() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("hello world".to_string()),
-            },
-            InputValue {
-                name: "operation".to_string(),
-                value: NodeValue::String("uppercase".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("hello".to_string())),
+            ("operation".to_string(), Value::StringVal("uppercase".to_string())),
         ];
-
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::String(s) => assert_eq!(s, "HELLO WORLD"),
+        match &result[0].1 {
+            Value::StringVal(s) => assert_eq!(s, "HELLO"),
             _ => panic!("Expected string output"),
         }
     }
@@ -148,19 +135,12 @@ mod tests {
     #[test]
     fn test_lowercase() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("HELLO WORLD".to_string()),
-            },
-            InputValue {
-                name: "operation".to_string(),
-                value: NodeValue::String("lowercase".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("HELLO".to_string())),
+            ("operation".to_string(), Value::StringVal("lowercase".to_string())),
         ];
-
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::String(s) => assert_eq!(s, "hello world"),
+        match &result[0].1 {
+            Value::StringVal(s) => assert_eq!(s, "hello"),
             _ => panic!("Expected string output"),
         }
     }
@@ -168,19 +148,12 @@ mod tests {
     #[test]
     fn test_titlecase() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("hello world".to_string()),
-            },
-            InputValue {
-                name: "operation".to_string(),
-                value: NodeValue::String("titlecase".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("hello world".to_string())),
+            ("operation".to_string(), Value::StringVal("titlecase".to_string())),
         ];
-
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::String(s) => assert_eq!(s, "Hello World"),
+        match &result[0].1 {
+            Value::StringVal(s) => assert_eq!(s, "Hello World"),
             _ => panic!("Expected string output"),
         }
     }
@@ -188,16 +161,9 @@ mod tests {
     #[test]
     fn test_invalid_operation() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("hello".to_string()),
-            },
-            InputValue {
-                name: "operation".to_string(),
-                value: NodeValue::String("invalid".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("hello".to_string())),
+            ("operation".to_string(), Value::StringVal("invalid".to_string())),
         ];
-
         let result = Component::execute(inputs);
         assert!(result.is_err());
     }

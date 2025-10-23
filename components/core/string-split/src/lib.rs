@@ -1,16 +1,13 @@
+// Generate bindings from WIT files
 wit_bindgen::generate!({
-    world: "component",
     path: "./wit",
+    world: "component",
 });
 
-use exports::metadata::Guest as MetadataGuest;
-use exports::execution::Guest as ExecutionGuest;
-use exports::{
-    ComponentInfo, PortSpec, DataType, InputValue, OutputValue,
-    ExecutionError, NodeValue,
-};
-
-export!(Component);
+use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+use wasmflow::node::types::*;
+use wasmflow::node::host;
 
 struct Component;
 
@@ -18,9 +15,10 @@ impl MetadataGuest for Component {
     fn get_info() -> ComponentInfo {
         ComponentInfo {
             name: "String Split".to_string(),
-            description: "Splits a string on delimiter into a list of substrings".to_string(),
-            category: "Text".to_string(),
             version: "1.0.0".to_string(),
+            description: "Splits a string on delimiter into a list of substrings".to_string(),
+            author: "WasmFlow Core Library".to_string(),
+            category: Some("Core".to_string()),
         }
     }
 
@@ -36,14 +34,14 @@ impl MetadataGuest for Component {
                 name: "delimiter".to_string(),
                 data_type: DataType::StringType,
                 optional: false,
-                description: "Delimiter to split on".to_string(),
+                description: "Delimiter to split on (empty splits into characters)".to_string(),
             },
         ]
     }
 
     fn get_outputs() -> Vec<PortSpec> {
         vec![PortSpec {
-            name: "parts".to_string(),
+            name: "result".to_string(),
             data_type: DataType::ListType,
             optional: false,
             description: "List of substrings".to_string(),
@@ -56,48 +54,45 @@ impl MetadataGuest for Component {
 }
 
 impl ExecutionGuest for Component {
-    fn execute(inputs: Vec<InputValue>) -> Result<Vec<OutputValue>, ExecutionError> {
-        let text = inputs.iter()
-            .find(|i| i.name == "text")
-            .and_then(|i| match &i.value {
-                NodeValue::String(s) => Some(s.clone()),
-                _ => None,
-            })
+    fn execute(inputs: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, ExecutionError> {
+        host::log("debug", "String Split executing");
+
+        let text = inputs
+            .iter()
+            .find(|(n, _)| n == "text")
+            .and_then(|(_, v)| if let Value::StringVal(s) = v { Some(s.clone()) } else { None })
             .ok_or_else(|| ExecutionError {
                 message: "Missing or invalid 'text' input".to_string(),
                 input_name: Some("text".to_string()),
                 recovery_hint: Some("Provide a string value".to_string()),
             })?;
 
-        let delimiter = inputs.iter()
-            .find(|i| i.name == "delimiter")
-            .and_then(|i| match &i.value {
-                NodeValue::String(s) => Some(s.clone()),
-                _ => None,
-            })
+        let delimiter = inputs
+            .iter()
+            .find(|(n, _)| n == "delimiter")
+            .and_then(|(_, v)| if let Value::StringVal(s) = v { Some(s.clone()) } else { None })
             .ok_or_else(|| ExecutionError {
                 message: "Missing or invalid 'delimiter' input".to_string(),
                 input_name: Some("delimiter".to_string()),
                 recovery_hint: Some("Provide a string delimiter".to_string()),
             })?;
 
-        // Split string - handle empty delimiter (split into chars)
-        let parts: Vec<NodeValue> = if delimiter.is_empty() {
+        // Split string - handle empty delimiter (split into characters)
+        let parts: Vec<Value> = if delimiter.is_empty() {
             text.chars()
-                .map(|c| NodeValue::String(c.to_string()))
+                .map(|c| Value::StringVal(c.to_string()))
                 .collect()
         } else {
             text.split(&delimiter)
-                .map(|s| NodeValue::String(s.to_string()))
+                .map(|s| Value::StringVal(s.to_string()))
                 .collect()
         };
 
-        Ok(vec![OutputValue {
-            name: "parts".to_string(),
-            value: NodeValue::List(parts),
-        }])
+        Ok(vec![("result".to_string(), Value::ListVal(parts))])
     }
 }
+
+export!(Component);
 
 #[cfg(test)]
 mod tests {
@@ -106,23 +101,17 @@ mod tests {
     #[test]
     fn test_split_on_comma() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("a,b,c".to_string()),
-            },
-            InputValue {
-                name: "delimiter".to_string(),
-                value: NodeValue::String(",".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("a,b,c".to_string())),
+            ("delimiter".to_string(), Value::StringVal(",".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::List(parts) => {
+        match &result[0].1 {
+            Value::ListVal(parts) => {
                 assert_eq!(parts.len(), 3);
                 match &parts[0] {
-                    NodeValue::String(s) => assert_eq!(s, "a"),
-                    _ => panic!("Expected string"),
+                    Value::StringVal(s) => assert_eq!(s, "a"),
+                    _ => panic!("Expected string in list"),
                 }
             },
             _ => panic!("Expected list output"),
@@ -132,19 +121,13 @@ mod tests {
     #[test]
     fn test_split_on_empty_delimiter() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("hello".to_string()),
-            },
-            InputValue {
-                name: "delimiter".to_string(),
-                value: NodeValue::String("".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("hello".to_string())),
+            ("delimiter".to_string(), Value::StringVal("".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::List(parts) => {
+        match &result[0].1 {
+            Value::ListVal(parts) => {
                 assert_eq!(parts.len(), 5); // h, e, l, l, o
             },
             _ => panic!("Expected list output"),
@@ -154,19 +137,13 @@ mod tests {
     #[test]
     fn test_split_consecutive_delimiters() {
         let inputs = vec![
-            InputValue {
-                name: "text".to_string(),
-                value: NodeValue::String("a,,b".to_string()),
-            },
-            InputValue {
-                name: "delimiter".to_string(),
-                value: NodeValue::String(",".to_string()),
-            },
+            ("text".to_string(), Value::StringVal("a,,b".to_string())),
+            ("delimiter".to_string(), Value::StringVal(",".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
-        match &result[0].value {
-            NodeValue::List(parts) => {
+        match &result[0].1 {
+            Value::ListVal(parts) => {
                 assert_eq!(parts.len(), 3); // "a", "", "b"
             },
             _ => panic!("Expected list output"),
