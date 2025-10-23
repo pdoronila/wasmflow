@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["WasmFlow Team"]
 description = "WebAssembly node-based visual composition system"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/wasmflow/wasmflow"
+repository = "https://github.com/pdoronila/wasmflow"
 
 [workspace]
 # Exclude examples and components directories (components must be built separately with wasm target)
