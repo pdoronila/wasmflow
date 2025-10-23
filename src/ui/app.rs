@@ -7,7 +7,10 @@ use super::dialogs::{
 };
 use super::palette::{Palette, PaletteAction};
 use super::theme::Theme;
-use crate::builtin::{register_constant_nodes, register_continuous_example, register_math_nodes, register_wasm_creator_node};
+use crate::builtin::{
+    register_constant_nodes, register_continuous_example, register_math_nodes,
+    register_wasm_creator_node,
+};
 use crate::graph::command::CommandHistory;
 use crate::graph::graph::NodeGraph;
 use crate::graph::node::ComponentRegistry;
@@ -87,11 +90,14 @@ struct IncrementalExecutionState {
     /// Index of the current node being executed
     current_index: usize,
     /// Channel for receiving execution results from background thread
-    execution_receiver: Option<Receiver<Result<std::collections::HashMap<String, crate::graph::node::NodeValue>, String>>>,
+    execution_receiver: Option<
+        Receiver<Result<std::collections::HashMap<String, crate::graph::node::NodeValue>, String>>,
+    >,
 }
 
 /// Result from background node execution
-type NodeExecutionResult = Result<std::collections::HashMap<String, crate::graph::node::NodeValue>, String>;
+type NodeExecutionResult =
+    Result<std::collections::HashMap<String, crate::graph::node::NodeValue>, String>;
 
 /// T073: Component awaiting permission approval
 #[derive(Debug, Clone)]
@@ -166,8 +172,8 @@ impl WasmFlowApp {
             downstream_result_rx,
             downstream_result_tx,
             composer: crate::runtime::wac_integration::ComponentComposer::new(), // T028
-            composition_error: None, // T032
-            view_stack: crate::graph::drill_down::ViewStack::new(), // T037
+            composition_error: None,                                             // T032
+            view_stack: crate::graph::drill_down::ViewStack::new(),              // T037
         };
 
         // Auto-load components from components/ directory on startup
@@ -256,7 +262,11 @@ impl WasmFlowApp {
             match NodeGraph::load_from_file(&path) {
                 Ok(graph) => {
                     log::info!("Successfully deserialized graph from {}", path.display());
-                    log::info!("Graph has {} nodes and {} connections", graph.nodes.len(), graph.connections.len());
+                    log::info!(
+                        "Graph has {} nodes and {} connections",
+                        graph.nodes.len(),
+                        graph.connections.len()
+                    );
 
                     self.graph = graph;
                     self.current_file = Some(path.clone());
@@ -372,7 +382,9 @@ impl WasmFlowApp {
             .collect();
 
         // Add them to pending start queue
-        self.canvas.pending_continuous_start.extend(continuous_nodes);
+        self.canvas
+            .pending_continuous_start
+            .extend(continuous_nodes);
 
         self.status_message = "Starting execution...".to_string();
     }
@@ -398,8 +410,8 @@ impl WasmFlowApp {
             // Check if this is a constant node with pre-set values
             let is_constant_with_value = {
                 let node = self.graph.nodes.get(&node_id).unwrap();
-                node.component_id.starts_with("builtin:constant:") &&
-                    node.outputs.iter().all(|p| p.current_value.is_some())
+                node.component_id.starts_with("builtin:constant:")
+                    && node.outputs.iter().all(|p| p.current_value.is_some())
             };
 
             if is_constant_with_value {
@@ -464,7 +476,8 @@ impl WasmFlowApp {
                         node.execution_state = crate::graph::node::ExecutionState::Failed;
                         node.execution_started_at = None;
                     }
-                    self.error_message = Some("Background execution thread disconnected".to_string());
+                    self.error_message =
+                        Some("Background execution thread disconnected".to_string());
                     self.canvas.mark_dirty();
                 }
             }
@@ -479,14 +492,18 @@ impl WasmFlowApp {
             match self.continuous_result_rx.try_recv() {
                 Ok(result) => {
                     match result {
-                        ExecutionResult::Started { node_id, timestamp: _ } => {
+                        ExecutionResult::Started {
+                            node_id,
+                            timestamp: _,
+                        } => {
                             // Update node state to Running
                             if let Some(node) = self.graph.nodes.get_mut(&node_id) {
                                 if let Some(config) = &mut node.continuous_config {
                                     config.runtime_state.execution_state =
                                         crate::graph::node::ContinuousExecutionState::Running;
                                     config.runtime_state.is_running = true;
-                                    config.runtime_state.started_at = Some(std::time::Instant::now());
+                                    config.runtime_state.started_at =
+                                        Some(std::time::Instant::now());
                                 }
                             }
                             self.canvas.mark_dirty();
@@ -583,7 +600,12 @@ impl WasmFlowApp {
     }
 
     /// Apply execution result and move to next node
-    fn apply_execution_result(&mut self, node_id: Uuid, result: NodeExecutionResult, exec_state: IncrementalExecutionState) {
+    fn apply_execution_result(
+        &mut self,
+        node_id: Uuid,
+        result: NodeExecutionResult,
+        exec_state: IncrementalExecutionState,
+    ) {
         match result {
             Ok(outputs) => {
                 // Apply outputs to the node's output ports
@@ -612,7 +634,8 @@ impl WasmFlowApp {
                     node.execution_started_at = None;
                 }
 
-                let error_msg = if e.contains("Permission denied") || e.contains("PermissionDenied") {
+                let error_msg = if e.contains("Permission denied") || e.contains("PermissionDenied")
+                {
                     format!(
                         "🔒 Permission Denied: A component attempted to access resources without permission. {}",
                         e
@@ -636,7 +659,11 @@ impl WasmFlowApp {
 
         for connection in self.graph.incoming_connections(node_id) {
             if let Some(source_node) = self.graph.nodes.get(&connection.from_node) {
-                if let Some(source_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
+                if let Some(source_port) = source_node
+                    .outputs
+                    .iter()
+                    .find(|p| p.id == connection.from_port)
+                {
                     if let Some(value) = &source_port.current_value {
                         updates.push((connection.to_port, value.clone()));
                     }
@@ -657,7 +684,8 @@ impl WasmFlowApp {
     /// Propagate continuous node outputs to connected downstream nodes and trigger their execution
     fn propagate_continuous_outputs(&mut self, source_node_id: Uuid) {
         // Find all downstream nodes that are connected to this source node
-        let mut downstream_nodes: std::collections::HashSet<Uuid> = std::collections::HashSet::new();
+        let mut downstream_nodes: std::collections::HashSet<Uuid> =
+            std::collections::HashSet::new();
         let mut updates: Vec<(Uuid, Uuid, crate::graph::node::NodeValue)> = Vec::new();
 
         // Get the source node's outputs
@@ -668,7 +696,11 @@ impl WasmFlowApp {
                     downstream_nodes.insert(connection.to_node);
 
                     // Find the output value
-                    if let Some(output_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
+                    if let Some(output_port) = source_node
+                        .outputs
+                        .iter()
+                        .find(|p| p.id == connection.from_port)
+                    {
                         if let Some(value) = &output_port.current_value {
                             updates.push((connection.to_node, connection.to_port, value.clone()));
                         }
@@ -981,11 +1013,17 @@ impl WasmFlowApp {
             all_paths.extend(file_write_paths);
             CapabilitySet::FileReadWrite { paths: all_paths }
         } else if !file_read_paths.is_empty() {
-            CapabilitySet::FileRead { paths: file_read_paths }
+            CapabilitySet::FileRead {
+                paths: file_read_paths,
+            }
         } else if !file_write_paths.is_empty() {
-            CapabilitySet::FileWrite { paths: file_write_paths }
+            CapabilitySet::FileWrite {
+                paths: file_write_paths,
+            }
         } else if !network_hosts.is_empty() {
-            CapabilitySet::Network { allowed_hosts: network_hosts }
+            CapabilitySet::Network {
+                allowed_hosts: network_hosts,
+            }
         } else {
             // Unknown capability format, default to None for safety
             CapabilitySet::None
@@ -1138,7 +1176,11 @@ impl WasmFlowApp {
                         // Error icon and title
                         ui.horizontal(|ui| {
                             ui.label(egui::RichText::new("❌").size(24.0));
-                            ui.label(egui::RichText::new("Failed to compose nodes").strong().size(16.0));
+                            ui.label(
+                                egui::RichText::new("Failed to compose nodes")
+                                    .strong()
+                                    .size(16.0),
+                            );
                         });
 
                         ui.add_space(12.0);
@@ -1149,7 +1191,10 @@ impl WasmFlowApp {
                         egui::ScrollArea::vertical()
                             .max_height(300.0)
                             .show(ui, |ui| {
-                                ui.colored_label(egui::Color32::from_rgb(255, 100, 100), &error_text);
+                                ui.colored_label(
+                                    egui::Color32::from_rgb(255, 100, 100),
+                                    &error_text,
+                                );
                             });
 
                         ui.add_space(12.0);
@@ -1231,14 +1276,19 @@ impl WasmFlowApp {
     /// For user-defined components, returns the path to the .wasm file.
     /// For composite components, returns the socket component path.
     /// For builtin components, returns None.
-    fn get_component_path(&self, node: &crate::graph::node::GraphNode) -> Option<std::path::PathBuf> {
+    fn get_component_path(
+        &self,
+        node: &crate::graph::node::GraphNode,
+    ) -> Option<std::path::PathBuf> {
         // Look up the component spec
         let spec = self.registry.get_by_id(&node.component_id)?;
 
         match &spec.component_type {
             crate::graph::node::ComponentType::Builtin => None,
             crate::graph::node::ComponentType::UserDefined(path) => Some(path.clone()),
-            crate::graph::node::ComponentType::Composed { socket_path, .. } => Some(socket_path.clone()),
+            crate::graph::node::ComponentType::Composed { socket_path, .. } => {
+                Some(socket_path.clone())
+            }
         }
     }
 
@@ -1345,7 +1395,12 @@ impl WasmFlowApp {
             composite_outputs.len()
         );
 
-        (composite_inputs, composite_outputs, input_mappings, output_mappings)
+        (
+            composite_inputs,
+            composite_outputs,
+            input_mappings,
+            output_mappings,
+        )
     }
 
     /// T030: Handle composition action - compose selected nodes into a single composite node
@@ -1361,7 +1416,10 @@ impl WasmFlowApp {
         log::info!("Starting composition workflow");
 
         // T033: Get selected nodes
-        let selected_nodes: Vec<Uuid> = self.graph.nodes.iter()
+        let selected_nodes: Vec<Uuid> = self
+            .graph
+            .nodes
+            .iter()
             .filter(|(_, node)| node.selected)
             .map(|(id, _)| *id)
             .collect();
@@ -1369,7 +1427,10 @@ impl WasmFlowApp {
         // T033: Validate selection (need at least 2 nodes)
         if selected_nodes.len() < 2 {
             self.composition_error = Some("Please select at least 2 nodes to compose".to_string());
-            log::warn!("Composition failed: {} nodes selected (need ≥2)", selected_nodes.len());
+            log::warn!(
+                "Composition failed: {} nodes selected (need ≥2)",
+                selected_nodes.len()
+            );
             return;
         }
 
@@ -1409,7 +1470,10 @@ impl WasmFlowApp {
                         "Cannot compose builtin node '{}'. Only user-defined WASM components can be composed.",
                         node.display_name
                     ));
-                    log::warn!("Composition failed: builtin node '{}' in selection", node.display_name);
+                    log::warn!(
+                        "Composition failed: builtin node '{}' in selection",
+                        node.display_name
+                    );
                     return;
                 }
             }
@@ -1426,9 +1490,14 @@ impl WasmFlowApp {
         // T022-T025: Perform composition using ComponentComposer
         // Socket is the first component, plugs are the rest
         let socket = &component_paths[0];
-        let plugs: Vec<&std::path::Path> = component_paths[1..].iter().map(|p| p.as_path()).collect();
+        let plugs: Vec<&std::path::Path> =
+            component_paths[1..].iter().map(|p| p.as_path()).collect();
 
-        log::info!("Composing: socket={}, plugs={}", socket.display(), plugs.len());
+        log::info!(
+            "Composing: socket={}, plugs={}",
+            socket.display(),
+            plugs.len()
+        );
 
         let composed_binary = match self.composer.compose(socket, &plugs) {
             Ok(bytes) => {
@@ -1445,15 +1514,20 @@ impl WasmFlowApp {
 
         // T027: Create CompositionData with internal structure
         let internal_nodes: std::collections::BTreeMap<Uuid, crate::graph::node::GraphNode> =
-            selected_nodes.iter()
+            selected_nodes
+                .iter()
                 .filter_map(|id| self.graph.nodes.get(id).map(|n| (*id, n.clone())))
                 .collect();
 
-        let internal_edges: Vec<crate::graph::connection::Connection> =
-            self.graph.connections.iter()
-                .filter(|conn| selected_nodes.contains(&conn.from_node) && selected_nodes.contains(&conn.to_node))
-                .cloned()
-                .collect();
+        let internal_edges: Vec<crate::graph::connection::Connection> = self
+            .graph
+            .connections
+            .iter()
+            .filter(|conn| {
+                selected_nodes.contains(&conn.from_node) && selected_nodes.contains(&conn.to_node)
+            })
+            .cloned()
+            .collect();
 
         // T035: Aggregate boundary ports for the composite node
         let (composite_inputs, composite_outputs, input_mappings, output_mappings) =
@@ -1475,11 +1549,13 @@ impl WasmFlowApp {
 
         // Calculate center position of selected nodes
         let center_pos = if !selected_nodes.is_empty() {
-            let sum_x: f32 = selected_nodes.iter()
+            let sum_x: f32 = selected_nodes
+                .iter()
                 .filter_map(|id| self.graph.nodes.get(id))
                 .map(|n| n.position.x)
                 .sum();
-            let sum_y: f32 = selected_nodes.iter()
+            let sum_y: f32 = selected_nodes
+                .iter()
                 .filter_map(|id| self.graph.nodes.get(id))
                 .map(|n| n.position.y)
                 .sum();
@@ -1515,8 +1591,14 @@ impl WasmFlowApp {
 
         // Mark dirty and update status
         self.dirty = true;
-        self.status_message = format!("Composed {} nodes into composite node", selected_nodes.len());
-        log::info!("Composition complete: created composite node {}", composite_id);
+        self.status_message = format!(
+            "Composed {} nodes into composite node",
+            selected_nodes.len()
+        );
+        log::info!(
+            "Composition complete: created composite node {}",
+            composite_id
+        );
 
         // Sync canvas
         self.canvas.mark_dirty();
@@ -1777,7 +1859,10 @@ impl WasmFlowApp {
                     } else if selected_count < 2 {
                         compose_button.on_hover_text("Select at least 2 nodes to compose");
                     } else {
-                        compose_button.on_hover_text(format!("Compose {} selected nodes into a composite", selected_count));
+                        compose_button.on_hover_text(format!(
+                            "Compose {} selected nodes into a composite",
+                            selected_count
+                        ));
                     }
                 });
 
@@ -1816,9 +1901,11 @@ impl WasmFlowApp {
                     crate::graph::drill_down::ViewContext::MainCanvas => {
                         (self.graph.nodes.len(), self.graph.connections.len())
                     }
-                    crate::graph::drill_down::ViewContext::DrillDown { internal_nodes, internal_edges, .. } => {
-                        (internal_nodes.len(), internal_edges.len())
-                    }
+                    crate::graph::drill_down::ViewContext::DrillDown {
+                        internal_nodes,
+                        internal_edges,
+                        ..
+                    } => (internal_nodes.len(), internal_edges.len()),
                 };
                 ui.label(format!("Nodes: {}", node_count));
                 ui.label(format!("Connections: {}", connection_count));
@@ -1849,7 +1936,8 @@ impl WasmFlowApp {
                     // T073: Check if this is a user-defined component that needs permission
                     if let crate::graph::node::ComponentType::UserDefined(_) = spec.component_type {
                         // Extract capabilities from component metadata
-                        let requested_capabilities = Self::parse_capabilities(&spec.required_capabilities);
+                        let requested_capabilities =
+                            Self::parse_capabilities(&spec.required_capabilities);
 
                         // T080: Check for capability escalation
                         // Look for existing grants for this component_id
@@ -1938,7 +2026,7 @@ impl WasmFlowApp {
                     self.canvas.show(ui, &mut self.graph, &self.registry);
                 }
                 crate::graph::drill_down::ViewContext::DrillDown {
-                    composite_node_id,
+                    composite_node_id: _,
                     composite_node_name,
                     internal_nodes,
                     internal_edges,
@@ -1988,7 +2076,9 @@ impl WasmFlowApp {
             // In drill-down mode - discard any modification attempts
             if !self.canvas.pending_deletions.is_empty() {
                 self.canvas.pending_deletions.clear();
-                self.status_message = "Drill-down view is read-only. Return to main canvas to make changes.".to_string();
+                self.status_message =
+                    "Drill-down view is read-only. Return to main canvas to make changes."
+                        .to_string();
             }
         }
 
@@ -2037,7 +2127,8 @@ impl WasmFlowApp {
                             component_manager.clone(),
                             result_tx.clone(),
                         ) {
-                            self.error_message = Some(format!("Failed to start continuous node: {}", e));
+                            self.error_message =
+                                Some(format!("Failed to start continuous node: {}", e));
                             config.runtime_state.execution_state =
                                 crate::graph::node::ContinuousExecutionState::Error;
                             config.runtime_state.last_error = Some(e.to_string());
@@ -2062,7 +2153,8 @@ impl WasmFlowApp {
 
                         // Stop the continuous execution
                         if let Err(e) = self.continuous_manager.stop_node(node_id) {
-                            self.error_message = Some(format!("Failed to stop continuous node: {}", e));
+                            self.error_message =
+                                Some(format!("Failed to stop continuous node: {}", e));
                             config.runtime_state.execution_state =
                                 crate::graph::node::ContinuousExecutionState::Error;
                             config.runtime_state.last_error = Some(e.to_string());
@@ -2092,29 +2184,26 @@ impl eframe::App for WasmFlowApp {
         self.poll_downstream_results();
 
         // Request continuous repaints when there are running nodes (for spinner/elapsed time)
-        let has_running_nodes = self
-            .graph
-            .nodes
-            .values()
-            .any(|n| matches!(n.execution_state, crate::graph::node::ExecutionState::Running));
+        let has_running_nodes = self.graph.nodes.values().any(|n| {
+            matches!(
+                n.execution_state,
+                crate::graph::node::ExecutionState::Running
+            )
+        });
 
         // Also check for continuous nodes in running state
-        let has_continuous_running = self
-            .graph
-            .nodes
-            .values()
-            .any(|n| {
-                if let Some(config) = &n.continuous_config {
-                    matches!(
-                        config.runtime_state.execution_state,
-                        crate::graph::node::ContinuousExecutionState::Running
-                            | crate::graph::node::ContinuousExecutionState::Starting
-                            | crate::graph::node::ContinuousExecutionState::Stopping
-                    )
-                } else {
-                    false
-                }
-            });
+        let has_continuous_running = self.graph.nodes.values().any(|n| {
+            if let Some(config) = &n.continuous_config {
+                matches!(
+                    config.runtime_state.execution_state,
+                    crate::graph::node::ContinuousExecutionState::Running
+                        | crate::graph::node::ContinuousExecutionState::Starting
+                        | crate::graph::node::ContinuousExecutionState::Stopping
+                )
+            } else {
+                false
+            }
+        });
 
         if has_running_nodes || has_continuous_running {
             ctx.request_repaint();
