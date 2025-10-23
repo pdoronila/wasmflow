@@ -3,13 +3,10 @@ wit_bindgen::generate!({
     world: "component",
 });
 
-use exports::execution::Guest as ExecutionGuest;
-use exports::metadata::Guest as MetadataGuest;
-use exports::{
-    ComponentInfo, DataType, ExecutionError, PortSpec, Value,
-};
-
-export!(Component);
+use exports::wasmflow::node::metadata::Guest as MetadataGuest;
+use exports::wasmflow::node::execution::Guest as ExecutionGuest;
+use wasmflow::node::types::*;
+use wasmflow::node::host;
 
 struct Component;
 
@@ -21,9 +18,10 @@ impl MetadataGuest for Component {
     fn get_info() -> ComponentInfo {
         ComponentInfo {
             name: "List Contains".to_string(),
-            description: "Checks if a list contains a specific value".to_string(),
-            category: "Collections".to_string(),
             version: "1.0.0".to_string(),
+            description: "Checks if a list contains a specific value".to_string(),
+            author: "WasmFlow Core Library".to_string(),
+            category: Some("Collections".to_string()),
         }
     }
 
