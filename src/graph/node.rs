@@ -577,6 +577,10 @@ impl GraphNode {
                     "String".hash(&mut hasher);
                     v.hash(&mut hasher);
                 }
+                NodeValue::Bool(v) => {
+                    "Bool".hash(&mut hasher);
+                    v.hash(&mut hasher);
+                }
                 NodeValue::Binary(v) => {
                     "Binary".hash(&mut hasher);
                     v.hash(&mut hasher);
@@ -597,6 +601,7 @@ impl GraphNode {
                             NodeValue::I32(val) => val.hash(&mut hasher),
                             NodeValue::F32(val) => val.to_bits().hash(&mut hasher),
                             NodeValue::String(val) => val.hash(&mut hasher),
+                            NodeValue::Bool(val) => val.hash(&mut hasher),
                             NodeValue::Binary(val) => val.hash(&mut hasher),
                             _ => {} // Skip complex nested types for now
                         }

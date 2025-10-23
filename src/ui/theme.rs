@@ -36,6 +36,7 @@ pub struct PortColors {
     pub i32_color: Color32,
     pub u32_color: Color32,
     pub string_color: Color32,
+    pub bool_color: Color32,
     pub binary_color: Color32,
     pub list_color: Color32,
     pub record_color: Color32,
@@ -138,6 +139,7 @@ impl Theme {
                 i32_color: Color32::from_rgb(150, 100, 255),    // Purple
                 u32_color: Color32::from_rgb(255, 150, 100),    // Orange
                 string_color: Color32::from_rgb(100, 255, 150), // Green
+                bool_color: Color32::from_rgb(100, 255, 255),   // Cyan
                 binary_color: Color32::from_rgb(200, 200, 200), // Gray
                 list_color: Color32::from_rgb(255, 200, 100),   // Yellow
                 record_color: Color32::from_rgb(255, 100, 150), // Pink
@@ -202,6 +204,7 @@ impl Theme {
                 i32_color: Color32::from_rgb(100, 50, 200),     // Purple
                 u32_color: Color32::from_rgb(200, 100, 50),     // Orange
                 string_color: Color32::from_rgb(50, 180, 100),  // Green
+                bool_color: Color32::from_rgb(50, 180, 180),    // Cyan
                 binary_color: Color32::from_rgb(120, 120, 120), // Gray
                 list_color: Color32::from_rgb(200, 150, 50),    // Yellow
                 record_color: Color32::from_rgb(200, 50, 100),  // Pink
@@ -308,6 +311,7 @@ impl Theme {
             DataType::I32 => self.port_colors.i32_color,
             DataType::U32 => self.port_colors.u32_color,
             DataType::String => self.port_colors.string_color,
+            DataType::Bool => self.port_colors.bool_color,
             DataType::Binary => self.port_colors.binary_color,
             DataType::List(_) => self.port_colors.list_color,
             DataType::Record(_) => self.port_colors.record_color,

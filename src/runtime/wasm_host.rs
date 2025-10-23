@@ -999,8 +999,57 @@ impl ComponentManager {
             NodeValue::I32(v) => Value::I32Val(*v),
             NodeValue::F32(v) => Value::F32Val(*v),
             NodeValue::String(s) => Value::StringVal(s.clone()),
+            NodeValue::Bool(b) => Value::BoolVal(*b),
             NodeValue::Binary(b) => Value::BinaryVal(b.clone()),
-            NodeValue::List(_) => Value::StringVal("<list>".to_string()),
+            NodeValue::List(items) => {
+                // Try to detect homogeneous list type and convert to typed list
+                if items.is_empty() {
+                    Value::StringListVal(vec![])
+                } else {
+                    match &items[0] {
+                        NodeValue::String(_) => {
+                            let strings: Vec<String> = items
+                                .iter()
+                                .filter_map(|v| {
+                                    if let NodeValue::String(s) = v {
+                                        Some(s.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            Value::StringListVal(strings)
+                        }
+                        NodeValue::U32(_) => {
+                            let nums: Vec<u32> = items
+                                .iter()
+                                .filter_map(|v| {
+                                    if let NodeValue::U32(n) = v {
+                                        Some(*n)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            Value::U32ListVal(nums)
+                        }
+                        NodeValue::F32(_) => {
+                            let nums: Vec<f32> = items
+                                .iter()
+                                .filter_map(|v| {
+                                    if let NodeValue::F32(n) = v {
+                                        Some(*n)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            Value::F32ListVal(nums)
+                        }
+                        _ => Value::StringVal("<mixed-list>".to_string()),
+                    }
+                }
+            }
             NodeValue::Record(_) => Value::StringVal("<record>".to_string()),
         }
     }
