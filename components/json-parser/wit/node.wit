@@ -1,5 +1,5 @@
-// WasmFlow Node Interface
-// This defines the contract that all WasmFlow components must implement
+// WasmFlow Node Interface with UI Support
+// This defines the contract for components that provide custom UI rendering
 
 package wasmflow:node@1.1.0;
 
@@ -90,9 +90,85 @@ interface execution {
     execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
 }
 
+/// UI interface - provides custom UI rendering (optional)
+interface ui {
+    use types.{value};
+
+    /// UI element types for declarative footer rendering
+    /// Note: Horizontal/Vertical layouts use separate record types to avoid recursion
+    variant ui-element {
+        /// Simple text label
+        label(string),
+        /// Colored text with RGB color
+        colored-label(colored-text),
+        /// Key-value pair in a grid
+        key-value(key-value-pair),
+        /// Horizontal layout container
+        horizontal(horizontal-layout),
+        /// Vertical layout container
+        vertical(vertical-layout),
+        /// Separator line
+        separator,
+    }
+
+    /// Horizontal layout of UI elements
+    record horizontal-layout {
+        elements: list<ui-element-item>,
+    }
+
+    /// Vertical layout of UI elements
+    record vertical-layout {
+        elements: list<ui-element-item>,
+    }
+
+    /// UI element item (non-recursive version for layouts)
+    variant ui-element-item {
+        /// Simple text label
+        label(string),
+        /// Colored text with RGB color
+        colored-label(colored-text),
+        /// Key-value pair in a grid
+        key-value(key-value-pair),
+        /// Separator line
+        separator,
+    }
+
+    /// Colored text specification
+    record colored-text {
+        text: string,
+        r: u8,
+        g: u8,
+        b: u8,
+    }
+
+    /// Key-value pair for grid display
+    record key-value-pair {
+        key: string,
+        value: string,
+    }
+
+    /// Footer view data
+    record footer-view {
+        elements: list<ui-element>,
+    }
+
+    /// Get custom footer view for this component
+    /// Returns None if component doesn't provide a custom view
+    /// Returns Some(footer-view) with declarative UI elements to render
+    get-footer-view: func(outputs: list<tuple<string, value>>) -> option<footer-view>;
+}
+
 /// Main world that components must implement
 world component {
     import host;
     export metadata;
     export execution;
+}
+
+/// Extended world with optional UI support
+world component-with-ui {
+    import host;
+    export metadata;
+    export execution;
+    export ui;
 }
