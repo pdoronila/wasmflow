@@ -194,12 +194,27 @@ error: failed to get `wit-bindgen` as a dependency
 error: package identifier `wasmflow:node@1.0.0` does not match
        previous package name of `wasmflow:node@1.1.0`
 ```
+OR
+```
+error: package wasmflow:node@1.1.0 is defined in two different locations:
+       * wit/deps/wasmflow/node.wit
+       * wit/node.wit
+```
 
-**Cause:** Component has multiple WIT files declaring the same package with different versions (e.g., `node.wit` at 1.1.0 and `world.wit` at 1.0.0).
+**Cause:** Component has multiple WIT files declaring the same package with different versions or in multiple locations.
 
-**Solution:** Remove redundant WIT files. The `node.wit` file should be self-contained with all types, interfaces, and world definitions. Delete any duplicate `world.wit` files.
+**Common scenarios:**
+1. Both `node.wit` and `world.wit` exist with different versions
+2. Package declared in both `wit/node.wit` and `wit/deps/wasmflow/node.wit`
 
-**Example:** The double-number component had this issue - fixed by removing `wit/world.wit`.
+**Solution:**
+- Remove redundant WIT files - `node.wit` should be self-contained
+- Delete `world.wit` if it exists (redundant with `node.wit`)
+- Delete `wit/deps/` directory if it exists (not needed for self-contained specs)
+
+**Example:** The double-number component had both issues:
+1. Removed `wit/world.wit` (duplicate at wrong version)
+2. Removed `wit/deps/` directory (duplicate package declaration)
 
 ## Files Changed
 
