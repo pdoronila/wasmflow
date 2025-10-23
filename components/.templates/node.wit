@@ -1,7 +1,7 @@
 // WasmFlow Node Interface
 // This defines the contract that all WasmFlow components must implement
 
-package wasmflow:node@1.0.0;
+package wasmflow:node@1.1.0;
 
 /// Data types supported by WasmFlow
 interface types {
