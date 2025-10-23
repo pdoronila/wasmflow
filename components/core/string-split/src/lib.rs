@@ -78,17 +78,17 @@ impl ExecutionGuest for Component {
             })?;
 
         // Split string - handle empty delimiter (split into characters)
-        let parts: Vec<Value> = if delimiter.is_empty() {
+        let parts: Vec<String> = if delimiter.is_empty() {
             text.chars()
-                .map(|c| Value::StringVal(c.to_string()))
+                .map(|c| c.to_string())
                 .collect()
         } else {
             text.split(&delimiter)
-                .map(|s| Value::StringVal(s.to_string()))
+                .map(|s| s.to_string())
                 .collect()
         };
 
-        Ok(vec![("result".to_string(), Value::ListVal(parts))])
+        Ok(vec![("result".to_string(), Value::StringListVal(parts))])
     }
 }
 
@@ -107,14 +107,11 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
         match &result[0].1 {
-            Value::ListVal(parts) => {
+            Value::StringListVal(parts) => {
                 assert_eq!(parts.len(), 3);
-                match &parts[0] {
-                    Value::StringVal(s) => assert_eq!(s, "a"),
-                    _ => panic!("Expected string in list"),
-                }
+                assert_eq!(parts[0], "a");
             },
-            _ => panic!("Expected list output"),
+            _ => panic!("Expected string list output"),
         }
     }
 
@@ -127,10 +124,10 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
         match &result[0].1 {
-            Value::ListVal(parts) => {
+            Value::StringListVal(parts) => {
                 assert_eq!(parts.len(), 5); // h, e, l, l, o
             },
-            _ => panic!("Expected list output"),
+            _ => panic!("Expected string list output"),
         }
     }
 
@@ -143,10 +140,10 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
         match &result[0].1 {
-            Value::ListVal(parts) => {
+            Value::StringListVal(parts) => {
                 assert_eq!(parts.len(), 3); // "a", "", "b"
             },
-            _ => panic!("Expected list output"),
+            _ => panic!("Expected string list output"),
         }
     }
 }

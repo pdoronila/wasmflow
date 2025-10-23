@@ -25,7 +25,10 @@ interface types {
         string-val(string),
         bool-val(bool),
         binary-val(list<u8>),
-        list-val(list<value>),
+        // Non-recursive list types for common cases
+        string-list-val(list<string>),
+        u32-list-val(list<u32>),
+        f32-list-val(list<f32>),
     }
 
     /// Port specification
