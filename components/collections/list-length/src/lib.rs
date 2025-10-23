@@ -66,12 +66,12 @@ impl ExecutionGuest for Component {
 
         // Extract list value
         let list_values = match &list.1 {
-            Value::ListVal(items) => items,
+            Value::StringListVal(items) => items,
             _ => {
                 return Err(ExecutionError {
-                    message: format!("Expected list for input 'list', got {:?}", list.1),
+                    message: format!("Expected string list for input 'list', got {:?}", list.1),
                     input_name: Some("list".to_string()),
-                    recovery_hint: Some("Provide a list value".to_string()),
+                    recovery_hint: Some("Provide a string list value".to_string()),
                 });
             }
         };
@@ -94,11 +94,11 @@ mod tests {
     fn test_list_length_with_elements() {
         let inputs = vec![(
             "list".to_string(),
-            Value::ListVal(vec![
-                Value::U32Val(1),
-                Value::U32Val(2),
-                Value::U32Val(3),
-                Value::U32Val(4),
+            Value::StringListVal(vec![
+                "apple".to_string(),
+                "banana".to_string(),
+                "cherry".to_string(),
+                "date".to_string(),
             ]),
         )];
 
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_list_length_empty() {
-        let inputs = vec![("list".to_string(), Value::ListVal(vec![]))];
+        let inputs = vec![("list".to_string(), Value::StringListVal(vec![]))];
 
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
@@ -122,7 +122,7 @@ mod tests {
     fn test_list_length_single_element() {
         let inputs = vec![(
             "list".to_string(),
-            Value::ListVal(vec![Value::StringVal("hello".to_string())]),
+            Value::StringListVal(vec!["hello".to_string()]),
         )];
 
         let result = Component::execute(inputs).unwrap();

@@ -6,7 +6,6 @@ wit_bindgen::generate!({
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;
 use exports::wasmflow::node::execution::Guest as ExecutionGuest;
 use wasmflow::node::types::*;
-use wasmflow::node::host;
 
 struct Component;
 
@@ -19,7 +18,7 @@ impl MetadataGuest for Component {
         ComponentInfo {
             name: "List Index Of".to_string(),
             version: "1.0.0".to_string(),
-            description: "Returns the index of the first occurrence of a value in a list, or -1 if not found".to_string(),
+            description: "Returns the index of the first occurrence of a value in a string list, or -1 if not found".to_string(),
             author: "WasmFlow Core Library".to_string(),
             category: Some("Collections".to_string()),
         }
@@ -31,13 +30,13 @@ impl MetadataGuest for Component {
                 name: "list".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "The list to search in".to_string(),
+                description: "The string list to search in".to_string(),
             },
             PortSpec {
                 name: "value".to_string(),
-                data_type: DataType::AnyType,
+                data_type: DataType::StringType,
                 optional: false,
-                description: "The value to search for".to_string(),
+                description: "The string value to search for".to_string(),
             },
         ]
     }
@@ -73,12 +72,12 @@ impl ExecutionGuest for Component {
             })?;
 
         let list_values = match &list.1 {
-            Value::ListVal(items) => items,
+            Value::StringListVal(items) => items,
             _ => {
                 return Err(ExecutionError {
-                    message: format!("Expected list for input 'list', got {:?}", list.1),
+                    message: format!("Expected string list for input 'list', got {:?}", list.1),
                     input_name: Some("list".to_string()),
-                    recovery_hint: Some("Provide a list value".to_string()),
+                    recovery_hint: Some("Provide a string list value".to_string()),
                 });
             }
         };
@@ -93,33 +92,25 @@ impl ExecutionGuest for Component {
                 recovery_hint: Some("Connect a value to this input".to_string()),
             })?;
 
-        let search_value = &value_input.1;
+        let search_value = match &value_input.1 {
+            Value::StringVal(s) => s,
+            _ => {
+                return Err(ExecutionError {
+                    message: format!("Expected string for input 'value', got {:?}", value_input.1),
+                    input_name: Some("value".to_string()),
+                    recovery_hint: Some("Provide a string value".to_string()),
+                });
+            }
+        };
 
         // Find the index of the first occurrence
         let index = list_values
             .iter()
-            .position(|item| values_equal(item, search_value))
+            .position(|item| item == search_value)
             .map(|pos| pos as i32)
             .unwrap_or(-1);
 
         Ok(vec![("index".to_string(), Value::I32Val(index))])
-    }
-}
-
-// Helper function to compare values for equality
-fn values_equal(a: &Value, b: &Value) -> bool {
-    match (a, b) {
-        (Value::U32Val(a), Value::U32Val(b)) => a == b,
-        (Value::I32Val(a), Value::I32Val(b)) => a == b,
-        (Value::F32Val(a), Value::F32Val(b)) => a == b,
-        (Value::StringVal(a), Value::StringVal(b)) => a == b,
-        (Value::BoolVal(a), Value::BoolVal(b)) => a == b,
-        // Lists are equal if they have the same length and all elements are equal
-        (Value::ListVal(a), Value::ListVal(b)) => {
-            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| values_equal(x, y))
-        }
-        // Different types are not equal
-        _ => false,
     }
 }
 
@@ -136,10 +127,10 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
-                    Value::StringVal("apple".to_string()),
-                    Value::StringVal("banana".to_string()),
-                    Value::StringVal("cherry".to_string()),
+                Value::StringListVal(vec![
+                    "apple".to_string(),
+                    "banana".to_string(),
+                    "cherry".to_string(),
                 ]),
             ),
             ("value".to_string(), Value::StringVal("banana".to_string())),
@@ -156,14 +147,14 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
-                    Value::U32Val(10),
-                    Value::U32Val(20),
-                    Value::U32Val(10),
-                    Value::U32Val(30),
+                Value::StringListVal(vec![
+                    "apple".to_string(),
+                    "banana".to_string(),
+                    "apple".to_string(),
+                    "cherry".to_string(),
                 ]),
             ),
-            ("value".to_string(), Value::U32Val(10)),
+            ("value".to_string(), Value::StringVal("apple".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
@@ -177,13 +168,13 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
-                    Value::U32Val(1),
-                    Value::U32Val(2),
-                    Value::U32Val(3),
+                Value::StringListVal(vec![
+                    "apple".to_string(),
+                    "banana".to_string(),
+                    "cherry".to_string(),
                 ]),
             ),
-            ("value".to_string(), Value::U32Val(99)),
+            ("value".to_string(), Value::StringVal("date".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
@@ -195,7 +186,7 @@ mod tests {
     #[test]
     fn test_index_of_empty_list() {
         let inputs = vec![
-            ("list".to_string(), Value::ListVal(vec![])),
+            ("list".to_string(), Value::StringListVal(vec![])),
             ("value".to_string(), Value::StringVal("test".to_string())),
         ];
 

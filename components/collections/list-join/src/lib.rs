@@ -73,10 +73,10 @@ impl ExecutionGuest for Component {
             })?;
 
         let list_values = match &list.1 {
-            Value::ListVal(items) => items,
+            Value::StringListVal(items) => items,
             _ => {
                 return Err(ExecutionError {
-                    message: format!("Expected list for input 'list', got {:?}", list.1),
+                    message: format!("Expected string list for input 'list', got {:?}", list.1),
                     input_name: Some("list".to_string()),
                     recovery_hint: Some("Provide a list value".to_string()),
                 });
@@ -141,7 +141,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
+                Value::StringListVal(vec![
                     Value::StringVal("apple".to_string()),
                     Value::StringVal("banana".to_string()),
                     Value::StringVal("cherry".to_string()),
@@ -164,7 +164,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
+                Value::StringListVal(vec![
                     Value::StringVal("hello".to_string()),
                     Value::StringVal("world".to_string()),
                 ]),
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_join_empty_list() {
         let inputs = vec![
-            ("list".to_string(), Value::ListVal(vec![])),
+            ("list".to_string(), Value::StringListVal(vec![])),
             ("delimiter".to_string(), Value::StringVal(", ".to_string())),
         ];
 
@@ -197,7 +197,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![Value::StringVal("only".to_string())]),
+                Value::StringListVal(vec![Value::StringVal("only".to_string())]),
             ),
             ("delimiter".to_string(), Value::StringVal(", ".to_string())),
         ];

@@ -79,10 +79,10 @@ impl ExecutionGuest for Component {
             })?;
 
         let list_values = match &list.1 {
-            Value::ListVal(items) => items,
+            Value::StringListVal(items) => items,
             _ => {
                 return Err(ExecutionError {
-                    message: format!("Expected list for input 'list', got {:?}", list.1),
+                    message: format!("Expected string list for input 'list', got {:?}", list.1),
                     input_name: Some("list".to_string()),
                     recovery_hint: Some("Provide a list value".to_string()),
                 });
@@ -136,7 +136,7 @@ impl ExecutionGuest for Component {
             list_values[start_clamped..end_clamped].to_vec()
         };
 
-        Ok(vec![("result".to_string(), Value::ListVal(sliced))])
+        Ok(vec![("result".to_string(), Value::StringListVal(sliced))])
     }
 }
 
@@ -153,7 +153,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
+                Value::StringListVal(vec![
                     Value::U32Val(10),
                     Value::U32Val(20),
                     Value::U32Val(30),
@@ -169,7 +169,7 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].0, "result");
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 3);
             assert_eq!(list[0], Value::U32Val(20));
             assert_eq!(list[1], Value::U32Val(30));
@@ -184,7 +184,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
+                Value::StringListVal(vec![
                     Value::StringVal("a".to_string()),
                     Value::StringVal("b".to_string()),
                     Value::StringVal("c".to_string()),
@@ -197,7 +197,7 @@ mod tests {
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 2);
             assert_eq!(list[0], Value::StringVal("b".to_string()));
             assert_eq!(list[1], Value::StringVal("c".to_string()));
@@ -211,7 +211,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![Value::U32Val(1), Value::U32Val(2)]),
+                Value::StringListVal(vec![Value::U32Val(1), Value::U32Val(2)]),
             ),
             ("start".to_string(), Value::U32Val(5)),
         ];
@@ -219,7 +219,7 @@ mod tests {
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 0); // Empty list
         } else {
             panic!("Expected ListVal");
@@ -231,7 +231,7 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
+                Value::StringListVal(vec![
                     Value::U32Val(1),
                     Value::U32Val(2),
                     Value::U32Val(3),
@@ -243,7 +243,7 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 0); // Empty list when start > end
         } else {
             panic!("Expected ListVal");

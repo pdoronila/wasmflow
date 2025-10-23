@@ -45,7 +45,7 @@ impl MetadataGuest for Component {
     fn get_outputs() -> Vec<PortSpec> {
         vec![PortSpec {
             name: "element".to_string(),
-            data_type: DataType::AnyType,
+            data_type: DataType::StringType,
             optional: false,
             description: "The element at the specified index".to_string(),
         }]
@@ -73,12 +73,12 @@ impl ExecutionGuest for Component {
             })?;
 
         let list_values = match &list.1 {
-            Value::ListVal(items) => items,
+            Value::StringListVal(items) => items,
             _ => {
                 return Err(ExecutionError {
-                    message: format!("Expected list for input 'list', got {:?}", list.1),
+                    message: format!("Expected string list for input 'list', got {:?}", list.1),
                     input_name: Some("list".to_string()),
-                    recovery_hint: Some("Provide a list value".to_string()),
+                    recovery_hint: Some("Provide a string list value".to_string()),
                 });
             }
         };
@@ -120,9 +120,9 @@ impl ExecutionGuest for Component {
             });
         }
 
-        let element = list_values[index].clone();
+        let element = &list_values[index];
 
-        Ok(vec![("element".to_string(), element)])
+        Ok(vec![("element".to_string(), Value::StringVal(element.clone()))])
     }
 }
 

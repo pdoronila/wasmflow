@@ -6,7 +6,6 @@ wit_bindgen::generate!({
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;
 use exports::wasmflow::node::execution::Guest as ExecutionGuest;
 use wasmflow::node::types::*;
-use wasmflow::node::host;
 
 struct Component;
 
@@ -19,7 +18,7 @@ impl MetadataGuest for Component {
         ComponentInfo {
             name: "List Append".to_string(),
             version: "1.0.0".to_string(),
-            description: "Appends a value to the end of a list, creating a new list".to_string(),
+            description: "Appends a string value to the end of a string list, creating a new list".to_string(),
             author: "WasmFlow Core Library".to_string(),
             category: Some("Collections".to_string()),
         }
@@ -31,13 +30,13 @@ impl MetadataGuest for Component {
                 name: "list".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "The list to append to".to_string(),
+                description: "The string list to append to".to_string(),
             },
             PortSpec {
                 name: "value".to_string(),
-                data_type: DataType::AnyType,
+                data_type: DataType::StringType,
                 optional: false,
-                description: "The value to append to the list".to_string(),
+                description: "The string value to append to the list".to_string(),
             },
         ]
     }
@@ -47,7 +46,7 @@ impl MetadataGuest for Component {
             name: "result".to_string(),
             data_type: DataType::ListType,
             optional: false,
-            description: "The new list with the value appended".to_string(),
+            description: "The new string list with the value appended".to_string(),
         }]
     }
 
@@ -73,12 +72,12 @@ impl ExecutionGuest for Component {
             })?;
 
         let mut list_values = match &list.1 {
-            Value::ListVal(items) => items.clone(),
+            Value::StringListVal(items) => items.clone(),
             _ => {
                 return Err(ExecutionError {
-                    message: format!("Expected list for input 'list', got {:?}", list.1),
+                    message: format!("Expected string list for input 'list', got {:?}", list.1),
                     input_name: Some("list".to_string()),
-                    recovery_hint: Some("Provide a list value".to_string()),
+                    recovery_hint: Some("Provide a string list value".to_string()),
                 });
             }
         };
@@ -93,10 +92,21 @@ impl ExecutionGuest for Component {
                 recovery_hint: Some("Connect a value to this input".to_string()),
             })?;
 
-        // Append value to list (immutable operation - creates new list)
-        list_values.push(value_input.1.clone());
+        let value = match &value_input.1 {
+            Value::StringVal(s) => s.clone(),
+            _ => {
+                return Err(ExecutionError {
+                    message: format!("Expected string for input 'value', got {:?}", value_input.1),
+                    input_name: Some("value".to_string()),
+                    recovery_hint: Some("Provide a string value".to_string()),
+                });
+            }
+        };
 
-        Ok(vec![("result".to_string(), Value::ListVal(list_values))])
+        // Append value to list (immutable operation - creates new list)
+        list_values.push(value);
+
+        Ok(vec![("result".to_string(), Value::StringListVal(list_values))])
     }
 }
 
@@ -113,34 +123,34 @@ mod tests {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![
-                    Value::U32Val(1),
-                    Value::U32Val(2),
-                    Value::U32Val(3),
+                Value::StringListVal(vec![
+                    "apple".to_string(),
+                    "banana".to_string(),
+                    "cherry".to_string(),
                 ]),
             ),
-            ("value".to_string(), Value::U32Val(4)),
+            ("value".to_string(), Value::StringVal("date".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].0, "result");
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 4);
-            assert_eq!(list[0], Value::U32Val(1));
-            assert_eq!(list[1], Value::U32Val(2));
-            assert_eq!(list[2], Value::U32Val(3));
-            assert_eq!(list[3], Value::U32Val(4));
+            assert_eq!(list[0], "apple");
+            assert_eq!(list[1], "banana");
+            assert_eq!(list[2], "cherry");
+            assert_eq!(list[3], "date");
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 
     #[test]
     fn test_append_to_empty_list() {
         let inputs = vec![
-            ("list".to_string(), Value::ListVal(vec![])),
+            ("list".to_string(), Value::StringListVal(vec![])),
             ("value".to_string(), Value::StringVal("first".to_string())),
         ];
 
@@ -148,32 +158,32 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].0, "result");
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 1);
-            assert_eq!(list[0], Value::StringVal("first".to_string()));
+            assert_eq!(list[0], "first");
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 
     #[test]
-    fn test_append_different_types() {
+    fn test_append_multiple_times() {
         let inputs = vec![
             (
                 "list".to_string(),
-                Value::ListVal(vec![Value::U32Val(1), Value::U32Val(2)]),
+                Value::StringListVal(vec!["one".to_string(), "two".to_string()]),
             ),
-            ("value".to_string(), Value::StringVal("mixed".to_string())),
+            ("value".to_string(), Value::StringVal("three".to_string())),
         ];
 
         let result = Component::execute(inputs).unwrap();
         assert_eq!(result.len(), 1);
 
-        if let Value::ListVal(list) = &result[0].1 {
+        if let Value::StringListVal(list) = &result[0].1 {
             assert_eq!(list.len(), 3);
-            assert_eq!(list[2], Value::StringVal("mixed".to_string()));
+            assert_eq!(list[2], "three");
         } else {
-            panic!("Expected ListVal");
+            panic!("Expected StringListVal");
         }
     }
 }
