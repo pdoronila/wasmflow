@@ -8,6 +8,7 @@
 # rust = "1.81"
 python = "3.11"                  # For Python WASM components
 node = "20"                      # For JavaScript WASM components
+nu = "latest"                    # Nushell for scripting
 
 # Additional tools
 "cargo:cargo-component" = "latest"    # Rust WASM component compiler
@@ -29,6 +30,7 @@ run = """
 echo "✓ Rust toolchain installed"
 echo "✓ Python tools installed"
 echo "✓ Node.js tools installed"
+echo "✓ Nushell installed"
 echo ""
 echo "WasmFlow is ready for development!"
 echo ""
@@ -61,6 +63,9 @@ echo "Node.js:"
 node --version
 npm --version
 componentize-js --version 2>/dev/null || echo "  ⚠ componentize-js not installed (should be auto-installed)"
+echo ""
+echo "Nushell:"
+nu --version 2>/dev/null || echo "  ⚠ nushell not installed (should be auto-installed)"
 echo ""
 echo "WASM Tools:"
 cargo-component --version 2>/dev/null || echo "  ⚠ cargo-component not installed (should be auto-installed)"
