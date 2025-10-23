@@ -1,6 +1,6 @@
 wit_bindgen::generate!({
     world: "component",
-    path: "../wit",
+    path: "./wit",
 });
 
 use exports::metadata::Guest as MetadataGuest;
