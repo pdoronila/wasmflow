@@ -139,6 +139,20 @@ impl DefaultFooterView {
                                 }
                             }
                         }
+                        DataType::Bool => {
+                            // Initialize if needed
+                            if input_port.current_value.is_none() {
+                                input_port.current_value = Some(NodeValue::Bool(false));
+                            }
+
+                            if let Some(NodeValue::Bool(ref mut b)) =
+                                input_port.current_value
+                            {
+                                if ui.checkbox(b, "").changed() {
+                                    node.dirty = true;
+                                }
+                            }
+                        }
                         DataType::List(_) | DataType::Record(_) | DataType::Binary => {
                             ui.label("(complex - needs custom view)");
                         }
