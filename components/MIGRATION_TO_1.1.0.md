@@ -187,6 +187,20 @@ error: failed to get `wit-bindgen` as a dependency
 
 **Solution:** Wait and retry the build. Dependencies should already be cached after the first successful build.
 
+### Package version conflicts in WIT
+
+**Symptom:**
+```
+error: package identifier `wasmflow:node@1.0.0` does not match
+       previous package name of `wasmflow:node@1.1.0`
+```
+
+**Cause:** Component has multiple WIT files declaring the same package with different versions (e.g., `node.wit` at 1.1.0 and `world.wit` at 1.0.0).
+
+**Solution:** Remove redundant WIT files. The `node.wit` file should be self-contained with all types, interfaces, and world definitions. Delete any duplicate `world.wit` files.
+
+**Example:** The double-number component had this issue - fixed by removing `wit/world.wit`.
+
 ## Files Changed
 
 - ✅ `wit/node.wit` - Root WIT specification (1.0.0 → 1.1.0)
