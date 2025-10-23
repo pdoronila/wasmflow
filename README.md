@@ -8,12 +8,50 @@ WasmFlow is a native desktop sandbox application for exploring WebAssembly and W
 
 ## Prerequisites
 
-- Rust 1.75 or later (stable channel)
-- For component development:
-  ```bash
-  rustup target add wasm32-wasip2
-  cargo install cargo-component
-  ```
+### Option 1: Using mise (Recommended)
+
+[mise](https://mise.jdx.dev/) automatically manages all required tools and dependencies:
+
+```bash
+# Install mise (if not already installed)
+curl https://mise.run | sh
+
+# Install all dependencies (Python, Node.js, cargo-component, etc.)
+mise install
+
+# Run setup tasks (Python tools, Rust target)
+mise run setup
+
+# Verify installation
+mise run verify
+```
+
+That's it! mise handles:
+- ✓ Python 3.11 and `componentize-py`
+- ✓ Node.js 20 and `componentize-js`
+- ✓ `cargo-component` and `wasm-tools`
+- ✓ `wasm32-wasip2` Rust target
+
+### Option 2: Manual Installation
+
+If you prefer manual setup:
+
+1. **Rust 1.75 or later** (stable channel)
+   ```bash
+   rustup target add wasm32-wasip2
+   ```
+
+2. **Component compilation tools:**
+   ```bash
+   # Rust components
+   cargo install cargo-component
+
+   # Python components (optional)
+   pip install componentize-py
+
+   # JavaScript components (optional)
+   npm install -g @bytecodealliance/componentize-js
+   ```
 
 ## Building
 
@@ -26,36 +64,87 @@ cargo build --release
 
 # Run
 cargo run
+
+# Or use mise tasks
+mise run dev      # Run in development mode
+mise run build    # Build release
+mise run test     # Run all tests
 ```
 
 ## Project Structure
 
 ```
 src/
-├── ui/              # egui + egui-snarl node editor
-├── runtime/         # wasmtime execution engine
-├── graph/           # petgraph-based graph management
-└── builtin/         # built-in node implementations
+├── ui/                      # egui + egui-snarl node editor
+│   ├── app/                 # Main application (modular architecture)
+│   │   ├── state.rs         # File I/O, undo/redo, graph lifecycle
+│   │   ├── components.rs    # WASM component loading
+│   │   ├── permissions.rs   # Capability-based security dialogs
+│   │   ├── composition.rs   # WAC composition, drill-down navigation
+│   │   └── execution.rs     # Graph execution, continuous nodes
+│   ├── canvas/              # Visual graph editor (modular)
+│   │   ├── node_data.rs     # Node/port data structures
+│   │   ├── viewer.rs        # egui-snarl viewer implementation
+│   │   ├── footer.rs        # Node footer rendering
+│   │   └── selection.rs     # Rectangle selection
+│   ├── dialogs.rs           # UI dialogs (permissions, metadata, etc.)
+│   ├── palette.rs           # Component palette with search
+│   └── theme.rs             # Visual theming
+├── runtime/                 # wasmtime execution engine
+│   ├── engine.rs            # Graph execution orchestrator
+│   ├── wasm_host.rs         # WASM component manager
+│   ├── compiler.rs          # Component compilation (Rust/Python/JS)
+│   ├── capabilities.rs      # Security and permission system
+│   └── continuous.rs        # Long-running node execution
+├── graph/                   # petgraph-based graph management
+│   ├── graph.rs             # NodeGraph structure
+│   ├── node.rs              # Node and port types
+│   ├── connection.rs        # Type-safe connections
+│   ├── execution.rs         # Topological sorting
+│   ├── serialization.rs     # Save/load with CRC validation
+│   ├── command.rs           # Undo/redo commands
+│   └── drill_down.rs        # Composite node navigation
+└── builtin/                 # Built-in node implementations
+    ├── math.rs              # Arithmetic operations
+    ├── constants.rs         # Constant values
+    ├── continuous_example.rs # Long-running examples
+    └── wasm_creator.rs      # In-app component builder
 
 tests/
-├── contract/        # Component WIT contract tests
-├── integration/     # Graph execution integration tests
-└── unit/            # Core logic unit tests
+├── contract/                # Component WIT contract tests
+├── integration/             # Graph execution integration tests
+└── unit/                    # Core logic unit tests
 
-components/          # User-defined WASM components
-wit/                 # WIT interface definitions
-docs/                # Development guides and examples
+components/bin/              # User-defined WASM components (.wasm files)
+wit/                         # WIT interface definitions
+docs/                        # Development guides and examples
+.mise.toml                   # Tool version management
 ```
 
 ## Features
 
+### Core Features
 - **Visual Node Editor**: Intuitive drag-and-drop interface powered by egui-snarl
-- **Type-Safe Connections**: Compile-time type checking prevents incompatible connections
+- **Type-Safe Connections**: Runtime type checking prevents incompatible connections
 - **WebAssembly Components**: Load custom nodes as WASM components with hot-reload support
 - **Capability-Based Security**: Fine-grained permission system for file/network access
-- **Graph Serialization**: Save and load complete graphs with checksum validation
-- **Built-in Nodes**: Math operations (Add, Subtract, Multiply, Divide), Constants
+- **Graph Serialization**: Save and load complete graphs with CRC64 checksum validation
 - **Undo/Redo**: Full command history with non-destructive editing
+- **Component Composition**: Compose multiple WASM components into composite nodes with WAC
+- **Drill-Down Navigation**: Explore internal structure of composite nodes visually
+
+### Built-in Nodes
+- **Math Operations**: Add, Subtract, Multiply, Divide
+- **Constants**: Type-specific constant values (F32, I32, U32, String)
+- **Continuous Execution**: Long-running nodes with start/stop controls
+- **WASM Creator**: In-app component builder with live compilation (Rust/Python/JavaScript)
+
+### Development Features
+- **Modular Architecture**: Clean separation of concerns in UI and runtime layers
+- **Hot Reload**: Develop components iteratively without restarting
+- **Component Search**: Fast palette search with fuzzy matching
+- **Recent Files**: Quick access to recently edited graphs
+- **Graph Metadata**: Track author, description, creation/modification dates
 
 ## Quick Start
 
@@ -93,13 +182,13 @@ WasmFlow supports user-defined nodes as WebAssembly components. Create powerful 
 
 ```bash
 # Navigate to example
-cd examples/double-number
+cd components/double-number
 
 # Build the component (WASI Preview 2)
 cargo component build --target wasm32-wasip2 --release
 
 # Copy to components directory
-cp target/wasm32-wasip2/release/double_number.wasm ../../components/
+cp target/wasm32-wasip2/release/double_number.wasm ../bin/
 
 # Load in WasmFlow
 # File → Reload Components
@@ -127,13 +216,13 @@ The HTTP Fetch component demonstrates real network capabilities using **WASI HTT
 
 ```bash
 # Navigate to HTTP Fetch example
-cd examples/example-http-fetch
+cd components/http-fetch
 
 # Build the component (WASI Preview 2 with HTTP support)
 cargo build --target wasm32-wasip2 --release
 
 # Copy to components directory
-cp target/wasm32-wasip2/release/example_http_fetch.wasm ../../components/
+cp target/wasm32-wasip2/release/example_http_fetch.wasm ../bin/
 
 # Load in WasmFlow
 # File → Reload Components
@@ -191,7 +280,7 @@ Run comprehensive test suite:
 cargo test --all
 
 # Unit tests for HTTP Fetch component
-cd examples/example-http-fetch
+cd components/http-fetch
 cargo test
 
 # Integration tests (requires network)
@@ -294,56 +383,18 @@ cargo build --release
 - **[Architecture Plan](specs/001-webassembly-based-node/plan.md)** - System design and tech stack
 - **[WIT Interface](specs/001-webassembly-based-node/contracts/node-interface.wit)** - Component contract
 
-## Project Structure
-
-```
-wasmflow/
-├── src/
-│   ├── ui/              # egui + egui-snarl node editor
-│   │   ├── app.rs       # Main application state
-│   │   ├── canvas.rs    # Visual graph editor
-│   │   ├── palette.rs   # Component palette
-│   │   └── dialogs.rs   # UI dialogs
-│   ├── runtime/         # wasmtime execution engine
-│   │   ├── engine.rs    # Graph execution orchestrator
-│   │   ├── wasm_host.rs # WASM component manager
-│   │   └── capabilities.rs # Security system
-│   ├── graph/           # petgraph-based graph management
-│   │   ├── graph.rs     # NodeGraph structure
-│   │   ├── node.rs      # Node and port types
-│   │   ├── connection.rs # Type-safe connections
-│   │   ├── execution.rs # Topological sorting
-│   │   ├── serialization.rs # Save/load with validation
-│   │   └── command.rs   # Undo/redo commands
-│   └── builtin/         # Built-in node implementations
-│       ├── math.rs      # Arithmetic operations
-│       └── constants.rs # Constant values
-├── tests/
-│   ├── contract/        # Component WIT contract tests
-│   ├── integration/     # Graph execution integration tests
-│   └── unit/            # Core logic unit tests
-├── examples/
-│   └── double-number/   # Example custom component
-├── components/          # User-defined WASM components (.wasm files)
-├── wit/                 # WIT interface definitions
-├── docs/                # Development guides
-│   └── BUILDING_COMPONENTS.md  # Component development guide
-└── specs/               # Feature specifications
-    └── 001-webassembly-based-node/
-        ├── quickstart.md      # Getting started guide
-        ├── plan.md            # Architecture and design
-        ├── data-model.md      # Entity relationships
-        └── contracts/         # WIT interfaces
-```
-
 ## Technology Stack
 
-- **UI**: egui 0.32, eframe 0.32, egui-snarl 0.8
-- **WASM Runtime**: wasmtime 27.0 with component-model support
-- **Graph**: petgraph 0.6 for algorithms (topological sort, cycle detection)
-- **Serialization**: bincode 1.3 with CRC64 checksums for integrity
-- **Async**: tokio 1.40 for future WASM execution
+- **UI Framework**: egui 0.33, eframe 0.33, egui-snarl (latest from git)
+- **WASM Runtime**: wasmtime 27.0 with component-model and async support
+- **WASI Extensions**: wasmtime-wasi 27.0, wasmtime-wasi-http 27.0
+- **Graph Algorithms**: petgraph 0.6 (topological sort, cycle detection)
+- **Serialization**: bincode 1.3, serde/serde_json with BTreeMap for deterministic ordering
+- **Data Integrity**: CRC 3.0 for CRC64 checksums
+- **Composition**: wac-graph 0.8 for WebAssembly composition
+- **Async Runtime**: tokio 1.40 for background execution
 - **Error Handling**: anyhow 1.0, thiserror 1.0
+- **Utilities**: uuid 1.6, chrono 0.4, regex 1.10
 
 ## Contributing
 
@@ -355,17 +406,36 @@ wasmflow/
 
 ## Roadmap
 
+### Completed ✓
 - [x] Visual node editor with drag-and-drop
-- [x] Type-safe node connections
+- [x] Type-safe node connections with runtime validation
 - [x] Graph execution with topological sort
-- [x] Save/load graphs with validation
+- [x] Save/load graphs with CRC64 validation
 - [x] Built-in math and constant nodes
-- [x] WASM component loading infrastructure
+- [x] WASM component loading infrastructure with hot-reload
 - [x] Capability-based security system
-- [ ] Full async component execution
-- [ ] Permission dialog UI
-- [ ] Additional built-in nodes (text, logic, I/O)
-- [ ] Graph debugging and visualization
+- [x] Permission dialog UI (view, approve, revoke, upgrade)
+- [x] Component composition with WAC (WebAssembly Composition)
+- [x] Drill-down navigation for composite nodes
+- [x] Continuous execution nodes (long-running processes)
+- [x] In-app WASM component builder (Rust/Python/JavaScript)
+- [x] Rectangle selection tool
+- [x] Recent files management
+- [x] Graph metadata editor
+- [x] Modular UI architecture refactoring
+- [x] Component palette with search
+
+### In Progress 🚧
+- [ ] Full async component execution with streaming I/O
+- [ ] Python and JavaScript component examples
+- [ ] Enhanced debugging and visualization tools
+
+### Planned 📋
+- [ ] Additional built-in nodes (text manipulation, logic gates, file I/O)
+- [ ] Breakpoint debugging for graph execution
+- [ ] Performance profiling and metrics
+- [ ] Graph templates and snippets
+- [ ] Export graphs to standalone WASM modules
 
 ## License
 
