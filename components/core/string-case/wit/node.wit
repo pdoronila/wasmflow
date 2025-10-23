@@ -11,6 +11,7 @@ interface types {
         i32-type,
         f32-type,
         string-type,
+        bool-type,
         binary-type,
         list-type,
         any-type,
@@ -22,7 +23,9 @@ interface types {
         i32-val(s32),
         f32-val(f32),
         string-val(string),
+        bool-val(bool),
         binary-val(list<u8>),
+        list-val(list<value>),
     }
 
     /// Port specification
