@@ -1,0 +1,76 @@
+// Double Number Component - Example WasmFlow Component
+package wasmflow:node@1.0.0;
+
+// Copy the necessary types and interfaces from wasmflow:node
+
+/// Data types supported by WasmFlow
+interface types {
+    variant data-type {
+        u32-type,
+        i32-type,
+        f32-type,
+        string-type,
+        binary-type,
+        list-type,
+        any-type,
+    }
+
+    variant value {
+        u32-val(u32),
+        i32-val(s32),
+        f32-val(f32),
+        string-val(string),
+        binary-val(list<u8>),
+    }
+
+    record port-spec {
+        name: string,
+        data-type: data-type,
+        optional: bool,
+        description: string,
+    }
+
+    record component-info {
+        name: string,
+        version: string,
+        description: string,
+        author: string,
+        category: option<string>,
+    }
+
+    record execution-error {
+        message: string,
+        input-name: option<string>,
+        recovery-hint: option<string>,
+    }
+}
+
+/// Host functions provided by WasmFlow
+interface host {
+    log: func(level: string, message: string);
+    get-temp-dir: func() -> result<string, string>;
+}
+
+/// Metadata interface
+interface metadata {
+    use types.{component-info, port-spec};
+
+    get-info: func() -> component-info;
+    get-inputs: func() -> list<port-spec>;
+    get-outputs: func() -> list<port-spec>;
+    get-capabilities: func() -> option<list<string>>;
+}
+
+/// Execution interface
+interface execution {
+    use types.{value, execution-error};
+
+    execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
+}
+
+/// Main component world
+world component {
+    import host;
+    export metadata;
+    export execution;
+}
