@@ -146,7 +146,7 @@ const result = value * 2.0;
             "builtin:development:wasm-creator".to_string(),
             "WASM Creator".to_string(),
             "Create custom WASM components from Rust code".to_string(),
-            Some("Development".to_string()),
+            Some("Builtin".to_string()),
         )
         // Creator nodes don't have traditional inputs/outputs
         // They create other components instead

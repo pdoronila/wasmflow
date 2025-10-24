@@ -76,7 +76,7 @@ pub fn register_continuous_example(registry: &mut crate::graph::node::ComponentR
         "builtin:continuous:timer".to_string(),
         "Continuous Timer".to_string(),
         "A timer that continuously increments a counter. Example of continuous execution.".to_string(),
-        Some("Example".to_string()),
+        Some("Builtin".to_string()),
     )
     .with_input("interval".to_string(), DataType::U32, "Interval in milliseconds (default: 100)".to_string())
     .with_output("counter".to_string(), DataType::U32, "Number of iterations".to_string())
@@ -89,7 +89,7 @@ pub fn register_continuous_example(registry: &mut crate::graph::node::ComponentR
         "builtin:continuous:combiner".to_string(),
         "Continuous Combiner".to_string(),
         "Combines two string inputs continuously. Demonstrates reactive input processing.".to_string(),
-        Some("Example".to_string()),
+        Some("Builtin".to_string()),
     )
     .with_input("input_a".to_string(), DataType::String, "First input string".to_string())
     .with_input("input_b".to_string(), DataType::String, "Second input string".to_string())

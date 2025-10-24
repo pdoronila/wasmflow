@@ -15,7 +15,7 @@ use super::dialogs::{
 use super::palette::{Palette, PaletteAction};
 use super::theme::Theme;
 use crate::builtin::{
-    register_constant_nodes, register_continuous_example, register_math_nodes,
+    register_constant_nodes, register_continuous_example,
     register_wasm_creator_node,
 };
 use crate::graph::command::CommandHistory;
@@ -130,7 +130,6 @@ impl WasmFlowApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         // Create component registry and register builtin nodes
         let mut registry = ComponentRegistry::new();
-        register_math_nodes(&mut registry);
         register_constant_nodes(&mut registry);
         register_wasm_creator_node(&mut registry);
         register_continuous_example(&mut registry);

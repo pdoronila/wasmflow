@@ -650,32 +650,7 @@ impl ExecutionReport {
 }
 
 // Implement NodeExecutor for builtin nodes
-use crate::builtin::math::{AddNode, DivideNode, MultiplyNode, SubtractNode};
 use crate::builtin::constants::ConstantNode;
-
-impl NodeExecutor for AddNode {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
-        crate::builtin::math::MathOperation::execute(self, inputs)
-    }
-}
-
-impl NodeExecutor for SubtractNode {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
-        crate::builtin::math::MathOperation::execute(self, inputs)
-    }
-}
-
-impl NodeExecutor for MultiplyNode {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
-        crate::builtin::math::MathOperation::execute(self, inputs)
-    }
-}
-
-impl NodeExecutor for DivideNode {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
-        crate::builtin::math::MathOperation::execute(self, inputs)
-    }
-}
 
 // For constant nodes, we need a wrapper since they don't use the MathOperation trait
 pub struct ConstantExecutor {
@@ -697,23 +672,6 @@ impl NodeExecutor for ConstantExecutor {
 
 /// Register all builtin node executors
 pub fn register_builtin_executors(engine: &mut ExecutionEngine) {
-    engine.register_executor(
-        "builtin:math:add".to_string(),
-        Box::new(AddNode),
-    );
-    engine.register_executor(
-        "builtin:math:subtract".to_string(),
-        Box::new(SubtractNode),
-    );
-    engine.register_executor(
-        "builtin:math:multiply".to_string(),
-        Box::new(MultiplyNode),
-    );
-    engine.register_executor(
-        "builtin:math:divide".to_string(),
-        Box::new(DivideNode),
-    );
-
     // Register constant executors for different types
     engine.register_executor(
         "builtin:constant:f32".to_string(),

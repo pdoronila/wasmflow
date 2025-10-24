@@ -40,7 +40,7 @@ impl ConstantNode {
             format!("builtin:constant:{}", type_name.to_lowercase()),
             format!("Constant ({})", type_name),
             format!("Outputs a constant {} value", type_name),
-            Some("Constants".to_string()),
+            Some("Builtin".to_string()),
         )
         .with_output("value".to_string(), data_type, format!("Constant {} value", type_name))
     }
