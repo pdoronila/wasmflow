@@ -13,6 +13,7 @@ use super::dialogs::{
     UnsavedChangesAction, UnsavedChangesDialog,
 };
 use super::palette::{Palette, PaletteAction};
+use super::spotlight::{SpotlightAction, SpotlightSearch};
 use super::theme::Theme;
 use crate::builtin::{
     register_constant_nodes, register_continuous_example,
@@ -67,6 +68,10 @@ pub struct WasmFlowApp {
     palette: Palette,
     /// T092: Graph metadata editor dialog
     metadata_dialog: GraphMetadataDialog,
+    /// Spotlight search for quick node creation
+    spotlight: SpotlightSearch,
+    /// Last space key press time for double-space detection
+    last_space_time: Option<std::time::Instant>,
     /// Application theme
     theme: Theme,
     /// Incremental execution state
@@ -169,6 +174,8 @@ impl WasmFlowApp {
             about_dialog: AboutDialog::new(),
             palette: Palette::new(),
             metadata_dialog: GraphMetadataDialog::new(),
+            spotlight: SpotlightSearch::new(),
+            last_space_time: None,
             theme: Theme::dark(),
             execution_state: None,
             continuous_manager: ContinuousExecutionManager::new(),
@@ -820,10 +827,49 @@ impl eframe::App for WasmFlowApp {
             self.load_graph();
         }
 
+        // Handle double-space for spotlight search (only when no dialog is open)
+        if !self.spotlight.is_visible()
+            && !self.unsaved_changes_dialog.is_open()
+            && !self.permission_dialog.is_open()
+            && !self.permissions_view_dialog.is_open()
+            && !self.about_dialog.is_open()
+            && !self.metadata_dialog.is_open()
+        {
+            if ctx.input(|i| i.key_pressed(egui::Key::Space)) {
+                let now = std::time::Instant::now();
+
+                if let Some(last_time) = self.last_space_time {
+                    // Check if this is within 300ms of the last space press
+                    if now.duration_since(last_time).as_millis() <= 300 {
+                        // Double-space detected! Open spotlight
+                        self.spotlight.open();
+                        self.last_space_time = None;
+                    } else {
+                        // Too slow, reset timer
+                        self.last_space_time = Some(now);
+                    }
+                } else {
+                    // First space press
+                    self.last_space_time = Some(now);
+                }
+            }
+        }
+
         self.render_menu_bar(ctx);
         self.render_status_bar(ctx);
         self.render_palette(ctx);
         self.render_canvas(ctx);
+
+        // Render spotlight search (must be after canvas to overlay on top)
+        let mouse_pos = ctx.input(|i| i.pointer.hover_pos());
+        if let Some(action) = self.spotlight.show(ctx, &self.registry, mouse_pos) {
+            match action {
+                SpotlightAction::AddComponent { spec, position } => {
+                    // Use the existing permission handling logic
+                    self.handle_add_component_with_permissions(spec, position);
+                }
+            }
+        }
     }
 }
 

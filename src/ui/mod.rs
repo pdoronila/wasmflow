@@ -10,6 +10,7 @@ mod dialogs;
 pub(crate) mod execution_status; // T031: Visual indicators for continuous execution states
 mod palette;
 pub mod selection; // T002: Rectangle selection state management
+mod spotlight; // Spotlight search for quick node creation
 mod theme;
 pub mod wit_ui_renderer;
 
