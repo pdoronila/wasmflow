@@ -1,5 +1,5 @@
 [package]
-name = "example-json-parser"
+name = "json-parser"
 version = "1.0.0"
 edition = "2021"
 

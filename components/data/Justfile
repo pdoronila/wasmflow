@@ -1,0 +1,27 @@
+set shell := ["nu", "-c"]
+set unstable
+
+build component:
+  just --justfile {{component}}/Justfile build
+
+install component:
+  just --justfile {{component}}/Justfile install
+
+list-all:
+    ls | where type == dir | get name
+
+# Build all components in core category
+build-all:
+    ls | where type == dir | get name | each { |component| just build $component }
+
+# Install all components to bin/
+install-all:
+  ls | where type == dir | get name | each { |component| just install $component }
+
+# Test all components
+test-all:
+    ls | where type == dir | get name | each { |component| cd $component; cargo test }
+
+# Clean all build artifacts
+clean-all:
+    ls | where type == dir | get name | each { |component| cd $component; cargo clean }

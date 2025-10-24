@@ -1,0 +1,174 @@
+{
+  "nodes": {
+    "const_list": {
+      "component": "Constant",
+      "position": [100.0, 100.0],
+      "value": {
+        "type": "list",
+        "value": ["apple", "banana", "cherry", "date", "elderberry"]
+      }
+    },
+    "const_append_value": {
+      "component": "Constant",
+      "position": [100.0, 200.0],
+      "value": {
+        "type": "string",
+        "value": "fig"
+      }
+    },
+    "const_index": {
+      "component": "Constant",
+      "position": [100.0, 300.0],
+      "value": {
+        "type": "u32",
+        "value": 2
+      }
+    },
+    "const_search_value": {
+      "component": "Constant",
+      "position": [100.0, 400.0],
+      "value": {
+        "type": "string",
+        "value": "cherry"
+      }
+    },
+    "const_slice_start": {
+      "component": "Constant",
+      "position": [100.0, 500.0],
+      "value": {
+        "type": "u32",
+        "value": 1
+      }
+    },
+    "const_slice_end": {
+      "component": "Constant",
+      "position": [100.0, 600.0],
+      "value": {
+        "type": "u32",
+        "value": 4
+      }
+    },
+    "const_delimiter": {
+      "component": "Constant",
+      "position": [100.0, 700.0],
+      "value": {
+        "type": "string",
+        "value": ", "
+      }
+    },
+    "list_length": {
+      "component": "list-length",
+      "position": [400.0, 100.0]
+    },
+    "list_get": {
+      "component": "list-get",
+      "position": [400.0, 200.0]
+    },
+    "list_append": {
+      "component": "list-append",
+      "position": [400.0, 300.0]
+    },
+    "list_slice": {
+      "component": "list-slice",
+      "position": [700.0, 300.0]
+    },
+    "list_contains": {
+      "component": "list-contains",
+      "position": [400.0, 400.0]
+    },
+    "list_index_of": {
+      "component": "list-index-of",
+      "position": [400.0, 500.0]
+    },
+    "list_join": {
+      "component": "list-join",
+      "position": [1000.0, 300.0]
+    }
+  },
+  "connections": [
+    {
+      "from": "const_list",
+      "from_port": "value",
+      "to": "list_length",
+      "to_port": "list"
+    },
+    {
+      "from": "const_list",
+      "from_port": "value",
+      "to": "list_get",
+      "to_port": "list"
+    },
+    {
+      "from": "const_index",
+      "from_port": "value",
+      "to": "list_get",
+      "to_port": "index"
+    },
+    {
+      "from": "const_list",
+      "from_port": "value",
+      "to": "list_append",
+      "to_port": "list"
+    },
+    {
+      "from": "const_append_value",
+      "from_port": "value",
+      "to": "list_append",
+      "to_port": "value"
+    },
+    {
+      "from": "list_append",
+      "from_port": "result",
+      "to": "list_slice",
+      "to_port": "list"
+    },
+    {
+      "from": "const_slice_start",
+      "from_port": "value",
+      "to": "list_slice",
+      "to_port": "start"
+    },
+    {
+      "from": "const_slice_end",
+      "from_port": "value",
+      "to": "list_slice",
+      "to_port": "end"
+    },
+    {
+      "from": "const_list",
+      "from_port": "value",
+      "to": "list_contains",
+      "to_port": "list"
+    },
+    {
+      "from": "const_search_value",
+      "from_port": "value",
+      "to": "list_contains",
+      "to_port": "value"
+    },
+    {
+      "from": "const_list",
+      "from_port": "value",
+      "to": "list_index_of",
+      "to_port": "list"
+    },
+    {
+      "from": "const_search_value",
+      "from_port": "value",
+      "to": "list_index_of",
+      "to_port": "value"
+    },
+    {
+      "from": "list_slice",
+      "from_port": "result",
+      "to": "list_join",
+      "to_port": "list"
+    },
+    {
+      "from": "const_delimiter",
+      "from_port": "value",
+      "to": "list_join",
+      "to_port": "delimiter"
+    }
+  ]
+}

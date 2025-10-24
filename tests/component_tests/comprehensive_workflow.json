@@ -1,0 +1,713 @@
+{
+  "name": "Comprehensive Core Library Workflow",
+  "description": "Demonstrates all 34 components from all 5 categories working together in a realistic data processing pipeline. This workflow processes user data, validates it, performs calculations, manipulates collections, and formats output.",
+  "test_scenario": "User Data Processing Pipeline: Extract user information from a list, validate age requirements, calculate derived values, format output messages",
+  "nodes": [
+    {
+      "id": "const_user_list",
+      "component": "constant",
+      "label": "User Data List",
+      "value": ["Alice,25,Engineer", "Bob,17,Student", "Charlie,30,Manager", "Diana,22,Designer"],
+      "type": "string_list",
+      "comment": "Raw CSV-formatted user data: name,age,profession"
+    },
+    {
+      "id": "const_adult_age",
+      "component": "constant",
+      "label": "Adult Age Threshold",
+      "value": 18,
+      "type": "u32",
+      "comment": "Minimum age for adult classification"
+    },
+    {
+      "id": "const_comma",
+      "component": "constant",
+      "label": "CSV Delimiter",
+      "value": ",",
+      "type": "string"
+    },
+    {
+      "id": "const_template",
+      "component": "constant",
+      "label": "Output Template",
+      "value": "User {0} (Age: {1}) is a {2}. Status: {3}",
+      "type": "string"
+    },
+    {
+      "id": "const_final_delimiter",
+      "component": "constant",
+      "label": "Output Delimiter",
+      "value": " | ",
+      "type": "string"
+    },
+    {
+      "id": "const_first_user_index",
+      "component": "constant",
+      "label": "First User Index",
+      "value": 0,
+      "type": "u32",
+      "comment": "Get Alice's data"
+    },
+    {
+      "id": "const_age_squared_base",
+      "component": "constant",
+      "label": "Age Power Base",
+      "value": 2.0,
+      "type": "f32",
+      "comment": "For calculating age squared"
+    },
+    {
+      "id": "const_greeting_prefix",
+      "component": "constant",
+      "label": "Greeting Prefix",
+      "value": "Hello ",
+      "type": "string"
+    },
+    {
+      "id": "list_get_first",
+      "component": "list-get",
+      "label": "[Collections] Get First User",
+      "comment": "Extract Alice's record from list"
+    },
+    {
+      "id": "split_first_user",
+      "component": "string-split",
+      "label": "[Text] Parse First User CSV",
+      "comment": "Split Alice's record into fields"
+    },
+    {
+      "id": "list_get_name",
+      "component": "list-get",
+      "label": "[Collections] Extract Name",
+      "comment": "Get name field (index 0)"
+    },
+    {
+      "id": "const_name_field_index",
+      "component": "constant",
+      "value": 0,
+      "type": "u32"
+    },
+    {
+      "id": "list_get_age",
+      "component": "list-get",
+      "label": "[Collections] Extract Age",
+      "comment": "Get age field (index 1)"
+    },
+    {
+      "id": "const_age_field_index",
+      "component": "constant",
+      "value": 1,
+      "type": "u32"
+    },
+    {
+      "id": "list_get_profession",
+      "component": "list-get",
+      "label": "[Collections] Extract Profession",
+      "comment": "Get profession field (index 2)"
+    },
+    {
+      "id": "const_profession_field_index",
+      "component": "constant",
+      "value": 2,
+      "type": "u32"
+    },
+    {
+      "id": "parse_age",
+      "component": "parse-number",
+      "label": "[Data] Parse Age String",
+      "comment": "Convert '25' to 25.0"
+    },
+    {
+      "id": "compare_age",
+      "component": "compare",
+      "label": "[Logic] Check Adult Status",
+      "comment": "Is age >= 18?"
+    },
+    {
+      "id": "const_compare_op",
+      "component": "constant",
+      "value": "greater-or-equal",
+      "type": "string"
+    },
+    {
+      "id": "to_string_adult_check",
+      "component": "to-string",
+      "label": "[Data] Adult Status to String",
+      "comment": "Convert true/false to 'true'/'false'"
+    },
+    {
+      "id": "power_age",
+      "component": "power",
+      "label": "[Math] Age Squared",
+      "comment": "Calculate age^2 for demonstration"
+    },
+    {
+      "id": "sqrt_age_squared",
+      "component": "sqrt",
+      "label": "[Math] Square Root",
+      "comment": "Should return original age"
+    },
+    {
+      "id": "floor_age",
+      "component": "floor",
+      "label": "[Math] Floor Age",
+      "comment": "Round down age (no-op for integers)"
+    },
+    {
+      "id": "abs_age",
+      "component": "abs",
+      "label": "[Math] Absolute Age",
+      "comment": "Get absolute value (no-op for positive)"
+    },
+    {
+      "id": "round_age",
+      "component": "round",
+      "label": "[Math] Round Age",
+      "comment": "Round to nearest integer"
+    },
+    {
+      "id": "string_concat_greeting",
+      "component": "string-concat",
+      "label": "[Text] Build Greeting",
+      "comment": "Concatenate 'Hello ' + name"
+    },
+    {
+      "id": "string_length_name",
+      "component": "string-length",
+      "label": "[Text] Name Length",
+      "comment": "Get character count of name"
+    },
+    {
+      "id": "string_trim_profession",
+      "component": "string-trim",
+      "label": "[Text] Trim Profession",
+      "comment": "Remove any whitespace"
+    },
+    {
+      "id": "string_case_profession",
+      "component": "string-case",
+      "label": "[Text] Uppercase Profession",
+      "comment": "Convert to uppercase"
+    },
+    {
+      "id": "const_uppercase_op",
+      "component": "constant",
+      "value": "uppercase",
+      "type": "string"
+    },
+    {
+      "id": "string_contains_check",
+      "component": "string-contains",
+      "label": "[Text] Check for 'Engineer'",
+      "comment": "Does profession contain 'Engineer'?"
+    },
+    {
+      "id": "const_engineer_search",
+      "component": "constant",
+      "value": "ENGINEER",
+      "type": "string"
+    },
+    {
+      "id": "boolean_and_validation",
+      "component": "boolean-and",
+      "label": "[Logic] Combined Validation",
+      "comment": "Is adult AND engineer?"
+    },
+    {
+      "id": "boolean_or_fallback",
+      "component": "boolean-or",
+      "label": "[Logic] Fallback Check",
+      "comment": "Either validation OR adult status"
+    },
+    {
+      "id": "boolean_not_inverse",
+      "component": "boolean-not",
+      "label": "[Logic] Invert Result",
+      "comment": "Logical NOT of combined validation"
+    },
+    {
+      "id": "is_empty_name",
+      "component": "is-empty",
+      "label": "[Logic] Check Empty Name",
+      "comment": "Validate name is not empty"
+    },
+    {
+      "id": "list_length_users",
+      "component": "list-length",
+      "label": "[Collections] Count Users",
+      "comment": "Get total number of users"
+    },
+    {
+      "id": "list_slice_subset",
+      "component": "list-slice",
+      "label": "[Collections] Get First 2 Users",
+      "comment": "Slice users[0:2]"
+    },
+    {
+      "id": "const_slice_start",
+      "component": "constant",
+      "value": 0,
+      "type": "u32"
+    },
+    {
+      "id": "const_slice_end",
+      "component": "constant",
+      "value": 2,
+      "type": "u32"
+    },
+    {
+      "id": "list_contains_check",
+      "component": "list-contains",
+      "label": "[Collections] Find Bob",
+      "comment": "Check if Bob's record exists"
+    },
+    {
+      "id": "const_bob_search",
+      "component": "constant",
+      "value": "Bob,17,Student",
+      "type": "string"
+    },
+    {
+      "id": "list_index_of",
+      "component": "list-index-of",
+      "label": "[Collections] Bob's Index",
+      "comment": "Find position of Bob's record"
+    },
+    {
+      "id": "to_string_age",
+      "component": "to-string",
+      "label": "[Data] Age to String",
+      "comment": "Convert age number to string for template"
+    },
+    {
+      "id": "format_template_output",
+      "component": "format-template",
+      "label": "[Data] Format User Summary",
+      "comment": "Build final output message"
+    },
+    {
+      "id": "build_template_values",
+      "component": "constant",
+      "label": "Template Values List",
+      "value": ["Alice", "25", "ENGINEER", "true"],
+      "type": "string_list",
+      "comment": "Placeholder - in real graph would come from data flow"
+    },
+    {
+      "id": "list_append_status",
+      "component": "list-append",
+      "label": "[Collections] Add Status",
+      "comment": "Append adult status to list"
+    },
+    {
+      "id": "const_adult_label",
+      "component": "constant",
+      "value": "ADULT",
+      "type": "string"
+    },
+    {
+      "id": "list_join_final",
+      "component": "list-join",
+      "label": "[Collections] Join Results",
+      "comment": "Create final comma-separated output"
+    },
+    {
+      "id": "json_stringify_data",
+      "component": "json-stringify",
+      "label": "[Data] Serialize to JSON",
+      "comment": "Convert list to JSON array"
+    },
+    {
+      "id": "min_ages",
+      "component": "min",
+      "label": "[Math] Find Minimum Age",
+      "comment": "Demo of multi-input math operation"
+    },
+    {
+      "id": "max_ages",
+      "component": "max",
+      "label": "[Math] Find Maximum Age",
+      "comment": "Demo of multi-input math operation"
+    },
+    {
+      "id": "const_age_samples",
+      "component": "constant",
+      "label": "Sample Ages",
+      "value": [17.0, 22.0, 25.0, 30.0],
+      "type": "f32_list",
+      "comment": "Ages from all users"
+    }
+  ],
+  "connections": [
+    {
+      "from": "const_user_list",
+      "from_port": "value",
+      "to": "list_get_first",
+      "to_port": "list",
+      "comment": "Feed user list to extractor"
+    },
+    {
+      "from": "const_first_user_index",
+      "from_port": "value",
+      "to": "list_get_first",
+      "to_port": "index"
+    },
+    {
+      "from": "list_get_first",
+      "from_port": "element",
+      "to": "split_first_user",
+      "to_port": "text",
+      "comment": "Parse CSV record"
+    },
+    {
+      "from": "const_comma",
+      "from_port": "value",
+      "to": "split_first_user",
+      "to_port": "delimiter"
+    },
+    {
+      "from": "split_first_user",
+      "from_port": "parts",
+      "to": "list_get_name",
+      "to_port": "list",
+      "comment": "Extract name field"
+    },
+    {
+      "from": "const_name_field_index",
+      "from_port": "value",
+      "to": "list_get_name",
+      "to_port": "index"
+    },
+    {
+      "from": "split_first_user",
+      "from_port": "parts",
+      "to": "list_get_age",
+      "to_port": "list",
+      "comment": "Extract age field"
+    },
+    {
+      "from": "const_age_field_index",
+      "from_port": "value",
+      "to": "list_get_age",
+      "to_port": "index"
+    },
+    {
+      "from": "split_first_user",
+      "from_port": "parts",
+      "to": "list_get_profession",
+      "to_port": "list",
+      "comment": "Extract profession field"
+    },
+    {
+      "from": "const_profession_field_index",
+      "from_port": "value",
+      "to": "list_get_profession",
+      "to_port": "index"
+    },
+    {
+      "from": "list_get_age",
+      "from_port": "element",
+      "to": "parse_age",
+      "to_port": "text",
+      "comment": "Convert age string to number"
+    },
+    {
+      "from": "parse_age",
+      "from_port": "number",
+      "to": "compare_age",
+      "to_port": "left",
+      "comment": "Compare age >= 18"
+    },
+    {
+      "from": "const_adult_age",
+      "from_port": "value",
+      "to": "compare_age",
+      "to_port": "right"
+    },
+    {
+      "from": "const_compare_op",
+      "from_port": "value",
+      "to": "compare_age",
+      "to_port": "operation"
+    },
+    {
+      "from": "compare_age",
+      "from_port": "result",
+      "to": "to_string_adult_check",
+      "to_port": "value",
+      "comment": "Convert boolean to string"
+    },
+    {
+      "from": "parse_age",
+      "from_port": "number",
+      "to": "power_age",
+      "to_port": "base",
+      "comment": "Math operations chain"
+    },
+    {
+      "from": "const_age_squared_base",
+      "from_port": "value",
+      "to": "power_age",
+      "to_port": "exponent"
+    },
+    {
+      "from": "power_age",
+      "from_port": "result",
+      "to": "sqrt_age_squared",
+      "to_port": "value"
+    },
+    {
+      "from": "sqrt_age_squared",
+      "from_port": "result",
+      "to": "floor_age",
+      "to_port": "value"
+    },
+    {
+      "from": "floor_age",
+      "from_port": "result",
+      "to": "abs_age",
+      "to_port": "value"
+    },
+    {
+      "from": "abs_age",
+      "from_port": "result",
+      "to": "round_age",
+      "to_port": "value"
+    },
+    {
+      "from": "const_greeting_prefix",
+      "from_port": "value",
+      "to": "string_concat_greeting",
+      "to_port": "input1"
+    },
+    {
+      "from": "list_get_name",
+      "from_port": "element",
+      "to": "string_concat_greeting",
+      "to_port": "input2",
+      "comment": "Build greeting message"
+    },
+    {
+      "from": "list_get_name",
+      "from_port": "element",
+      "to": "string_length_name",
+      "to_port": "text",
+      "comment": "Get name length"
+    },
+    {
+      "from": "list_get_name",
+      "from_port": "element",
+      "to": "is_empty_name",
+      "to_port": "value",
+      "comment": "Validate name not empty"
+    },
+    {
+      "from": "list_get_profession",
+      "from_port": "element",
+      "to": "string_trim_profession",
+      "to_port": "text",
+      "comment": "Clean profession string"
+    },
+    {
+      "from": "string_trim_profession",
+      "from_port": "result",
+      "to": "string_case_profession",
+      "to_port": "text"
+    },
+    {
+      "from": "const_uppercase_op",
+      "from_port": "value",
+      "to": "string_case_profession",
+      "to_port": "operation"
+    },
+    {
+      "from": "string_case_profession",
+      "from_port": "result",
+      "to": "string_contains_check",
+      "to_port": "text"
+    },
+    {
+      "from": "const_engineer_search",
+      "from_port": "value",
+      "to": "string_contains_check",
+      "to_port": "substring"
+    },
+    {
+      "from": "compare_age",
+      "from_port": "result",
+      "to": "boolean_and_validation",
+      "to_port": "input1",
+      "comment": "Combine validations"
+    },
+    {
+      "from": "string_contains_check",
+      "from_port": "result",
+      "to": "boolean_and_validation",
+      "to_port": "input2"
+    },
+    {
+      "from": "boolean_and_validation",
+      "from_port": "result",
+      "to": "boolean_or_fallback",
+      "to_port": "input1"
+    },
+    {
+      "from": "compare_age",
+      "from_port": "result",
+      "to": "boolean_or_fallback",
+      "to_port": "input2"
+    },
+    {
+      "from": "boolean_and_validation",
+      "from_port": "result",
+      "to": "boolean_not_inverse",
+      "to_port": "input"
+    },
+    {
+      "from": "const_user_list",
+      "from_port": "value",
+      "to": "list_length_users",
+      "to_port": "list",
+      "comment": "Count total users"
+    },
+    {
+      "from": "const_user_list",
+      "from_port": "value",
+      "to": "list_slice_subset",
+      "to_port": "list",
+      "comment": "Get subset of users"
+    },
+    {
+      "from": "const_slice_start",
+      "from_port": "value",
+      "to": "list_slice_subset",
+      "to_port": "start"
+    },
+    {
+      "from": "const_slice_end",
+      "from_port": "value",
+      "to": "list_slice_subset",
+      "to_port": "end"
+    },
+    {
+      "from": "const_user_list",
+      "from_port": "value",
+      "to": "list_contains_check",
+      "to_port": "list",
+      "comment": "Search for Bob"
+    },
+    {
+      "from": "const_bob_search",
+      "from_port": "value",
+      "to": "list_contains_check",
+      "to_port": "value"
+    },
+    {
+      "from": "const_user_list",
+      "from_port": "value",
+      "to": "list_index_of",
+      "to_port": "list"
+    },
+    {
+      "from": "const_bob_search",
+      "from_port": "value",
+      "to": "list_index_of",
+      "to_port": "value"
+    },
+    {
+      "from": "round_age",
+      "from_port": "result",
+      "to": "to_string_age",
+      "to_port": "value",
+      "comment": "Convert age to string for template"
+    },
+    {
+      "from": "const_template",
+      "from_port": "value",
+      "to": "format_template_output",
+      "to_port": "template"
+    },
+    {
+      "from": "build_template_values",
+      "from_port": "value",
+      "to": "format_template_output",
+      "to_port": "values"
+    },
+    {
+      "from": "list_slice_subset",
+      "from_port": "result",
+      "to": "list_append_status",
+      "to_port": "list",
+      "comment": "Add status to subset"
+    },
+    {
+      "from": "const_adult_label",
+      "from_port": "value",
+      "to": "list_append_status",
+      "to_port": "value"
+    },
+    {
+      "from": "list_append_status",
+      "from_port": "result",
+      "to": "list_join_final",
+      "to_port": "list"
+    },
+    {
+      "from": "const_final_delimiter",
+      "from_port": "value",
+      "to": "list_join_final",
+      "to_port": "delimiter"
+    },
+    {
+      "from": "list_slice_subset",
+      "from_port": "result",
+      "to": "json_stringify_data",
+      "to_port": "data",
+      "comment": "Serialize subset to JSON"
+    }
+  ],
+  "execution_plan": "This workflow demonstrates all 34 components in a realistic scenario. Data flows from raw user list through multiple transformations: CSV parsing, field extraction, type conversion, validation, mathematical operations, string manipulation, and final formatting. The graph shows how components compose to build complex data processing pipelines.",
+  "expected_results": {
+    "list_get_first": "Alice,25,Engineer",
+    "split_first_user": ["Alice", "25", "Engineer"],
+    "list_get_name": "Alice",
+    "list_get_age": "25",
+    "list_get_profession": "Engineer",
+    "parse_age": 25.0,
+    "compare_age": true,
+    "to_string_adult_check": "true",
+    "power_age": 625.0,
+    "sqrt_age_squared": 25.0,
+    "floor_age": 25.0,
+    "abs_age": 25.0,
+    "round_age": 25.0,
+    "string_concat_greeting": "Hello Alice",
+    "string_length_name": 5,
+    "string_trim_profession": "Engineer",
+    "string_case_profession": "ENGINEER",
+    "string_contains_check": true,
+    "boolean_and_validation": true,
+    "boolean_or_fallback": true,
+    "boolean_not_inverse": false,
+    "is_empty_name": false,
+    "list_length_users": 4,
+    "list_slice_subset": ["Alice,25,Engineer", "Bob,17,Student"],
+    "list_contains_check": true,
+    "list_index_of": 1,
+    "to_string_age": "25",
+    "format_template_output": "User Alice (Age: 25) is a ENGINEER. Status: true",
+    "list_append_status": ["Alice,25,Engineer", "Bob,17,Student", "ADULT"],
+    "list_join_final": "Alice,25,Engineer | Bob,17,Student | ADULT",
+    "json_stringify_data": "[\"Alice,25,Engineer\",\"Bob,17,Student\"]"
+  },
+  "component_coverage": {
+    "text": ["string-concat", "string-split", "string-length", "string-trim", "string-case", "string-contains"],
+    "logic": ["compare", "boolean-and", "boolean-or", "boolean-not", "is-empty"],
+    "math": ["power", "sqrt", "abs", "floor", "ceil", "round", "min", "max"],
+    "collections": ["list-length", "list-get", "list-append", "list-join", "list-slice", "list-contains", "list-index-of"],
+    "data": ["json-stringify", "to-string", "parse-number", "format-template"]
+  },
+  "total_components_used": 31,
+  "total_nodes": 56,
+  "total_connections": 67
+}

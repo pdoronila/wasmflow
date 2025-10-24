@@ -1,0 +1,170 @@
+{
+  "name": "Data Transformation Pipeline Test",
+  "description": "Integration test for Phase 7: Data Transformation components (json-stringify, to-string, parse-number, format-template)",
+  "nodes": [
+    {
+      "id": "const_number",
+      "component": "constant",
+      "label": "Number Constant",
+      "value": 42,
+      "type": "u32"
+    },
+    {
+      "id": "const_boolean",
+      "component": "constant",
+      "label": "Boolean Constant",
+      "value": true,
+      "type": "bool"
+    },
+    {
+      "id": "const_string_list",
+      "component": "constant",
+      "label": "String List Constant",
+      "value": ["apple", "banana", "cherry"],
+      "type": "string_list"
+    },
+    {
+      "id": "const_number_string",
+      "component": "constant",
+      "label": "Number String Constant",
+      "value": "123.45",
+      "type": "string"
+    },
+    {
+      "id": "const_template",
+      "component": "constant",
+      "label": "Template String",
+      "value": "Hello {0}, you scored {1} points!",
+      "type": "string"
+    },
+    {
+      "id": "const_template_values",
+      "component": "constant",
+      "label": "Template Values",
+      "value": ["Alice", "95"],
+      "type": "string_list"
+    },
+    {
+      "id": "to_string_1",
+      "component": "to-string",
+      "label": "Number to String"
+    },
+    {
+      "id": "to_string_2",
+      "component": "to-string",
+      "label": "Boolean to String"
+    },
+    {
+      "id": "parse_number_1",
+      "component": "parse-number",
+      "label": "Parse Number from String"
+    },
+    {
+      "id": "json_stringify_1",
+      "component": "json-stringify",
+      "label": "Stringify List to JSON"
+    },
+    {
+      "id": "format_template_1",
+      "component": "format-template",
+      "label": "Format Template String"
+    }
+  ],
+  "connections": [
+    {
+      "from": "const_number",
+      "from_port": "value",
+      "to": "to_string_1",
+      "to_port": "value"
+    },
+    {
+      "from": "const_boolean",
+      "from_port": "value",
+      "to": "to_string_2",
+      "to_port": "value"
+    },
+    {
+      "from": "const_number_string",
+      "from_port": "value",
+      "to": "parse_number_1",
+      "to_port": "text"
+    },
+    {
+      "from": "const_string_list",
+      "from_port": "value",
+      "to": "json_stringify_1",
+      "to_port": "data"
+    },
+    {
+      "from": "const_template",
+      "from_port": "value",
+      "to": "format_template_1",
+      "to_port": "template"
+    },
+    {
+      "from": "const_template_values",
+      "from_port": "value",
+      "to": "format_template_1",
+      "to_port": "values"
+    }
+  ],
+  "expected_outputs": {
+    "to_string_1": {
+      "text": "42"
+    },
+    "to_string_2": {
+      "text": "true"
+    },
+    "parse_number_1": {
+      "number": 123.45
+    },
+    "json_stringify_1": {
+      "json": "[\"apple\",\"banana\",\"cherry\"]"
+    },
+    "format_template_1": {
+      "result": "Hello Alice, you scored 95 points!"
+    }
+  },
+  "test_scenarios": [
+    {
+      "name": "to-string: Number Conversion",
+      "description": "Verify that u32 number 42 converts to string '42'",
+      "node": "to_string_1",
+      "expected": {
+        "text": "42"
+      }
+    },
+    {
+      "name": "to-string: Boolean Conversion",
+      "description": "Verify that boolean true converts to string 'true'",
+      "node": "to_string_2",
+      "expected": {
+        "text": "true"
+      }
+    },
+    {
+      "name": "parse-number: Parse Decimal",
+      "description": "Verify that string '123.45' parses to f32 123.45",
+      "node": "parse_number_1",
+      "expected": {
+        "number": 123.45
+      }
+    },
+    {
+      "name": "json-stringify: Serialize String List",
+      "description": "Verify that string list serializes to JSON array",
+      "node": "json_stringify_1",
+      "expected": {
+        "json": "[\"apple\",\"banana\",\"cherry\"]"
+      }
+    },
+    {
+      "name": "format-template: Replace Placeholders",
+      "description": "Verify that template placeholders {0} and {1} are replaced with values",
+      "node": "format_template_1",
+      "expected": {
+        "result": "Hello Alice, you scored 95 points!"
+      }
+    }
+  ]
+}

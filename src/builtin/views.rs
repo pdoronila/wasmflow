@@ -54,48 +54,57 @@ impl ComponentFooterView for ConstantNodeFooterView {
                             .color(egui::Color32::from_rgb(180, 180, 180))
                     );
 
-                    // Use multiline for strings, single-line for numbers
-                    let is_string = matches!(value, NodeValue::String(_));
+                    // Use multiline for strings, checkboxes for bools, single-line for numbers
+                    match value {
+                        NodeValue::String(_) => {
+                            // Multiline text edit for strings (better for JSON)
+                            let mut text_value = value.format_display();
+                            let response = ui.add(
+                                egui::TextEdit::multiline(&mut text_value)
+                                    .desired_rows(5)
+                                    .desired_width(ui.available_width())
+                            );
 
-                    if is_string {
-                        // Multiline text edit for strings (better for JSON)
-                        let mut text_value = value.format_display();
-                        let response = ui.add(
-                            egui::TextEdit::multiline(&mut text_value)
-                                .desired_rows(5)
-                                .desired_width(ui.available_width())
-                        );
-
-                        if response.changed() {
-                            // For strings, preserve the exact text
-                            let cleaned = text_value.trim_matches('"').to_string();
-                            *value = NodeValue::String(cleaned);
+                            if response.changed() {
+                                // For strings, preserve the exact text
+                                let cleaned = text_value.trim_matches('"').to_string();
+                                *value = NodeValue::String(cleaned);
+                            }
                         }
-                    } else {
-                        // Single-line edit for numbers
-                        let mut text_value = value.format_display();
-                        let response = ui.text_edit_singleline(&mut text_value);
+                        NodeValue::Bool(b) => {
+                            // Checkbox for boolean values
+                            let mut bool_value = *b;
+                            if ui.checkbox(&mut bool_value, "").changed() {
+                                *value = NodeValue::Bool(bool_value);
+                                node.dirty = true;
+                            }
+                        }
+                        _ => {
+                            // Single-line edit for numbers and other types
+                            let mut text_value = value.format_display();
+                            let response = ui.text_edit_singleline(&mut text_value);
 
-                        // If the user edited the text, parse and update the value
-                        if response.changed() {
-                            // Parse the new value based on the current type
-                            let parse_result = match value {
-                                NodeValue::F32(_) => {
-                                    text_value.parse::<f32>().map(NodeValue::F32).ok()
-                                }
-                                NodeValue::I32(_) => {
-                                    text_value.parse::<i32>().map(NodeValue::I32).ok()
-                                }
-                                NodeValue::U32(_) => {
-                                    text_value.parse::<u32>().map(NodeValue::U32).ok()
-                                }
-                                _ => None,
-                            };
+                            // If the user edited the text, parse and update the value
+                            if response.changed() {
+                                // Parse the new value based on the current type
+                                let parse_result = match value {
+                                    NodeValue::F32(_) => {
+                                        text_value.parse::<f32>().map(NodeValue::F32).ok()
+                                    }
+                                    NodeValue::I32(_) => {
+                                        text_value.parse::<i32>().map(NodeValue::I32).ok()
+                                    }
+                                    NodeValue::U32(_) => {
+                                        text_value.parse::<u32>().map(NodeValue::U32).ok()
+                                    }
+                                    _ => None,
+                                };
 
-                            // Update the value if parsing succeeded
-                            if let Some(new_value) = parse_result {
-                                *value = new_value;
-                                node.dirty = true; // Mark node as needing re-execution
+                                // Update the value if parsing succeeded
+                                if let Some(new_value) = parse_result {
+                                    *value = new_value;
+                                    node.dirty = true; // Mark node as needing re-execution
+                                }
                             }
                         }
                     }

@@ -1,0 +1,714 @@
+{
+  "_comment": "Integration test for WASM Components Core Library - String Operations",
+  "_note": "This demonstrates all 7 string components (P1) working together in a text processing pipeline.",
+  "_usage": "Load this graph in WasmFlow to validate User Story 1 acceptance scenarios.",
+
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "String Operations Integration Test",
+  "version": 1,
+
+  "metadata": {
+    "created_at": "2025-10-23T00:00:00Z",
+    "modified_at": "2025-10-23T00:00:00Z",
+    "author": "WASM Components Core Library",
+    "description": "Validates all 7 string components: trim, case, concat, split, length, contains, substring"
+  },
+
+  "nodes": {
+    "node_input_text": {
+      "id": "10000000-0000-0000-0000-000000000001",
+      "component_id": "builtin:constant:string",
+      "display_name": "Raw Input Text",
+      "position": {
+        "x": 100.0,
+        "y": 200.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_raw_text",
+          "name": "value",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "String": "  Hello WORLD! Welcome to WasmFlow.  "
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Raw text with whitespace and mixed case"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_trim": {
+      "id": "10000000-0000-0000-0000-000000000002",
+      "component_id": "user:string-trim",
+      "display_name": "String Trim",
+      "position": {
+        "x": 400.0,
+        "y": 200.0
+      },
+      "inputs": [
+        {
+          "id": "in_trim_text",
+          "name": "text",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_trim_result",
+          "name": "result",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Removes leading and trailing whitespace"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_case": {
+      "id": "10000000-0000-0000-0000-000000000003",
+      "component_id": "user:string-case",
+      "display_name": "String Case (lowercase)",
+      "position": {
+        "x": 700.0,
+        "y": 200.0
+      },
+      "inputs": [
+        {
+          "id": "in_case_text",
+          "name": "text",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_case_operation",
+          "name": "operation",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_case_result",
+          "name": "result",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Converts text case (uppercase/lowercase/titlecase)"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_case_op": {
+      "id": "10000000-0000-0000-0000-000000000004",
+      "component_id": "builtin:constant:string",
+      "display_name": "Case Operation",
+      "position": {
+        "x": 500.0,
+        "y": 350.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_case_op",
+          "name": "value",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "String": "lowercase"
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Operation selector for case conversion"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_suffix": {
+      "id": "10000000-0000-0000-0000-000000000005",
+      "component_id": "builtin:constant:string",
+      "display_name": "Suffix Text",
+      "position": {
+        "x": 800.0,
+        "y": 350.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_suffix",
+          "name": "value",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "String": " - processed by wasmflow"
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Suffix to append to processed text"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_concat": {
+      "id": "10000000-0000-0000-0000-000000000006",
+      "component_id": "user:string-concat",
+      "display_name": "String Concat",
+      "position": {
+        "x": 1000.0,
+        "y": 200.0
+      },
+      "inputs": [
+        {
+          "id": "in_concat_text1",
+          "name": "text1",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_concat_text2",
+          "name": "text2",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_concat_result",
+          "name": "result",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Concatenates multiple strings"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_split_delimiter": {
+      "id": "10000000-0000-0000-0000-000000000007",
+      "component_id": "builtin:constant:string",
+      "display_name": "Split Delimiter",
+      "position": {
+        "x": 1100.0,
+        "y": 350.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_delimiter",
+          "name": "value",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "String": " "
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Space delimiter for splitting"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_split": {
+      "id": "10000000-0000-0000-0000-000000000008",
+      "component_id": "user:string-split",
+      "display_name": "String Split",
+      "position": {
+        "x": 1300.0,
+        "y": 200.0
+      },
+      "inputs": [
+        {
+          "id": "in_split_text",
+          "name": "text",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_split_delimiter",
+          "name": "delimiter",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_split_result",
+          "name": "result",
+          "data_type": "List",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Splits string on delimiter"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_length": {
+      "id": "10000000-0000-0000-0000-000000000009",
+      "component_id": "user:string-length",
+      "display_name": "String Length",
+      "position": {
+        "x": 1000.0,
+        "y": 450.0
+      },
+      "inputs": [
+        {
+          "id": "in_length_text",
+          "name": "text",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_length_result",
+          "name": "result",
+          "data_type": "U32",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Counts characters in string (Unicode-aware)"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_substring_text": {
+      "id": "10000000-0000-0000-0000-000000000010",
+      "component_id": "builtin:constant:string",
+      "display_name": "Test Text for Contains",
+      "position": {
+        "x": 700.0,
+        "y": 600.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_test_text",
+          "name": "value",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "String": "wasmflow"
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Substring to search for"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_contains": {
+      "id": "10000000-0000-0000-0000-000000000011",
+      "component_id": "user:string-contains",
+      "display_name": "String Contains",
+      "position": {
+        "x": 1000.0,
+        "y": 600.0
+      },
+      "inputs": [
+        {
+          "id": "in_contains_text",
+          "name": "text",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_contains_substring",
+          "name": "substring",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_contains_result",
+          "name": "result",
+          "data_type": "Bool",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Checks if string contains substring"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_substring_start": {
+      "id": "10000000-0000-0000-0000-000000000012",
+      "component_id": "builtin:constant:u32",
+      "display_name": "Substring Start",
+      "position": {
+        "x": 1100.0,
+        "y": 750.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_start",
+          "name": "value",
+          "data_type": "U32",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "U32": 0
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Start index for substring"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_substring_length": {
+      "id": "10000000-0000-0000-0000-000000000013",
+      "component_id": "builtin:constant:u32",
+      "display_name": "Substring Length",
+      "position": {
+        "x": 1100.0,
+        "y": 850.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out_length",
+          "name": "value",
+          "data_type": "U32",
+          "direction": "Output",
+          "optional": false,
+          "current_value": {
+            "U32": 15
+          }
+        }
+      ],
+      "metadata": {
+        "author": "Test",
+        "version": "1.0.0",
+        "description": "Number of characters to extract"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "node_substring": {
+      "id": "10000000-0000-0000-0000-000000000014",
+      "component_id": "user:string-substring",
+      "display_name": "String Substring",
+      "position": {
+        "x": 1300.0,
+        "y": 750.0
+      },
+      "inputs": [
+        {
+          "id": "in_substring_text",
+          "name": "text",
+          "data_type": "String",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_substring_start",
+          "name": "start",
+          "data_type": "U32",
+          "direction": "Input",
+          "optional": false,
+          "current_value": null
+        },
+        {
+          "id": "in_substring_length",
+          "name": "length",
+          "data_type": "U32",
+          "direction": "Input",
+          "optional": true,
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_substring_result",
+          "name": "result",
+          "data_type": "String",
+          "direction": "Output",
+          "optional": false,
+          "current_value": null
+        }
+      ],
+      "metadata": {
+        "author": "Core Library",
+        "version": "1.0.0",
+        "description": "Extracts substring from string"
+      },
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    }
+  },
+
+  "connections": [
+    {
+      "id": "conn_01",
+      "from_node": "10000000-0000-0000-0000-000000000001",
+      "from_port": "out_raw_text",
+      "to_node": "10000000-0000-0000-0000-000000000002",
+      "to_port": "in_trim_text"
+    },
+    {
+      "id": "conn_02",
+      "from_node": "10000000-0000-0000-0000-000000000002",
+      "from_port": "out_trim_result",
+      "to_node": "10000000-0000-0000-0000-000000000003",
+      "to_port": "in_case_text"
+    },
+    {
+      "id": "conn_03",
+      "from_node": "10000000-0000-0000-0000-000000000004",
+      "from_port": "out_case_op",
+      "to_node": "10000000-0000-0000-0000-000000000003",
+      "to_port": "in_case_operation"
+    },
+    {
+      "id": "conn_04",
+      "from_node": "10000000-0000-0000-0000-000000000003",
+      "from_port": "out_case_result",
+      "to_node": "10000000-0000-0000-0000-000000000006",
+      "to_port": "in_concat_text1"
+    },
+    {
+      "id": "conn_05",
+      "from_node": "10000000-0000-0000-0000-000000000005",
+      "from_port": "out_suffix",
+      "to_node": "10000000-0000-0000-0000-000000000006",
+      "to_port": "in_concat_text2"
+    },
+    {
+      "id": "conn_06",
+      "from_node": "10000000-0000-0000-0000-000000000006",
+      "from_port": "out_concat_result",
+      "to_node": "10000000-0000-0000-0000-000000000008",
+      "to_port": "in_split_text"
+    },
+    {
+      "id": "conn_07",
+      "from_node": "10000000-0000-0000-0000-000000000007",
+      "from_port": "out_delimiter",
+      "to_node": "10000000-0000-0000-0000-000000000008",
+      "to_port": "in_split_delimiter"
+    },
+    {
+      "id": "conn_08",
+      "from_node": "10000000-0000-0000-0000-000000000006",
+      "from_port": "out_concat_result",
+      "to_node": "10000000-0000-0000-0000-000000000009",
+      "to_port": "in_length_text"
+    },
+    {
+      "id": "conn_09",
+      "from_node": "10000000-0000-0000-0000-000000000006",
+      "from_port": "out_concat_result",
+      "to_node": "10000000-0000-0000-0000-000000000011",
+      "to_port": "in_contains_text"
+    },
+    {
+      "id": "conn_10",
+      "from_node": "10000000-0000-0000-0000-000000000010",
+      "from_port": "out_test_text",
+      "to_node": "10000000-0000-0000-0000-000000000011",
+      "to_port": "in_contains_substring"
+    },
+    {
+      "id": "conn_11",
+      "from_node": "10000000-0000-0000-0000-000000000006",
+      "from_port": "out_concat_result",
+      "to_node": "10000000-0000-0000-0000-000000000014",
+      "to_port": "in_substring_text"
+    },
+    {
+      "id": "conn_12",
+      "from_node": "10000000-0000-0000-0000-000000000012",
+      "from_port": "out_start",
+      "to_node": "10000000-0000-0000-0000-000000000014",
+      "to_port": "in_substring_start"
+    },
+    {
+      "id": "conn_13",
+      "from_node": "10000000-0000-0000-0000-000000000013",
+      "from_port": "out_length",
+      "to_node": "10000000-0000-0000-0000-000000000014",
+      "to_port": "in_substring_length"
+    }
+  ],
+
+  "capability_grants": {},
+
+  "_pipeline_explanation": {
+    "description": "This graph validates all 7 string components in a realistic text processing pipeline",
+    "data_flow": {
+      "1_input": "Raw Input Text: '  Hello WORLD! Welcome to WasmFlow.  '",
+      "2_trim": "String Trim removes whitespace: 'Hello WORLD! Welcome to WasmFlow.'",
+      "3_case": "String Case (lowercase): 'hello world! welcome to wasmflow.'",
+      "4_concat": "String Concat adds suffix: 'hello world! welcome to wasmflow. - processed by wasmflow'",
+      "5_split": "String Split on space: ['hello', 'world!', 'welcome', 'to', 'wasmflow.', '-', 'processed', 'by', 'wasmflow']",
+      "6_length": "String Length: 57 characters",
+      "7_contains": "String Contains 'wasmflow': true",
+      "8_substring": "String Substring (0, 15): 'hello world! we'"
+    },
+    "validation_points": [
+      "Trim correctly removes leading/trailing whitespace",
+      "Case conversion handles mixed case input",
+      "Concat joins multiple strings",
+      "Split produces list output with correct element count",
+      "Length counts Unicode characters correctly",
+      "Contains performs case-sensitive search",
+      "Substring extracts correct character range"
+    ]
+  },
+
+  "_expected_results": {
+    "String Trim.result": "Hello WORLD! Welcome to WasmFlow.",
+    "String Case.result": "hello world! welcome to wasmflow.",
+    "String Concat.result": "hello world! welcome to wasmflow. - processed by wasmflow",
+    "String Split.result": ["hello", "world!", "welcome", "to", "wasmflow.", "-", "processed", "by", "wasmflow"],
+    "String Length.result": 57,
+    "String Contains.result": true,
+    "String Substring.result": "hello world! we"
+  },
+
+  "_test_scenarios": [
+    {
+      "scenario": "Text Normalization",
+      "description": "Validates trim + case conversion for text normalization",
+      "components_tested": ["string-trim", "string-case"],
+      "acceptance_criteria": "Raw text with whitespace and mixed case is normalized to clean lowercase"
+    },
+    {
+      "scenario": "Text Assembly",
+      "description": "Validates concatenation of processed text with metadata",
+      "components_tested": ["string-concat"],
+      "acceptance_criteria": "Multiple string inputs are joined into single output"
+    },
+    {
+      "scenario": "Text Analysis",
+      "description": "Validates tokenization and measurement operations",
+      "components_tested": ["string-split", "string-length"],
+      "acceptance_criteria": "Text is split into tokens and character count is accurate"
+    },
+    {
+      "scenario": "Text Search",
+      "description": "Validates substring search and extraction",
+      "components_tested": ["string-contains", "string-substring"],
+      "acceptance_criteria": "Substring presence is detected and extraction produces correct result"
+    }
+  ],
+
+  "_quickstart": {
+    "1_build_components": "cd components/core && just build-all",
+    "2_copy_components": "Copy all .wasm files from target/wasm32-wasip2/release/ to wasmflow components directory",
+    "3_launch_wasmflow": "cargo run --release",
+    "4_load_graph": "Use 'Import Graph' to load this JSON file",
+    "5_execute": "Click Execute button and verify all outputs match expected results",
+    "6_validate": "Check that all nodes show correct execution states and output values"
+  }
+}

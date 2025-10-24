@@ -739,6 +739,7 @@ impl CanvasViewer<'_> {
             DataType::I32 => Color32::from_rgb(150, 100, 255), // Purple
             DataType::U32 => Color32::from_rgb(255, 150, 100), // Orange
             DataType::String => Color32::from_rgb(100, 255, 150), // Green
+            DataType::Bool => Color32::from_rgb(100, 255, 255), // Cyan
             DataType::Binary => Color32::from_rgb(200, 200, 200), // Gray
             DataType::List(_) => Color32::from_rgb(255, 200, 100), // Yellow
             DataType::Record(_) => Color32::from_rgb(255, 100, 150), // Pink

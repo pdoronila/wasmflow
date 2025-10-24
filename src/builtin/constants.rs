@@ -30,6 +30,7 @@ impl ConstantNode {
             NodeValue::I32(_) => ("I32", DataType::I32),
             NodeValue::F32(_) => ("F32", DataType::F32),
             NodeValue::String(_) => ("String", DataType::String),
+            NodeValue::Bool(_) => ("Bool", DataType::Bool),
             NodeValue::Binary(_) => ("Binary", DataType::Binary),
             NodeValue::List(_) => ("List", DataType::List(Box::new(DataType::Any))),
             NodeValue::Record(_) => ("Record", DataType::Record(vec![])),

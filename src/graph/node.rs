@@ -16,6 +16,8 @@ pub enum NodeValue {
     F32(f32),
     /// UTF-8 text string
     String(String),
+    /// Boolean value
+    Bool(bool),
     /// Raw binary data for efficient large payloads
     Binary(Vec<u8>),
     /// Homogeneous or heterogeneous list of values
@@ -32,6 +34,7 @@ impl NodeValue {
             NodeValue::I32(_) => "i32",
             NodeValue::F32(_) => "f32",
             NodeValue::String(_) => "string",
+            NodeValue::Bool(_) => "bool",
             NodeValue::Binary(_) => "binary",
             NodeValue::List(_) => "list",
             NodeValue::Record(_) => "record",
@@ -45,6 +48,7 @@ impl NodeValue {
             NodeValue::I32(v) => format!("{}", v),
             NodeValue::F32(v) => format!("{:.2}", v),
             NodeValue::String(s) => format!("\"{}\"", s),
+            NodeValue::Bool(b) => format!("{}", b),
             NodeValue::Binary(b) => format!("<{} bytes>", b.len()),
             NodeValue::List(items) => format!("[{} items]", items.len()),
             NodeValue::Record(fields) => format!("{{{} fields}}", fields.len()),
@@ -59,6 +63,7 @@ pub enum DataType {
     I32,
     F32,
     String,
+    Bool,
     Binary,
     List(Box<DataType>),
     Record(Vec<(String, DataType)>),
@@ -74,6 +79,7 @@ impl DataType {
             DataType::I32 => "i32".to_string(),
             DataType::F32 => "f32".to_string(),
             DataType::String => "string".to_string(),
+            DataType::Bool => "bool".to_string(),
             DataType::Binary => "binary".to_string(),
             DataType::List(inner) => format!("list<{}>", inner.name()),
             DataType::Record(_) => "record".to_string(),
@@ -571,6 +577,10 @@ impl GraphNode {
                     "String".hash(&mut hasher);
                     v.hash(&mut hasher);
                 }
+                NodeValue::Bool(v) => {
+                    "Bool".hash(&mut hasher);
+                    v.hash(&mut hasher);
+                }
                 NodeValue::Binary(v) => {
                     "Binary".hash(&mut hasher);
                     v.hash(&mut hasher);
@@ -591,6 +601,7 @@ impl GraphNode {
                             NodeValue::I32(val) => val.hash(&mut hasher),
                             NodeValue::F32(val) => val.to_bits().hash(&mut hasher),
                             NodeValue::String(val) => val.hash(&mut hasher),
+                            NodeValue::Bool(val) => val.hash(&mut hasher),
                             NodeValue::Binary(val) => val.hash(&mut hasher),
                             _ => {} // Skip complex nested types for now
                         }

@@ -1,0 +1,358 @@
+{
+  "_comment": "Integration test for WASM Components Core Library - Logic Operations",
+  "_note": "This demonstrates all 7 logic components (P2) working together in a data validation pipeline.",
+  "_usage": "Load this graph in WasmFlow to validate User Story 2 acceptance scenarios.",
+
+  "id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "name": "Data Validation Integration Test",
+  "version": 1,
+
+  "metadata": {
+    "created_at": "2025-10-23T00:00:00Z",
+    "modified_at": "2025-10-23T00:00:00Z",
+    "author": "WASM Components Core Library",
+    "description": "Validates all 7 logic components: compare, boolean-and, boolean-or, boolean-not, boolean-xor, is-null, is-empty"
+  },
+
+  "nodes": {
+    "constant_num_10": {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "component_id": "builtin:constant:u32",
+      "display_name": "Number 10",
+      "position": {"x": 100.0, "y": 100.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_10",
+        "name": "value",
+        "data_type": "U32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"U32": 10}
+      }],
+      "metadata": {"description": "Constant value 10"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_num_5": {
+      "id": "20000000-0000-0000-0000-000000000002",
+      "component_id": "builtin:constant:u32",
+      "display_name": "Number 5",
+      "position": {"x": 100.0, "y": 200.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_5",
+        "name": "value",
+        "data_type": "U32",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"U32": 5}
+      }],
+      "metadata": {"description": "Constant value 5"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "compare_numbers": {
+      "id": "20000000-0000-0000-0000-000000000003",
+      "component_id": "user:compare",
+      "display_name": "Compare: 10 > 5",
+      "position": {"x": 400.0, "y": 150.0},
+      "inputs": [
+        {"id": "in_left", "name": "left", "data_type": "Any", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_right", "name": "right", "data_type": "Any", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_op", "name": "operation", "data_type": "String", "direction": "Input", "optional": false, "current_value": {"String": "greater-than"}}
+      ],
+      "outputs": [{
+        "id": "out_compare_num",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Compares two numbers (10 > 5 = true)"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_apple": {
+      "id": "20000000-0000-0000-0000-000000000004",
+      "component_id": "builtin:constant:string",
+      "display_name": "String: apple",
+      "position": {"x": 100.0, "y": 400.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_apple",
+        "name": "value",
+        "data_type": "String",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"String": "apple"}
+      }],
+      "metadata": {"description": "Constant string 'apple'"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_banana": {
+      "id": "20000000-0000-0000-0000-000000000005",
+      "component_id": "builtin:constant:string",
+      "display_name": "String: banana",
+      "position": {"x": 100.0, "y": 500.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_banana",
+        "name": "value",
+        "data_type": "String",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"String": "banana"}
+      }],
+      "metadata": {"description": "Constant string 'banana'"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "compare_strings": {
+      "id": "20000000-0000-0000-0000-000000000006",
+      "component_id": "user:compare",
+      "display_name": "Compare: apple < banana",
+      "position": {"x": 400.0, "y": 450.0},
+      "inputs": [
+        {"id": "in_left_str", "name": "left", "data_type": "Any", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_right_str", "name": "right", "data_type": "Any", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_op_str", "name": "operation", "data_type": "String", "direction": "Input", "optional": false, "current_value": {"String": "less-than"}}
+      ],
+      "outputs": [{
+        "id": "out_compare_str",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Lexicographic comparison (apple < banana = true)"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "boolean_and": {
+      "id": "20000000-0000-0000-0000-000000000007",
+      "component_id": "user:boolean-and",
+      "display_name": "AND both comparisons",
+      "position": {"x": 700.0, "y": 300.0},
+      "inputs": [
+        {"id": "in_and_1", "name": "input1", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_and_2", "name": "input2", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_and",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Both comparisons are true = true"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_empty_string": {
+      "id": "20000000-0000-0000-0000-000000000008",
+      "component_id": "builtin:constant:string",
+      "display_name": "Empty String",
+      "position": {"x": 100.0, "y": 700.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_empty",
+        "name": "value",
+        "data_type": "String",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"String": ""}
+      }],
+      "metadata": {"description": "Empty string constant"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "is_empty": {
+      "id": "20000000-0000-0000-0000-000000000009",
+      "component_id": "user:is-empty",
+      "display_name": "Check if empty",
+      "position": {"x": 400.0, "y": 700.0},
+      "inputs": [
+        {"id": "in_empty", "name": "value", "data_type": "Any", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_is_empty",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Checks if string is empty = true"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "is_null": {
+      "id": "20000000-0000-0000-0000-000000000010",
+      "component_id": "user:is-null",
+      "display_name": "Check if null",
+      "position": {"x": 400.0, "y": 850.0},
+      "inputs": [
+        {"id": "in_null", "name": "value", "data_type": "Any", "direction": "Input", "optional": true, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_is_null",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Checks if value is null (no input) = true"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "boolean_or": {
+      "id": "20000000-0000-0000-0000-000000000011",
+      "component_id": "user:boolean-or",
+      "display_name": "OR: empty or null",
+      "position": {"x": 700.0, "y": 775.0},
+      "inputs": [
+        {"id": "in_or_1", "name": "input1", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_or_2", "name": "input2", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_or",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Either empty or null = true"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "boolean_not": {
+      "id": "20000000-0000-0000-0000-000000000012",
+      "component_id": "user:boolean-not",
+      "display_name": "NOT the AND result",
+      "position": {"x": 1000.0, "y": 300.0},
+      "inputs": [
+        {"id": "in_not", "name": "input", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_not",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "Inverts the AND result (true -> false)"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_true": {
+      "id": "20000000-0000-0000-0000-000000000013",
+      "component_id": "builtin:constant:bool",
+      "display_name": "Boolean: true",
+      "position": {"x": 100.0, "y": 1000.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_true",
+        "name": "value",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"Bool": true}
+      }],
+      "metadata": {"description": "Constant boolean true"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "constant_false": {
+      "id": "20000000-0000-0000-0000-000000000014",
+      "component_id": "builtin:constant:bool",
+      "display_name": "Boolean: false",
+      "position": {"x": 100.0, "y": 1100.0},
+      "inputs": [],
+      "outputs": [{
+        "id": "out_false",
+        "name": "value",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": {"Bool": false}
+      }],
+      "metadata": {"description": "Constant boolean false"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    },
+
+    "boolean_xor": {
+      "id": "20000000-0000-0000-0000-000000000015",
+      "component_id": "user:boolean-xor",
+      "display_name": "XOR: true XOR false",
+      "position": {"x": 400.0, "y": 1050.0},
+      "inputs": [
+        {"id": "in_xor_left", "name": "left", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null},
+        {"id": "in_xor_right", "name": "right", "data_type": "Bool", "direction": "Input", "optional": false, "current_value": null}
+      ],
+      "outputs": [{
+        "id": "out_xor",
+        "name": "result",
+        "data_type": "Bool",
+        "direction": "Output",
+        "optional": false,
+        "current_value": null
+      }],
+      "metadata": {"description": "true XOR false = true"},
+      "capabilities": "None",
+      "execution_state": "Idle",
+      "dirty": true
+    }
+  },
+
+  "connections": [
+    {"from_node": "constant_num_10", "from_port": "out_10", "to_node": "compare_numbers", "to_port": "in_left"},
+    {"from_node": "constant_num_5", "from_port": "out_5", "to_node": "compare_numbers", "to_port": "in_right"},
+    {"from_node": "constant_apple", "from_port": "out_apple", "to_node": "compare_strings", "to_port": "in_left_str"},
+    {"from_node": "constant_banana", "from_port": "out_banana", "to_node": "compare_strings", "to_port": "in_right_str"},
+    {"from_node": "compare_numbers", "from_port": "out_compare_num", "to_node": "boolean_and", "to_port": "in_and_1"},
+    {"from_node": "compare_strings", "from_port": "out_compare_str", "to_node": "boolean_and", "to_port": "in_and_2"},
+    {"from_node": "constant_empty_string", "from_port": "out_empty", "to_node": "is_empty", "to_port": "in_empty"},
+    {"from_node": "is_empty", "from_port": "out_is_empty", "to_node": "boolean_or", "to_port": "in_or_1"},
+    {"from_node": "is_null", "from_port": "out_is_null", "to_node": "boolean_or", "to_port": "in_or_2"},
+    {"from_node": "boolean_and", "from_port": "out_and", "to_node": "boolean_not", "to_port": "in_not"},
+    {"from_node": "constant_true", "from_port": "out_true", "to_node": "boolean_xor", "to_port": "in_xor_left"},
+    {"from_node": "constant_false", "from_port": "out_false", "to_node": "boolean_xor", "to_port": "in_xor_right"}
+  ],
+
+  "checksum": 0
+}
