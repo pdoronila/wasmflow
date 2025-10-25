@@ -1,0 +1,7 @@
+package wasmflow:json-build-object;
+
+world component {
+    import wasmflow:node/host@1.1.0;
+    export wasmflow:node/metadata@1.1.0;
+    export wasmflow:node/execution@1.1.0;
+}
