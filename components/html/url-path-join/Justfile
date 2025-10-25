@@ -11,11 +11,12 @@ build: clean
     cargo build --target wasm32-wasip2 --release
     @echo "✓ Component built: target/wasm32-wasip2/release/{{component_name}}.wasm"
 
-# Install the component to WasmFlow components directory
+# Install the component to WasmFlow components bin directory
 install: build
-    @echo "Installing component to ../bin/"
+    @echo "Installing component to ../../bin/"
+    mkdir -p ../../bin
     cp target/wasm32-wasip2/release/{{component_name}}.wasm \
-       ../bin/{{component_name}}.wasm
+       ../../bin/{{component_name}}.wasm
     @echo "✓ Component installed"
 
 # Clean build artifacts
