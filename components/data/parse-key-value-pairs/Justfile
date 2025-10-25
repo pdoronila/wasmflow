@@ -1,0 +1,12 @@
+build:
+    cargo build --release --target wasm32-wasip2
+
+test:
+    cargo test
+
+install: build
+    mkdir -p ../../bin
+    cp target/wasm32-wasip2/release/parse_key_value_pairs.wasm ../../bin/
+
+clean:
+    cargo clean

@@ -1,27 +1,55 @@
 set shell := ["nu", "-c"]
 set unstable
 
-build component:
-  just --justfile {{component}}/Justfile build
+DEFAULT_THREADS := "1"
 
-install component:
-  just --justfile {{component}}/Justfile install
+[script('nu')]
+build component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just build-all {{threads}}
+    } else {
+        just --justfile {{component}}/Justfile build
+    }
 
-list-all:
+[script('nu')]
+install component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just install-all {{threads}}
+    } else {
+        just --justfile {{component}}/Justfile install
+    }
+
+[script('nu')]
+test component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just test-all {{threads}}
+    } else {
+        just --justfile {{component}}/Justfile test
+    }
+
+[script('nu')]
+clean component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just clean-all {{threads}}
+    } else {
+        cargo clean
+    }
+
+list:
     ls | where type == dir | get name
 
-# Build all components in core category
-build-all:
-    ls | where type == dir | get name | each { |component| just build $component }
+[private]
+build-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just build $component }
 
-# Install all components to bin/
-install-all:
-  ls | where type == dir | get name | each { |component| just install $component }
+[private]
+install-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just install $component }
 
-# Test all components
-test-all:
-    ls | where type == dir | get name | each { |component| cd $component; cargo test }
+[private]
+test-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just test $component }
 
-# Clean all build artifacts
-clean-all:
-    ls | where type == dir | get name | each { |component| cd $component; cargo clean }
+[private]
+clean-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just clean $component }

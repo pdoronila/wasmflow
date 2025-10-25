@@ -1,0 +1,17 @@
+[package]
+name = "http-cors-headers"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.30"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
