@@ -24,27 +24,27 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "text".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Text containing key-value pairs to parse".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "pair_separator".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Separator between pairs (default: ';' for cookies)".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "key_value_separator".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Separator between key and value (default: '=')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "trim_whitespace".to_string(),
-                data_type: DataType::Bool,
+                data_type: DataType::BoolType,
                 description: "Trim whitespace from keys and values (default: true)".to_string(),
-                required: false,
+                optional: true,
             },
         ]
     }
@@ -53,21 +53,21 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "keys".to_string(),
-                data_type: DataType::StringListVal,
+                data_type: DataType::ListType,
                 description: "List of keys extracted".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "values".to_string(),
-                data_type: DataType::StringListVal,
+                data_type: DataType::ListType,
                 description: "List of values extracted (same length as keys)".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "pair_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of key-value pairs parsed".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }
@@ -202,7 +202,8 @@ fn parse_key_value_pairs(
         }
     }
 
-    (keys, values, keys.len() as u32)
+    let count = keys.len() as u32;
+    (keys, values, count)
 }
 
 export!(Component);

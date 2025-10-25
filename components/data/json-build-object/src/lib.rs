@@ -24,15 +24,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "keys".to_string(),
-                data_type: DataType::StringListVal,
+                data_type: DataType::ListType,
                 description: "List of keys for the JSON object".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "values".to_string(),
-                data_type: DataType::StringListVal,
+                data_type: DataType::ListType,
                 description: "List of values (same length as keys)".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }
@@ -41,15 +41,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "json".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "JSON object string".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "pair_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of key-value pairs in the object".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }

@@ -24,15 +24,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "text".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Text to URL-encode".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "encode_spaces_as_plus".to_string(),
-                data_type: DataType::Bool,
+                data_type: DataType::BoolType,
                 description: "Encode spaces as + instead of %20 (default: false)".to_string(),
-                required: false,
+                optional: true,
             },
         ]
     }
@@ -41,15 +41,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "encoded".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "URL-encoded text".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "encode_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of characters encoded".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }

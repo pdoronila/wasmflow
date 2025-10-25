@@ -23,9 +23,9 @@ impl MetadataGuest for Component {
     fn get_inputs() -> Vec<PortSpec> {
         vec![PortSpec {
             name: "json".to_string(),
-            data_type: DataType::String,
+            data_type: DataType::StringType,
             description: "JSON object string (flat, no nested objects)".to_string(),
-            required: true,
+            optional: false,
         }]
     }
 
@@ -33,21 +33,21 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "keys".to_string(),
-                data_type: DataType::StringListVal,
+                data_type: DataType::ListType,
                 description: "List of keys from the JSON object".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "values".to_string(),
-                data_type: DataType::StringListVal,
+                data_type: DataType::ListType,
                 description: "List of values (same length as keys)".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "pair_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of key-value pairs".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }
@@ -162,7 +162,8 @@ fn parse_flat_json_object(json: &str) -> Result<(Vec<String>, Vec<String>, u32),
         values.push(value);
     }
 
-    Ok((keys, values, keys.len() as u32))
+    let count = keys.len() as u32;
+    Ok((keys, values, count))
 }
 
 /// Unescape JSON string escapes
