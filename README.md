@@ -115,7 +115,16 @@ tests/
 ├── integration/             # Graph execution integration tests
 └── unit/                    # Core logic unit tests
 
-components/bin/              # User-defined WASM components (.wasm files)
+components/
+├── bin/                     # Compiled WASM components (.wasm files)
+├── core/                    # Text + logic components
+├── math/                    # Mathematical operations
+├── collections/             # List manipulation
+├── data/                    # Data transformation
+├── html/                    # HTTP utilities
+├── examples/                # Example components
+├── LIBRARY.md               # Complete API reference
+└── README.md                # User guide
 wit/                         # WIT interface definitions
 docs/                        # Development guides and examples
 .mise.toml                   # Tool version management
@@ -141,7 +150,7 @@ docs/                        # Development guides and examples
 
 ### Core Component Library (New!)
 
-WasmFlow now includes a comprehensive library of **34 pre-built components** for common data processing tasks:
+WasmFlow now includes a comprehensive library of **43+ pre-built components** for common data processing and HTTP operations:
 
 **Text Processing (7 components)**
 - string-concat, string-split, string-length, string-trim, string-case, string-contains, string-substring
@@ -155,20 +164,23 @@ WasmFlow now includes a comprehensive library of **34 pre-built components** for
 **List Manipulation (7 components)**
 - list-length, list-get, list-append, list-join, list-slice, list-contains, list-index-of
 
-**Data Transformation (4 components)**
-- json-stringify, to-string, parse-number, format-template
+**Data Transformation (9 components)**
+- json-stringify, to-string, parse-number, format-template, parse-key-value-pairs, json-build-object, json-parse-flat-object, json-escape-string
+
+**HTTP Utilities (19+ components)**
+- body-parser, content-type-header, header-builder, html-escape, http-cookie-parser, http-cors-headers, http-fetch, http-request-parser, http-response-builder, http-set-cookie-builder, json-response-builder, mime-type-detector, path-matcher, query-string-parser, route-dispatcher, simple-template-render, static-file-response, status-code-mapper, url-path-join, url-decode, url-encode
 
 All components are:
-- **Pure Computation**: No side effects, fully composable
+- **Pure Computation**: No side effects, fully composable (except http-fetch which requires network capability)
 - **Type-Safe**: WIT-based interfaces with clear contracts
-- **Well-Tested**: 100+ unit tests across all components
-- **Optimized**: 50-150KB binary size with LTO optimization
+- **Well-Tested**: 148+ unit tests across all components
+- **Optimized**: 60KB-1MB binary size with LTO optimization
 - **Documented**: Comprehensive guides in `components/LIBRARY.md`
 
 **Building the Library**:
 ```bash
 cd components
-just build-all      # Build all 34 components
+just build-all      # Build all components
 just test-all       # Run all tests
 just install-all    # Copy to bin/
 ```
@@ -460,12 +472,13 @@ cargo build --release
 - [x] Graph metadata editor
 - [x] Modular UI architecture refactoring
 - [x] Component palette with search
-- [x] **Core Component Library (34 components across 5 categories)**
+- [x] **Core Component Library (43+ components across 6 categories)**
   - [x] Text Processing (7): string operations
   - [x] Logic & Validation (7): comparison and boolean operations
   - [x] Mathematical Operations (9): advanced math functions
   - [x] List Manipulation (7): collection processing
-  - [x] Data Transformation (4): type conversion and formatting
+  - [x] Data Transformation (9): type conversion, JSON handling, URL encoding
+  - [x] HTTP Utilities (19+): request/response handling, routing, cookies, CORS, templates
 
 ### In Progress 🚧
 - [ ] Full async component execution with streaming I/O
