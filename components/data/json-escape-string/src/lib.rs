@@ -24,9 +24,9 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "text".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Text to escape for JSON".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }
@@ -35,15 +35,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "escaped".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "JSON-safe escaped text (without surrounding quotes)".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "escape_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of characters escaped".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }

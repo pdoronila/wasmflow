@@ -23,9 +23,9 @@ impl MetadataGuest for Component {
     fn get_inputs() -> Vec<PortSpec> {
         vec![PortSpec {
             name: "cookie_header".to_string(),
-            data_type: DataType::String,
+            data_type: DataType::StringType,
             description: "Value of the Cookie header (e.g., 'session=abc123; user=alice')".to_string(),
-            required: true,
+            optional: false,
         }]
     }
 
@@ -33,15 +33,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "cookies_json".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Cookies as JSON object with cookie names as keys".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "cookie_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of cookies parsed".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }

@@ -24,57 +24,57 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "name".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Cookie name (required)".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "value".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Cookie value (required)".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "expires".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Expiration date (RFC 2822 format, e.g., 'Wed, 21 Oct 2025 07:28:00 GMT')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "max_age".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Max age in seconds (e.g., 3600 for 1 hour)".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "domain".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Domain scope for the cookie (e.g., '.example.com')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "path".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Path scope for the cookie (default: '/')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "secure".to_string(),
-                data_type: DataType::Bool,
+                data_type: DataType::BoolType,
                 description: "Send cookie only over HTTPS (default: false)".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "http_only".to_string(),
-                data_type: DataType::Bool,
+                data_type: DataType::BoolType,
                 description: "Prevent JavaScript access to cookie (default: false)".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "same_site".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "SameSite attribute: 'Strict', 'Lax', or 'None' (default: none)".to_string(),
-                required: false,
+                optional: true,
             },
         ]
     }
@@ -83,15 +83,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "set_cookie".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Complete Set-Cookie header value".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "attribute_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of attributes set (including name=value)".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }

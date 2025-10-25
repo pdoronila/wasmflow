@@ -24,39 +24,39 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "origin".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Allowed origin (* for all, or specific domain like 'https://example.com')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "methods".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Allowed HTTP methods (comma-separated, e.g., 'GET, POST, PUT, DELETE')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "headers".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Allowed request headers (comma-separated, e.g., 'Content-Type, Authorization')".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "credentials".to_string(),
-                data_type: DataType::Bool,
+                data_type: DataType::BoolType,
                 description: "Allow credentials (cookies, authorization headers). Default: false".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "max_age".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Preflight cache duration in seconds (e.g., 3600 for 1 hour)".to_string(),
-                required: false,
+                optional: true,
             },
             PortSpec {
                 name: "expose_headers".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "Headers to expose to client (comma-separated, e.g., 'X-Request-ID')".to_string(),
-                required: false,
+                optional: true,
             },
         ]
     }
@@ -65,15 +65,15 @@ impl MetadataGuest for Component {
         vec![
             PortSpec {
                 name: "headers_json".to_string(),
-                data_type: DataType::String,
+                data_type: DataType::StringType,
                 description: "CORS headers as JSON object (lowercase keys)".to_string(),
-                required: true,
+                optional: false,
             },
             PortSpec {
                 name: "header_count".to_string(),
-                data_type: DataType::U32,
+                data_type: DataType::U32Type,
                 description: "Number of CORS headers added".to_string(),
-                required: true,
+                optional: false,
             },
         ]
     }

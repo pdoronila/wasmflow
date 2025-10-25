@@ -40,16 +40,16 @@ list:
 
 [private]
 build-all threads=DEFAULT_THREADS:
-    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just build $component }
+    ls | where type == dir | where { |it| ($it.name | path join "Justfile" | path exists) } | get name | par-each --threads {{threads}} { |component| just build $component }
 
 [private]
 install-all threads=DEFAULT_THREADS:
-    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just install $component }
+    ls | where type == dir | where { |it| ($it.name | path join "Justfile" | path exists) } | get name | par-each --threads {{threads}} { |component| just install $component }
 
 [private]
 test-all threads=DEFAULT_THREADS:
-    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just test $component }
+    ls | where type == dir | where { |it| ($it.name | path join "Justfile" | path exists) } | get name | par-each --threads {{threads}} { |component| just test $component }
 
 [private]
 clean-all threads=DEFAULT_THREADS:
-    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just clean $component }
+    ls | where type == dir | where { |it| ($it.name | path join "Justfile" | path exists) } | get name | par-each --threads {{threads}} { |component| just clean $component }
