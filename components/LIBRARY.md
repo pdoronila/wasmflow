@@ -1,7 +1,7 @@
 # WasmFlow Core Component Library - Developer Guide
 
-**Version**: 1.0.0
-**Total Components**: 34
+**Version**: 1.1.0
+**Total Components**: 43
 **Categories**: 5 (Text, Logic, Math, Collections, Data)
 **Target**: wasm32-wasip2
 **WIT Spec**: wasmflow:node@1.1.0
@@ -13,9 +13,9 @@ The WasmFlow Core Component Library is a comprehensive collection of pre-built W
 **Key Features**:
 - **Pure WASM Components**: Compiled to wasm32-wasip2 target for cross-platform execution
 - **Type-Safe Interfaces**: WIT (WebAssembly Interface Types) for clear contracts
-- **Comprehensive Testing**: 100+ unit tests across all components
-- **Optimized Binaries**: 50-150KB per component with LTO and strip optimizations
-- **Minimal Dependencies**: Standard library only (except json-stringify)
+- **Comprehensive Testing**: 148+ unit tests across all components
+- **Optimized Binaries**: 60KB-1MB per component with LTO and strip optimizations
+- **Minimal Dependencies**: Standard library only (except json-stringify and regex components)
 
 ## Quick Reference
 
@@ -23,11 +23,11 @@ The WasmFlow Core Component Library is a comprehensive collection of pre-built W
 
 | Category | Count | Location | Description |
 |----------|-------|----------|-------------|
-| **Text** | 7 | `core/` | String operations (concat, split, trim, case, etc.) |
+| **Text** | 9 | `core/` + `text/` | String operations + regex pattern matching |
 | **Logic** | 7 | `core/` | Comparison and boolean operations |
 | **Math** | 9 | `math/` | Mathematical functions (power, sqrt, trig, etc.) |
-| **Collections** | 7 | `collections/` | List operations (get, slice, join, contains, etc.) |
-| **Data** | 4 | `data/` | Type conversion and formatting |
+| **Collections** | 13 | `collections/` | List operations (filter, count, reject with regex support) |
+| **Data** | 5 | `data/` | Type conversion, formatting, and JSONL batch processing |
 
 ### Build Commands
 
@@ -47,9 +47,11 @@ cd components && just clean-all
 
 ## Component Categories
 
-### 1. Text Processing (7 components)
+### 1. Text Processing (9 components)
 
-**Location**: `components/core/`
+**Location**: `components/core/` + `components/text/`
+
+#### Basic String Operations (7 components - `core/`)
 
 | Component | Inputs | Outputs | Description |
 |-----------|--------|---------|-------------|
@@ -60,6 +62,13 @@ cd components && just clean-all
 | **string-case** | text: string, operation: string | result: string | upper/lower/title case |
 | **string-contains** | text: string, substring: string | result: bool | Substring search |
 | **string-substring** | text: string, start: u32, length?: u32 | result: string | Extract substring |
+
+#### Regex Pattern Matching (2 components - `text/`)
+
+| Component | Inputs | Outputs | Description | Dependencies |
+|-----------|--------|---------|-------------|--------------|
+| **regex-match** | text: string, pattern: string | matches: bool | Test if text matches regex pattern | regex 1.10 |
+| **regex-match-any** | text: string, patterns: StringListVal | matches: bool, matched_pattern: string, match_count: u32 | Test if text matches ANY of multiple patterns (OR logic) | regex 1.10 |
 
 **Integration Test**: `tests/component_tests/string_processing.json`
 
@@ -97,11 +106,13 @@ cd components && just clean-all
 
 **Integration Test**: `tests/component_tests/math_operations.json`
 
-### 4. List Manipulation (7 components)
+### 4. List Manipulation (13 components)
 
 **Location**: `components/collections/`
 
 **Note**: All list components currently work with `StringListVal` (Vec<String>)
+
+#### Basic List Operations (7 components)
 
 | Component | Inputs | Outputs | Description |
 |-----------|--------|---------|-------------|
@@ -113,20 +124,36 @@ cd components && just clean-all
 | **list-contains** | list: StringListVal, value: string | result: bool | Value search |
 | **list-index-of** | list: StringListVal, value: string | index: i32 | Find index (-1 if not found) |
 
-**Integration Test**: `tests/component_tests/list_manipulation.json`
+#### Advanced List Operations with Regex (6 components)
 
-### 5. Data Transformation (4 components)
+| Component | Inputs | Outputs | Description | Dependencies |
+|-----------|--------|---------|-------------|--------------|
+| **list-filter-empty** | list: StringListVal | filtered: StringListVal, removed_count: u32 | Remove empty/whitespace strings | None |
+| **list-filter-regex** | list: StringListVal, pattern: string | matched: StringListVal, removed_count: u32 | Keep items matching pattern (allowlist) | regex 1.10 |
+| **list-filter-regex-any** | list: StringListVal, patterns: StringListVal | matched: StringListVal, removed_count: u32 | Keep items matching ANY pattern (OR logic) | regex 1.10 |
+| **list-reject-regex** | list: StringListVal, pattern: string | kept: StringListVal, removed_count: u32 | Remove items matching pattern (blocklist) | regex 1.10 |
+| **list-count-regex** | list: StringListVal, pattern: string | count: u32, percentage: f32, total: u32 | Count items matching pattern | regex 1.10 |
+| **list-count-regex-any** | list: StringListVal, patterns: StringListVal | count: u32, percentage: f32, total: u32 | Count items matching ANY pattern (OR logic) | regex 1.10 |
+
+**Integration Tests**:
+- `tests/component_tests/list_manipulation.json`
+- Kernel message engine example (see Foundational Components section)
+
+### 5. Data Transformation (5 components)
 
 **Location**: `components/data/`
 
 | Component | Inputs | Outputs | Description | Dependencies |
 |-----------|--------|---------|-------------|--------------|
 | **json-stringify** | data: any | json: string | Serialize to JSON | serde_json 1.0 |
+| **json-extract-each** | json_strings: StringListVal, field_path: string | values: StringListVal, error_count: u32, success_count: u32 | Extract field from each JSON string (JSONL batch processing) | serde_json 1.0 |
 | **to-string** | value: any | text: string | Convert primitive to string | None |
 | **parse-number** | text: string | number: f32 | Parse string to f32 | None |
 | **format-template** | template: string, values: StringListVal | result: string | Replace {0}, {1}, etc. | None |
 
-**Integration Test**: `tests/component_tests/data_transformation.json`
+**Integration Tests**:
+- `tests/component_tests/data_transformation.json`
+- Kernel message engine example (see Foundational Components section)
 
 ## Building the Library
 
@@ -171,12 +198,13 @@ just clean-all
 #### Full Library
 
 ```bash
-# Build all 34 components
+# Build all 43 components
 cd components
 just build-all
 
 # This executes:
 # - just core/build-all
+# - just text/build-all
 # - just math/build-all
 # - just collections/build-all
 # - just data/build-all
@@ -240,12 +268,14 @@ Integration tests validate components working together:
 
 | Category | Components | Total Tests | Coverage |
 |----------|------------|-------------|----------|
-| Text | 7 | 21+ | Typical, edge, error cases |
+| Text (basic) | 7 | 21+ | Typical, edge, error cases |
+| Text (regex) | 2 | 14 | Pattern matching, multi-pattern |
 | Logic | 7 | 21+ | All operators, type mismatches |
 | Math | 9 | 27+ | Valid ops, NaN, infinity |
-| Collections | 7 | 21+ | Empty, bounds, not found |
-| Data | 4 | 32 | All Value variants, errors |
-| **Total** | **34** | **122+** | Comprehensive |
+| Collections (basic) | 7 | 21+ | Empty, bounds, not found |
+| Collections (regex) | 6 | 30 | Filter, count, reject patterns |
+| Data | 5 | 14 | All Value variants, errors, JSONL |
+| **Total** | **43** | **148+** | Comprehensive |
 
 ## Component Structure
 
@@ -570,14 +600,16 @@ for value in list_values.iter() {
 
 ### Binary Sizes
 
-| Category | Average Size | Range |
-|----------|--------------|-------|
-| Text | 100KB | 80-120KB |
-| Logic | 100KB | 80-120KB |
-| Math | 105KB | 90-130KB |
-| Collections | 100KB | 80-120KB |
-| Data | 110KB | 90-150KB |
-| **With serde_json** | **150KB** | json-stringify only |
+| Category | Average Size | Range | Notes |
+|----------|--------------|-------|-------|
+| Text (basic) | 100KB | 80-120KB | String operations |
+| **Text (regex)** | **1.0MB** | **999KB-1.0MB** | **regex crate dependency** |
+| Logic | 100KB | 80-120KB | Boolean operations |
+| Math | 105KB | 90-130KB | Mathematical functions |
+| Collections (basic) | 100KB | 80-120KB | List operations |
+| **Collections (regex)** | **1.0MB** | **1.0MB** | **regex crate dependency** |
+| Data | 110KB | 90-150KB | Type conversion |
+| **Data (JSON)** | **126-150KB** | **126-150KB** | **serde_json dependency** |
 
 **Optimization Settings**:
 ```toml
@@ -622,12 +654,15 @@ Each component should document:
 
 ### Phase Documentation
 
-See `specs/010-wasm-components-core/`:
-- `PHASE3_STRING_COMPONENTS.md` - Text processing (Phase 3)
-- `PHASE4_LOGIC_COMPONENTS.md` - Logic & validation (Phase 4)
-- `PHASE5_MATH_COMPONENTS.md` - Math operations (Phase 5)
-- `PHASE6_LIST_COMPONENTS.md` - List manipulation (Phase 6)
-- `PHASE7_DATA_COMPONENTS.md` - Data transformation (Phase 7)
+**Core Library (Phases 3-7)**:
+- `specs/010-wasm-components-core/PHASE3_STRING_COMPONENTS.md` - Text processing (Phase 3)
+- `specs/010-wasm-components-core/PHASE4_LOGIC_COMPONENTS.md` - Logic & validation (Phase 4)
+- `specs/010-wasm-components-core/PHASE5_MATH_COMPONENTS.md` - Math operations (Phase 5)
+- `specs/010-wasm-components-core/PHASE6_LIST_COMPONENTS.md` - List manipulation (Phase 6)
+- `specs/010-wasm-components-core/PHASE7_DATA_COMPONENTS.md` - Data transformation (Phase 7)
+
+**Foundational Components (Advanced)**:
+- `components/FOUNDATIONAL_COMPONENTS_PLAN.md` - Regex + JSONL processing (9 components)
 
 ## Contributing
 

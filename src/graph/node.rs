@@ -888,11 +888,21 @@ impl ComponentSpec {
 
             // For constant nodes, initialize with default value based on type
             if self.id.starts_with("builtin:constant:") {
-                port.current_value = Some(match spec.data_type {
+                port.current_value = Some(match &spec.data_type {
                     DataType::F32 => NodeValue::F32(0.0),
                     DataType::I32 => NodeValue::I32(0),
                     DataType::U32 => NodeValue::U32(0),
                     DataType::String => NodeValue::String(String::new()),
+                    DataType::List(inner_type) => {
+                        // Initialize list with one default value based on inner type
+                        match **inner_type {
+                            DataType::String => NodeValue::List(vec![NodeValue::String(String::new())]),
+                            DataType::U32 => NodeValue::List(vec![NodeValue::U32(0)]),
+                            DataType::F32 => NodeValue::List(vec![NodeValue::F32(0.0)]),
+                            DataType::I32 => NodeValue::List(vec![NodeValue::I32(0)]),
+                            _ => NodeValue::List(vec![]),
+                        }
+                    }
                     _ => NodeValue::F32(0.0),
                 });
             }

@@ -54,7 +54,7 @@ impl ComponentFooterView for ConstantNodeFooterView {
                             .color(egui::Color32::from_rgb(180, 180, 180))
                     );
 
-                    // Use multiline for strings, checkboxes for bools, single-line for numbers
+                    // Use multiline for strings, checkboxes for bools, single-line for numbers, multiline for lists
                     match value {
                         NodeValue::String(_) => {
                             // Multiline text edit for strings (better for JSON)
@@ -77,6 +77,99 @@ impl ComponentFooterView for ConstantNodeFooterView {
                             if ui.checkbox(&mut bool_value, "").changed() {
                                 *value = NodeValue::Bool(bool_value);
                                 node.dirty = true;
+                            }
+                        }
+                        NodeValue::List(items) => {
+                            // Multiline text edit for lists (one item per line)
+                            ui.label(
+                                egui::RichText::new("List values (one per line):")
+                                    .color(egui::Color32::from_rgb(150, 150, 150))
+                                    .size(11.0)
+                            );
+
+                            // Create a unique ID for this text editor based on node ID and output name
+                            let editor_id = ui.id().with(&node.id).with(&output.name);
+
+                            // Get or initialize the editing text from persistent state
+                            let mut text_value = ui.data_mut(|data| {
+                                data.get_temp::<String>(editor_id).unwrap_or_else(|| {
+                                    // First time: initialize from the list
+                                    items
+                                        .iter()
+                                        .map(|item| match item {
+                                            NodeValue::String(s) => s.clone(),
+                                            NodeValue::U32(n) => n.to_string(),
+                                            NodeValue::F32(n) => n.to_string(),
+                                            NodeValue::I32(n) => n.to_string(),
+                                            _ => item.format_display(),
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join("\n")
+                                })
+                            });
+
+                            let response = ui.add(
+                                egui::TextEdit::multiline(&mut text_value)
+                                    .desired_rows(8)
+                                    .desired_width(ui.available_width())
+                            );
+
+                            // Store the current editing state
+                            ui.data_mut(|data| {
+                                data.insert_temp(editor_id, text_value.clone());
+                            });
+
+                            // Parse and update when user finishes editing (loses focus)
+                            if response.lost_focus() {
+                                // Parse lines into list items
+                                let non_empty_lines: Vec<&str> = text_value
+                                    .lines()
+                                    .map(|line| line.trim())
+                                    .filter(|line| !line.is_empty())
+                                    .collect();
+
+                                if non_empty_lines.is_empty() {
+                                    // Empty list
+                                    *value = NodeValue::List(vec![]);
+                                    node.dirty = true;
+                                } else {
+                                    // Detect list type from first element
+                                    let list_type = if !items.is_empty() {
+                                        match &items[0] {
+                                            NodeValue::U32(_) => "u32",
+                                            NodeValue::F32(_) => "f32",
+                                            NodeValue::I32(_) => "i32",
+                                            _ => "string",
+                                        }
+                                    } else {
+                                        "string"
+                                    };
+
+                                    // Parse based on detected type
+                                    let parsed_items: Vec<NodeValue> = match list_type {
+                                        "u32" => non_empty_lines
+                                            .iter()
+                                            .filter_map(|line| line.parse::<u32>().ok().map(NodeValue::U32))
+                                            .collect(),
+                                        "f32" => non_empty_lines
+                                            .iter()
+                                            .filter_map(|line| line.parse::<f32>().ok().map(NodeValue::F32))
+                                            .collect(),
+                                        "i32" => non_empty_lines
+                                            .iter()
+                                            .filter_map(|line| line.parse::<i32>().ok().map(NodeValue::I32))
+                                            .collect(),
+                                        _ => non_empty_lines
+                                            .iter()
+                                            .map(|line| NodeValue::String(line.to_string()))
+                                            .collect(),
+                                    };
+
+                                    if !parsed_items.is_empty() {
+                                        *value = NodeValue::List(parsed_items);
+                                        node.dirty = true;
+                                    }
+                                }
                             }
                         }
                         _ => {
