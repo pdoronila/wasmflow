@@ -114,12 +114,17 @@ fn main() -> Result<(), eframe::Error> {
         "WasmFlow",
         options,
         Box::new(move |cc| {
+            // T011: Create app without loading components
             let mut app = ui::WasmFlowApp::new(cc);
 
-            // T099: Load graph file if specified
+            // T011: Start async component loading with splash screen
+            log::info!("Starting async component loading...");
+            app.start_async_component_loading();
+
+            // T099: Defer graph file loading until components are ready
             if let Some(path) = graph_file {
-                log::info!("Loading graph from: {}", path.display());
-                app.load_graph_from_path(path);
+                log::info!("Graph file will be loaded after components are ready: {}", path.display());
+                app.set_pending_graph_load(path);
             }
 
             // T099: Hide palette if requested
