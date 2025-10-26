@@ -27,8 +27,15 @@ pub struct CompilationConfig {
 }
 
 /// Result of compilation attempt
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CompilationResult {
+    /// Compilation in progress with status update
+    Progress {
+        /// Current progress message (e.g., "Compiling dependencies...")
+        message: String,
+        /// Progress percentage (0.0 to 1.0), None if indeterminate
+        percentage: Option<f32>,
+    },
     Success {
         /// Path to compiled .wasm file
         wasm_path: PathBuf,
@@ -69,8 +76,161 @@ impl ComponentCompiler {
         Self::new(root)
     }
 
+    /// Compile a component with progress updates
+    pub fn compile_with_progress<F>(&self, config: CompilationConfig, mut progress_callback: F) -> Result<CompilationResult, String>
+    where
+        F: FnMut(CompilationResult),
+    {
+        let start = Instant::now();
+
+        // Create workspace
+        progress_callback(CompilationResult::Progress {
+            message: "Creating workspace...".to_string(),
+            percentage: Some(0.1),
+        });
+
+        let workspace = self.create_workspace(&config)?;
+
+        progress_callback(CompilationResult::Progress {
+            message: "Starting compilation...".to_string(),
+            percentage: Some(0.2),
+        });
+
+        // Dispatch to language-specific compiler with progress
+        let result = match config.language {
+            Language::Rust => {
+                self.invoke_cargo_with_progress(&workspace, &config.component_name, config.timeout, &mut progress_callback)?
+            }
+            Language::Python => {
+                self.invoke_componentize_py(&workspace, &config.component_name, config.timeout)?
+            }
+            Language::JavaScript => {
+                self.invoke_componentize_js(&workspace, &config.component_name, config.timeout)?
+            }
+        };
+
+        // If compilation succeeded, copy the wasm file to a persistent location before cleanup
+        let result = match result {
+            CompilationResult::Success {
+                wasm_path, output, ..
+            } => {
+                progress_callback(CompilationResult::Progress {
+                    message: "Copying binary...".to_string(),
+                    percentage: Some(0.9),
+                });
+
+                // Copy to persistent temp directory before workspace cleanup
+                let persistent_temp = std::env::temp_dir().join("wasmflow-compiled");
+                if let Err(e) = fs::create_dir_all(&persistent_temp) {
+                    log::warn!("Failed to create persistent temp directory: {}", e);
+                }
+
+                let persistent_path =
+                    persistent_temp.join(wasm_path.file_name().ok_or("Invalid wasm path")?);
+
+                match fs::copy(&wasm_path, &persistent_path) {
+                    Ok(_) => {
+                        log::debug!(
+                            "Copied wasm to persistent location: {}",
+                            persistent_path.display()
+                        );
+                        CompilationResult::Success {
+                            wasm_path: persistent_path,
+                            build_time_ms: 0, // Will be set below
+                            output,
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Failed to copy wasm to persistent location: {}", e);
+                        // Fall back to original path (will likely fail later, but better than crashing)
+                        CompilationResult::Success {
+                            wasm_path,
+                            build_time_ms: 0,
+                            output,
+                        }
+                    }
+                }
+            }
+            other => other,
+        };
+
+        // Log workspace path on failure for debugging
+        if matches!(result, CompilationResult::Failure { .. }) {
+            // Copy generated source to persistent debug location
+            let debug_dir = std::env::temp_dir().join("wasmflow-debug");
+            let _ = fs::create_dir_all(&debug_dir);
+
+            let source_file = match config.language {
+                Language::Rust => workspace.join("src/lib.rs"),
+                Language::Python => workspace.join("app.py"),
+                Language::JavaScript => workspace.join("app.js"),
+            };
+
+            let debug_file = debug_dir.join(format!(
+                "failed_{}.{}",
+                config.component_name,
+                config.language.file_extension()
+            ));
+
+            if let Err(e) = fs::copy(&source_file, &debug_file) {
+                log::error!("Failed to copy source for debugging: {}", e);
+            } else {
+                log::error!("Generated source saved to: {}", debug_file.display());
+            }
+
+            log::error!(
+                "Compilation failed. Workspace was at: {}",
+                workspace.display()
+            );
+            log::error!("Inspect the generated files to debug the issue.");
+        }
+
+        // Always cleanup workspace
+        if let Err(e) = self.cleanup_workspace(&workspace) {
+            log::warn!("Failed to cleanup workspace: {}", e);
+        }
+
+        // T080: Add build time to result and log slow compilations
+        match result {
+            CompilationResult::Success {
+                wasm_path, output, ..
+            } => {
+                let build_time_ms = start.elapsed().as_millis() as u64;
+
+                // T080: Log slow compilations (>30s)
+                if build_time_ms > 30_000 {
+                    log::warn!(
+                        "Slow compilation detected for '{}': {}ms (>30s). \
+                        Consider simplifying code or checking system resources.",
+                        config.component_name,
+                        build_time_ms
+                    );
+                } else {
+                    log::info!(
+                        "Compilation completed for '{}' in {}ms",
+                        config.component_name,
+                        build_time_ms
+                    );
+                }
+
+                Ok(CompilationResult::Success {
+                    wasm_path,
+                    build_time_ms,
+                    output,
+                })
+            }
+            other => Ok(other),
+        }
+    }
+
     /// Compile a component from config (T013, T014, T015, T016)
     pub fn compile(&self, config: CompilationConfig) -> Result<CompilationResult, String> {
+        // Call compile_with_progress with a no-op callback
+        self.compile_with_progress(config, |_| {})
+    }
+
+    /// Original compile method for backwards compatibility
+    pub fn compile_old(&self, config: CompilationConfig) -> Result<CompilationResult, String> {
         let start = Instant::now();
 
         // Create workspace
@@ -250,6 +410,225 @@ impl ComponentCompiler {
             .map_err(|e| format!("Failed to write world.wit: {}", e))?;
 
         Ok(workspace)
+    }
+
+    /// Invoke cargo-component with progress updates
+    fn invoke_cargo_with_progress<F>(
+        &self,
+        workspace: &Path,
+        component_name: &str,
+        timeout: Duration,
+        progress_callback: &mut F,
+    ) -> Result<CompilationResult, String>
+    where
+        F: FnMut(CompilationResult),
+    {
+        use std::io::{BufRead, BufReader};
+
+        // T079: Check if cargo-component is available with helpful error message
+        let mut child = Command::new("cargo")
+            .args(&["component", "build", "--release"])
+            .current_dir(workspace)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    format!(
+                        "cargo-component not found or not in PATH\n\
+                        \n\
+                        To compile custom WASM components, you need cargo-component installed.\n\
+                        \n\
+                        Installation instructions:\n\
+                        1. Install cargo-component:\n\
+                           cargo install cargo-component\n\
+                        \n\
+                        2. Install wasm32-wasip2 target:\n\
+                           rustup target add wasm32-wasip2\n\
+                        \n\
+                        3. Restart the application\n\
+                        \n\
+                        For more information, visit:\n\
+                        https://github.com/bytecodealliance/cargo-component\n\
+                        \n\
+                        Original error: {}",
+                        e
+                    )
+                } else {
+                    format!("Failed to spawn cargo-component: {}", e)
+                }
+            })?;
+
+        let start = Instant::now();
+
+        // Capture stdout and stderr for progress parsing
+        let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+        let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+
+        use std::sync::mpsc;
+        use std::sync::{Arc, Mutex};
+
+        // Create channels for reading output from separate threads
+        let (stderr_tx, stderr_rx) = mpsc::channel::<String>();
+
+        let all_output = Arc::new(Mutex::new(String::new()));
+        let all_errors = Arc::new(Mutex::new(String::new()));
+
+        // Spawn thread to read stderr
+        std::thread::spawn(move || {
+            use std::io::BufRead;
+            let reader = BufReader::new(stderr);
+            for line in reader.lines().flatten() {
+                let _ = stderr_tx.send(line);
+            }
+        });
+
+        // Spawn thread to read stdout
+        let all_output_clone = all_output.clone();
+        std::thread::spawn(move || {
+            use std::io::BufRead;
+            let reader = BufReader::new(stdout);
+            for line in reader.lines().flatten() {
+                if let Ok(mut output) = all_output_clone.lock() {
+                    output.push_str(&line);
+                    output.push('\n');
+                }
+            }
+        });
+
+        let mut total_crates = 0;
+        let mut compiled_crates = 0;
+
+        // Poll for completion with timeout, reading output as it comes
+        loop {
+            if start.elapsed() > timeout {
+                // Kill the process
+                let _ = child.kill();
+                return Ok(CompilationResult::Timeout {
+                    elapsed: start.elapsed(),
+                });
+            }
+
+            // Try to receive stderr lines (non-blocking)
+            while let Ok(line) = stderr_rx.try_recv() {
+                // Store the line
+                if let Ok(mut errors) = all_errors.lock() {
+                    errors.push_str(&line);
+                    errors.push('\n');
+                }
+
+                // Parse for "Compiling" messages - cargo outputs these to stderr
+                if line.trim().starts_with("Compiling") {
+                    compiled_crates += 1;
+
+                    // Extract package name for progress message
+                    let package_name = line
+                        .split_whitespace()
+                        .nth(1)
+                        .unwrap_or("dependency");
+
+                    // Calculate progress (estimate total based on what we've seen)
+                    if total_crates == 0 {
+                        total_crates = 5; // Initial estimate
+                    }
+                    if compiled_crates > total_crates {
+                        total_crates = compiled_crates + 2;
+                    }
+
+                    let percentage = 0.2 + (0.7 * (compiled_crates as f32 / total_crates as f32));
+
+                    log::info!("Compilation progress: {} ({}/{}), {}%", package_name, compiled_crates, total_crates, (percentage * 100.0) as u32);
+
+                    progress_callback(CompilationResult::Progress {
+                        message: format!("Compiling {} ({}/{})", package_name, compiled_crates, total_crates),
+                        percentage: Some(percentage),
+                    });
+                }
+            }
+
+            // Check if process has completed
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    // Process completed - drain any remaining messages
+                    while let Ok(line) = stderr_rx.try_recv() {
+                        if let Ok(mut errors) = all_errors.lock() {
+                            errors.push_str(&line);
+                            errors.push('\n');
+                        }
+                    }
+
+                    let all_output_str = all_output.lock().unwrap().clone();
+                    let all_errors_str = all_errors.lock().unwrap().clone();
+
+                    if status.success() {
+                        // Find the compiled .wasm file
+                        let crate_name = Self::component_name_to_crate_name(component_name);
+                        let possible_paths = vec![
+                            workspace
+                                .join("target/wasm32-wasip2/release")
+                                .join(format!("{}.wasm", crate_name)),
+                            workspace
+                                .join("target/wasm32-wasi/release")
+                                .join(format!("{}.wasm", crate_name)),
+                            workspace
+                                .join("target/release")
+                                .join(format!("{}.wasm", crate_name)),
+                        ];
+
+                        let wasm_path = possible_paths.iter().find(|p| p.exists()).cloned();
+
+                        let wasm_path = match wasm_path {
+                            Some(path) => path,
+                            None => {
+                                // Search the entire target directory for .wasm files
+                                let target_dir = workspace.join("target");
+
+                                if let Ok(found_wasm) =
+                                    Self::find_wasm_file(&target_dir, &crate_name)
+                                {
+                                    found_wasm
+                                } else {
+                                    return Ok(CompilationResult::Failure {
+                                        error_message: format!(
+                                            "Compilation succeeded but .wasm file not found.\n\
+                                            Expected one of:\n\
+                                            - target/wasm32-wasip2/release/{}.wasm\n\
+                                            - target/wasm32-wasi/release/{}.wasm\n\
+                                            - target/release/{}.wasm\n\
+                                            \n\
+                                            Build output:\n{}",
+                                            crate_name, crate_name, crate_name, all_errors_str
+                                        ),
+                                        line_number: None,
+                                        stderr: all_errors_str.clone(),
+                                    });
+                                }
+                            }
+                        };
+
+                        return Ok(CompilationResult::Success {
+                            wasm_path,
+                            build_time_ms: 0, // Will be set by caller
+                            output: all_output_str,
+                        });
+                    } else {
+                        // Compilation failed - parse error
+                        let (error_message, line_number) = Self::parse_cargo_error(&all_errors_str);
+
+                        return Ok(CompilationResult::Failure {
+                            error_message,
+                            line_number,
+                            stderr: all_errors_str,
+                        });
+                    }
+                }
+                Ok(None) => {
+                    // Still running, wait a bit
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+                Err(e) => return Err(format!("Failed to wait for cargo process: {}", e)),
+            }
+        }
     }
 
     /// Invoke cargo-component with timeout monitoring (T014, T015)

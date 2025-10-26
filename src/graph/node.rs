@@ -274,7 +274,7 @@ impl Language {
 ///
 /// This struct stores the code editor state and compilation state for creator nodes.
 /// The source_code field is optionally saved based on the save_code flag.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WasmCreatorNodeData {
     /// User-specified component name (PascalCase)
     pub component_name: String,
@@ -293,6 +293,33 @@ pub struct WasmCreatorNodeData {
     /// Code editor theme preference
     #[serde(default, skip)]
     pub editor_theme: crate::ui::code_editor::CodeTheme,
+    /// Channel receiver for background compilation results (not serialized)
+    #[serde(skip)]
+    pub compilation_receiver: Option<std::sync::mpsc::Receiver<crate::runtime::CompilationResult>>,
+    /// Current compilation progress message
+    #[serde(skip)]
+    pub compilation_progress: Option<String>,
+    /// Current compilation progress percentage (0.0 to 1.0)
+    #[serde(skip)]
+    pub compilation_percentage: Option<f32>,
+}
+
+// Manual Clone implementation that skips the non-cloneable receiver
+impl Clone for WasmCreatorNodeData {
+    fn clone(&self) -> Self {
+        Self {
+            component_name: self.component_name.clone(),
+            save_code: self.save_code,
+            source_code: self.source_code.clone(),
+            compilation_state: self.compilation_state.clone(),
+            generated_component_id: self.generated_component_id.clone(),
+            language: self.language,
+            editor_theme: self.editor_theme.clone(),
+            compilation_receiver: None, // Don't clone the receiver
+            compilation_progress: self.compilation_progress.clone(),
+            compilation_percentage: self.compilation_percentage,
+        }
+    }
 }
 
 impl WasmCreatorNodeData {
@@ -305,6 +332,9 @@ impl WasmCreatorNodeData {
             generated_component_id: None,
             language: Language::Rust, // Default to Rust for backward compatibility
             editor_theme: crate::ui::code_editor::CodeTheme::default(),
+            compilation_receiver: None,
+            compilation_progress: None,
+            compilation_percentage: None,
         }
     }
 
@@ -322,6 +352,9 @@ impl WasmCreatorNodeData {
             generated_component_id: None,
             language,
             editor_theme: crate::ui::code_editor::CodeTheme::default(),
+            compilation_receiver: None,
+            compilation_progress: None,
+            compilation_percentage: None,
         }
     }
 

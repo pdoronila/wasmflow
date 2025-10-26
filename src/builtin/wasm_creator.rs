@@ -437,6 +437,11 @@ const result = value * 2.0;
 
         // T037: Update state based on compilation result
         match compilation_result {
+            crate::runtime::CompilationResult::Progress { .. } => {
+                // Old sync compile doesn't handle progress
+                log::warn!("Progress update in synchronous compilation - unexpected");
+                Ok(())
+            }
             crate::runtime::CompilationResult::Success {
                 wasm_path,
                 build_time_ms,
@@ -577,7 +582,7 @@ impl WasmCreatorFooterView {
             .collect()
     }
 
-    /// Execute compilation workflow
+    /// Execute compilation workflow in a background thread
     fn execute_compilation(
         creator_data: &mut crate::graph::node::WasmCreatorNodeData,
     ) -> Result<(), String> {
@@ -591,7 +596,7 @@ impl WasmCreatorFooterView {
 
         // Log compilation start
         log::info!(
-            "Starting compilation for component: {}",
+            "Starting background compilation for component: {}",
             creator_data.component_name
         );
 
@@ -636,14 +641,58 @@ impl WasmCreatorFooterView {
             language: creator_data.language,
         };
 
-        // Compile the component
-        let compiler = ComponentCompiler::with_default_workspace();
-        let compilation_result = compiler
-            .compile(config)
-            .map_err(|e| format!("Compilation failed: {}", e))?;
+        // Create a channel for receiving compilation results
+        let (tx, rx) = std::sync::mpsc::channel();
+        creator_data.compilation_receiver = Some(rx);
 
+        // Spawn background thread for compilation
+        std::thread::spawn(move || {
+            log::info!("Compilation thread started for {}", config.component_name);
+
+            // Send initial progress update
+            let _ = tx.send(crate::runtime::CompilationResult::Progress {
+                message: "Preparing workspace...".to_string(),
+                percentage: Some(0.0),
+            });
+
+            // Compile the component with progress updates
+            let compiler = ComponentCompiler::with_default_workspace();
+            let compilation_result = match compiler.compile_with_progress(config, |progress| {
+                // Forward progress updates to the UI
+                let _ = tx.send(progress);
+            }) {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Compilation error: {}", e);
+                    crate::runtime::CompilationResult::Failure {
+                        error_message: format!("Compilation failed: {}", e),
+                        line_number: None,
+                        stderr: e,
+                    }
+                }
+            };
+
+            // Send final result back through channel
+            if let Err(e) = tx.send(compilation_result) {
+                log::error!("Failed to send compilation result: {}", e);
+            }
+        });
+
+        Ok(())
+    }
+
+    /// Process compilation result from background thread
+    fn process_compilation_result(
+        creator_data: &mut crate::graph::node::WasmCreatorNodeData,
+        compilation_result: crate::runtime::CompilationResult,
+    ) {
         // Update state based on compilation result
         match compilation_result {
+            // Progress updates are handled in the polling loop, not here
+            crate::runtime::CompilationResult::Progress { .. } => {
+                // This shouldn't happen as progress is handled separately
+                log::warn!("Received Progress in process_compilation_result - should be handled in polling loop");
+            }
             crate::runtime::CompilationResult::Success {
                 wasm_path,
                 build_time_ms,
@@ -715,8 +764,6 @@ impl WasmCreatorFooterView {
                 // Store the component ID
                 creator_data.generated_component_id =
                     Some(format!("user:{}", creator_data.component_name));
-
-                Ok(())
             }
             crate::runtime::CompilationResult::Failure {
                 error_message,
@@ -734,8 +781,6 @@ impl WasmCreatorFooterView {
                     line_number,
                     failed_at: chrono::Utc::now(),
                 };
-
-                Err(error_message)
             }
             crate::runtime::CompilationResult::Timeout { elapsed } => {
                 let error = format!("Compilation timed out after {:?}", elapsed);
@@ -746,8 +791,6 @@ impl WasmCreatorFooterView {
                     line_number: None,
                     failed_at: chrono::Utc::now(),
                 };
-
-                Err(error)
             }
         }
     }
@@ -851,6 +894,53 @@ impl ComponentFooterView for WasmCreatorFooterView {
 
             ui.add_space(5.0);
 
+            // Poll for compilation results from background thread
+            if let Some(ref receiver) = creator_data.compilation_receiver {
+                // Try to receive all available results without blocking
+                let mut has_updates = false;
+                loop {
+                    match receiver.try_recv() {
+                        Ok(result) => {
+                            has_updates = true;
+                            match result {
+                                crate::runtime::CompilationResult::Progress { message, percentage } => {
+                                    // Update progress without changing compilation state
+                                    creator_data.compilation_progress = Some(message);
+                                    creator_data.compilation_percentage = percentage;
+                                    log::debug!("Progress: {:?} ({}%)", creator_data.compilation_progress, percentage.unwrap_or(0.0) * 100.0);
+                                }
+                                _ => {
+                                    // Final result (Success, Failure, or Timeout)
+                                    log::info!("Received final compilation result from background thread");
+                                    Self::process_compilation_result(creator_data, result);
+                                    // Clear the receiver since we've processed the final result
+                                    creator_data.compilation_receiver = None;
+                                    creator_data.compilation_progress = None;
+                                    creator_data.compilation_percentage = None;
+                                    break;
+                                }
+                            }
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => {
+                            // No more messages available
+                            break;
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            // Channel disconnected, clear it
+                            creator_data.compilation_receiver = None;
+                            creator_data.compilation_progress = None;
+                            creator_data.compilation_percentage = None;
+                            break;
+                        }
+                    }
+                }
+
+                // Request a repaint if we received updates
+                if has_updates {
+                    ui.ctx().request_repaint();
+                }
+            }
+
             // Execute button or status display
             match &creator_data.compilation_state {
                 CompilationState::Idle => {
@@ -867,7 +957,7 @@ impl ComponentFooterView for WasmCreatorFooterView {
                     }
 
                     ui.add_space(3.0);
-                    ui.label(RichText::new("Note: Compilation may take a few seconds and will freeze the UI.")
+                    ui.label(RichText::new("Note: Compilation runs in background. Watch the spinner for progress.")
                         .color(Color32::GRAY)
                         .size(10.0));
                 }
@@ -877,6 +967,26 @@ impl ComponentFooterView for WasmCreatorFooterView {
                         let elapsed = chrono::Utc::now().signed_duration_since(*started_at);
                         ui.label(format!("Compiling... ({}s)", elapsed.num_seconds()));
                     });
+
+                    // Show progress bar if we have progress information
+                    if let Some(percentage) = creator_data.compilation_percentage {
+                        let progress_bar = egui::ProgressBar::new(percentage)
+                            .show_percentage()
+                            .animate(true);
+                        ui.add(progress_bar);
+                    } else {
+                        // Show indeterminate progress bar
+                        let progress_bar = egui::ProgressBar::new(0.0).animate(true);
+                        ui.add(progress_bar);
+                    }
+
+                    // Show progress message if available
+                    if let Some(ref message) = creator_data.compilation_progress {
+                        ui.label(RichText::new(message).color(Color32::from_rgb(150, 150, 150)).size(11.0));
+                    }
+
+                    // Request continuous repaint to update the spinner, progress bar, and elapsed time
+                    ui.ctx().request_repaint();
                 }
                 CompilationState::Success { build_time_ms, component_path, .. } => {
                     ui.label(RichText::new(format!("✓ Compiled successfully in {}ms", build_time_ms))
