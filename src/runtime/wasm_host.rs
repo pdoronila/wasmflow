@@ -353,6 +353,48 @@ impl ComponentManager {
         Ok(component_spec)
     }
 
+    /// Load component bytecode without metadata extraction (for cache hits)
+    ///
+    /// This is used when we already have the ComponentSpec from cache and only need
+    /// to load the bytecode into ComponentManager for execution.
+    pub fn load_bytecode_only(
+        &mut self,
+        path: &Path,
+        component_id: &str,
+    ) -> Result<(), ComponentError> {
+        // Validate file size
+        let metadata = std::fs::metadata(path).map_err(|e| ComponentError::LoadFailed {
+            path: path.to_path_buf(),
+            reason: format!("Failed to read component metadata: {}", e),
+        })?;
+
+        if metadata.len() > MAX_COMPONENT_SIZE {
+            return Err(ComponentError::ValidationFailed(format!(
+                "Component file too large: {} bytes (max: {} bytes)",
+                metadata.len(),
+                MAX_COMPONENT_SIZE
+            )));
+        }
+
+        // Read bytecode
+        let bytecode = std::fs::read(path).map_err(|e| ComponentError::LoadFailed {
+            path: path.to_path_buf(),
+            reason: format!("Failed to read component file: {}", e),
+        })?;
+
+        // Store bytecode only, defer compilation
+        self.components.insert(
+            component_id.to_string(),
+            ComponentData {
+                bytecode: Arc::new(bytecode),
+                compiled: None,
+            },
+        );
+
+        log::debug!("Loaded component bytecode (from cache): {}", component_id);
+        Ok(())
+    }
+
     /// T083: Load a component synchronously (for UI integration)
     /// Stores bytecode, defers compilation until first execution
     pub fn load_component_sync(&mut self, path: &Path) -> Result<ComponentSpec, ComponentError> {
@@ -806,6 +848,23 @@ impl ComponentManager {
         self.update_lru_and_evict(component_id);
 
         Ok(compiled_arc)
+    }
+
+    /// Check if a component is loaded (bytecode available)
+    /// Returns true if the component bytecode has been loaded into the manager
+    pub fn has_component(&self, component_id: &str) -> bool {
+        self.components.contains_key(component_id)
+    }
+
+    /// Clear all loaded components (for reload)
+    ///
+    /// This removes all bytecode and compiled components from memory.
+    /// Used when reloading components to ensure a clean state.
+    pub fn clear_all_components(&mut self) {
+        let count = self.components.len();
+        self.components.clear();
+        self.lru_order.clear();
+        log::info!("Cleared {} components from ComponentManager", count);
     }
 
     /// T083: Update LRU order for a component

@@ -5,7 +5,9 @@
 //! keyboard navigation.
 
 use crate::graph::node::{ComponentRegistry, ComponentSpec};
+use crate::runtime::wasm_host::ComponentManager;
 use eframe::egui;
+use std::sync::{Arc, Mutex};
 
 /// Action returned by the spotlight search
 #[derive(Debug, Clone)]
@@ -72,6 +74,7 @@ impl SpotlightSearch {
         &mut self,
         ctx: &egui::Context,
         registry: &ComponentRegistry,
+        component_manager: &Arc<Mutex<ComponentManager>>,
         mouse_pos: Option<egui::Pos2>,
     ) -> Option<SpotlightAction> {
         if !self.visible {
@@ -132,7 +135,7 @@ impl SpotlightSearch {
 
                     if handle_navigation {
                         // Get filtered list to calculate bounds
-                        let filtered = self.get_filtered_components(registry);
+                        let filtered = self.get_filtered_components(registry, component_manager);
 
                         if nav_down {
                             if let Some(idx) = self.selected_index {
@@ -160,7 +163,7 @@ impl SpotlightSearch {
                     if handle_enter {
                         // Add the selected component at mouse position
                         if let Some(idx) = self.selected_index {
-                            let filtered = self.get_filtered_components(registry);
+                            let filtered = self.get_filtered_components(registry, component_manager);
                             if let Some(spec) = filtered.get(idx) {
                                 let position = mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
                                 action = Some(SpotlightAction::AddComponent {
@@ -188,7 +191,7 @@ impl SpotlightSearch {
                     ui.add_space(8.0);
 
                     // Results list
-                    let filtered = self.get_filtered_components(registry);
+                    let filtered = self.get_filtered_components(registry, component_manager);
 
                     // Update selected index if out of bounds
                     if let Some(idx) = self.selected_index {
@@ -319,20 +322,47 @@ impl SpotlightSearch {
     }
 
     /// Get filtered and sorted components based on search query
+    /// Only returns components that are actually loaded in ComponentManager
     fn get_filtered_components<'a>(
         &self,
         registry: &'a ComponentRegistry,
+        component_manager: &Arc<Mutex<ComponentManager>>,
     ) -> Vec<&'a ComponentSpec> {
+        // Get available component IDs from ComponentManager
+        let available_components = {
+            let cm = match component_manager.lock() {
+                Ok(cm) => cm,
+                Err(e) => {
+                    log::error!("Failed to lock ComponentManager in spotlight: {}", e);
+                    return Vec::new();
+                }
+            };
+
+            // Filter to only components that are actually loaded in ComponentManager
+            registry
+                .list_all()
+                .into_iter()
+                .filter(|spec| {
+                    // Builtin components don't need to be in ComponentManager
+                    if spec.id.starts_with("builtin:") {
+                        true
+                    } else {
+                        // User components must be loaded in ComponentManager
+                        cm.has_component(&spec.id)
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+
         if self.query.is_empty() {
-            // Show all components sorted by name when no query
-            let mut all = registry.list_all();
+            // Show all available components sorted by name when no query
+            let mut all = available_components;
             all.sort_by(|a, b| a.name.cmp(&b.name));
             return all;
         }
 
         let query = self.query.to_lowercase();
-        let mut results: Vec<(&ComponentSpec, i32)> = registry
-            .list_all()
+        let mut results: Vec<(&ComponentSpec, i32)> = available_components
             .into_iter()
             .filter_map(|spec| {
                 let score = self.fuzzy_match_score(spec, &query);

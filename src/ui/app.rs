@@ -287,12 +287,27 @@ impl WasmFlowApp {
                     drop(p);
 
                     // Merge loaded components into main registry
-                    // Lock the registry and copy components out
+                    // First, remove all user components (keep builtins)
+                    {
+                        let mut components_to_remove = Vec::new();
+                        for spec in self.registry.list_all() {
+                            if spec.id.starts_with("user:") {
+                                components_to_remove.push(spec.id.clone());
+                            }
+                        }
+                        for id in components_to_remove {
+                            self.registry.unregister_component(&id);
+                        }
+                    }
+
+                    // Now merge loaded components from disk
                     {
                         let loaded_reg = registry.lock().unwrap();
                         for spec in loaded_reg.list_all() {
                             if let Err(e) = self.registry.register_component(spec.clone()) {
                                 log::warn!("Failed to merge component {}: {}", spec.id, e);
+                            } else {
+                                log::debug!("Merged component into main registry: {}", spec.id);
                             }
                         }
                     }
@@ -1010,7 +1025,11 @@ impl eframe::App for WasmFlowApp {
 
         // Render spotlight search (must be after canvas to overlay on top)
         let mouse_pos = ctx.input(|i| i.pointer.hover_pos());
-        if let Some(action) = self.spotlight.show(ctx, &self.registry, mouse_pos) {
+        let component_manager = self.engine.component_manager();
+        if let Some(action) = self
+            .spotlight
+            .show(ctx, &self.registry, &component_manager, mouse_pos)
+        {
             match action {
                 SpotlightAction::AddComponent { spec, position } => {
                     // Use the existing permission handling logic

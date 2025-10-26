@@ -596,29 +596,40 @@ impl TemplateGenerator {
     /// Generate WIT interface (T010)
     pub fn generate_wit(_metadata: &ComponentMetadata) -> String {
         // Generate complete WIT file with all necessary interface definitions
-        r#"// WasmFlow Component Interface
-package wasmflow:node@1.0.0;
+        r#"// WasmFlow Node Interface
+// This defines the contract that all WasmFlow components must implement
+
+package wasmflow:node@1.1.0;
 
 /// Data types supported by WasmFlow
 interface types {
+    /// Data type specification for ports
     variant data-type {
         u32-type,
         i32-type,
         f32-type,
         string-type,
+        bool-type,
         binary-type,
         list-type,
         any-type,
     }
 
+    /// Values that flow through node connections
     variant value {
         u32-val(u32),
         i32-val(s32),
         f32-val(f32),
         string-val(string),
+        bool-val(bool),
         binary-val(list<u8>),
+        // Non-recursive list types for common cases
+        string-list-val(list<string>),
+        u32-list-val(list<u32>),
+        f32-list-val(list<f32>),
     }
 
+    /// Port specification
     record port-spec {
         name: string,
         data-type: data-type,
@@ -626,6 +637,7 @@ interface types {
         description: string,
     }
 
+    /// Component metadata
     record component-info {
         name: string,
         version: string,
@@ -634,6 +646,7 @@ interface types {
         category: option<string>,
     }
 
+    /// Execution error
     record execution-error {
         message: string,
         input-name: option<string>,
@@ -643,28 +656,39 @@ interface types {
 
 /// Host functions provided by WasmFlow
 interface host {
+    /// Log a message to the console
     log: func(level: string, message: string);
+
+    /// Get temporary directory path
     get-temp-dir: func() -> result<string, string>;
 }
 
-/// Metadata interface
+/// Metadata interface - provides component information
 interface metadata {
     use types.{component-info, port-spec};
 
+    /// Get component information
     get-info: func() -> component-info;
+
+    /// Get input port specifications
     get-inputs: func() -> list<port-spec>;
+
+    /// Get output port specifications
     get-outputs: func() -> list<port-spec>;
+
+    /// Get required capabilities
     get-capabilities: func() -> option<list<string>>;
 }
 
-/// Execution interface
+/// Execution interface - performs the actual computation
 interface execution {
     use types.{value, execution-error};
 
+    /// Execute the component with given inputs
     execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
 }
 
-/// Main component world
+/// Main world that components must implement
 world component {
     import host;
     export metadata;
@@ -696,20 +720,13 @@ name = "{}"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+
 [lib]
 crate-type = ["cdylib"]
 
-# Configure cargo-component to use wasm32-wasip2
-[package.metadata.component]
-package = "wasmflow:node"
-
-[package.metadata.component.target]
-path = "wit"
-
 [dependencies]
-# Component model bindings
-cargo-component-bindings = "0.6"
-wit-bindgen-rt = "0.44"
+wit-bindgen = "0.30"
 
 [profile.release]
 opt-level = "s"

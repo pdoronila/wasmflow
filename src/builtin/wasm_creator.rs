@@ -674,6 +674,10 @@ impl WasmCreatorFooterView {
                         match std::fs::copy(&wasm_path, &dest_path) {
                             Ok(_) => {
                                 log::info!("Copied compiled component to: {}", dest_path.display());
+                                log::info!(
+                                    "✓ Component '{}' compiled successfully! Use 'File → Reload Components' to load it.",
+                                    creator_data.component_name
+                                );
                                 creator_data.compilation_state = CompilationState::Success {
                                     compiled_at: chrono::Utc::now(),
                                     component_path: dest_path, // Use the copied path
