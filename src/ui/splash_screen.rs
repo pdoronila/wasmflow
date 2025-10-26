@@ -20,8 +20,6 @@ use std::time::Instant;
 pub struct SplashScreen {
     /// Shared progress tracker from loading thread
     progress: Arc<Mutex<ComponentLoadProgress>>,
-    /// Animation start time for spinner
-    animation_start: Instant,
 }
 
 impl SplashScreen {
@@ -31,10 +29,7 @@ impl SplashScreen {
     ///
     /// * `progress` - Shared progress tracker from the background loading thread
     pub fn new(progress: Arc<Mutex<ComponentLoadProgress>>) -> Self {
-        Self {
-            progress,
-            animation_start: Instant::now(),
-        }
+        Self { progress }
     }
 
     /// Render the splash screen
@@ -75,9 +70,9 @@ impl SplashScreen {
                 ui.add_space(30.0);
 
                 // Loading spinner (only show if not complete)
-                if !loading_complete {
-                    self.render_spinner(ui);
-                }
+                // if !loading_complete {
+                // self.render_spinner(ui);
+                // }
 
                 drop(progress);
             });
@@ -100,7 +95,7 @@ impl SplashScreen {
 
         // Subtitle
         ui.label(
-            egui::RichText::new("Visual Programming with WebAssembly")
+            egui::RichText::new("Visual Composition with WebAssembly")
                 .size(18.0)
                 .color(egui::Color32::from_rgb(180, 180, 180)),
         );
@@ -220,40 +215,6 @@ impl SplashScreen {
             }
         }
     }
-
-    /// Render animated loading spinner
-    fn render_spinner(&self, ui: &mut egui::Ui) {
-        let elapsed = self.animation_start.elapsed().as_secs_f32();
-
-        // Rotating circle animation
-        let angle = elapsed * 2.0 * std::f32::consts::PI;
-        let radius = 20.0;
-        let center = ui.cursor().left_top() + egui::vec2(250.0, 30.0);
-
-        let painter = ui.painter();
-
-        // Draw spinning arc
-        for i in 0..8 {
-            let i_angle = angle + (i as f32 * std::f32::consts::PI / 4.0);
-            let alpha = 255 - (i * 25) as u8; // Fade effect
-            let color = egui::Color32::from_rgba_premultiplied(100, 150, 255, alpha);
-
-            let start = center + egui::vec2(i_angle.cos() * radius, i_angle.sin() * radius);
-            let end = center
-                + egui::vec2(
-                    i_angle.cos() * (radius + 5.0),
-                    i_angle.sin() * (radius + 5.0),
-                );
-
-            painter.line_segment([start, end], egui::Stroke::new(3.0, color));
-        }
-
-        // Allocate space for the spinner
-        ui.allocate_space(egui::vec2(500.0, 60.0));
-
-        // Request repaint for animation
-        ui.ctx().request_repaint();
-    }
 }
 
 #[cfg(test)]
@@ -264,9 +225,10 @@ mod tests {
     fn test_splash_screen_creation() {
         let progress = Arc::new(Mutex::new(ComponentLoadProgress::new()));
         let splash = SplashScreen::new(progress);
-
-        // Should be created successfully
-        assert!(splash.animation_start.elapsed().as_secs() < 1);
+        // Verify creation succeeded and progress is accessible
+        let p = splash.progress.lock().unwrap();
+        assert_eq!(p.loaded_count, 0);
+        assert_eq!(p.total_components, 0);
     }
 
     #[test]

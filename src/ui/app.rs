@@ -274,8 +274,6 @@ impl WasmFlowApp {
     /// Should be called from the update loop when loading is in progress.
     /// Returns true if loading completed this frame.
     pub fn poll_loading_progress(&mut self) -> bool {
-        use std::sync::Arc;
-
         match &self.loading_state {
             crate::ui::LoadingState::Loading { progress, registry } => {
                 let p = progress.lock().unwrap();
