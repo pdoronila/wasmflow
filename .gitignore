@@ -34,6 +34,9 @@ Thumbs.db
 # Component artifacts
 /components/*.wasm
 
+# Component cache (metadata cache for fast loading)
+components/bin/.cache/
+
 # Auto-generated WIT bindings
 **/src/bindings.rs
 

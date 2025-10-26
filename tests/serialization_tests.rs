@@ -20,7 +20,10 @@ fn test_empty_graph_roundtrip() {
 
     // Verify
     assert_eq!(loaded.name, graph.name, "Graph name should match");
-    assert_eq!(loaded.metadata.author, graph.metadata.author, "Author should match");
+    assert_eq!(
+        loaded.metadata.author, graph.metadata.author,
+        "Author should match"
+    );
     assert_eq!(loaded.nodes.len(), 0, "Should have no nodes");
     assert_eq!(loaded.connections.len(), 0, "Should have no connections");
 
@@ -54,7 +57,10 @@ fn test_single_node_roundtrip() {
     let loaded_node = loaded.nodes.get(&node_id).expect("Node should exist");
     assert_eq!(loaded_node.id, node_id, "Node ID should match");
     assert_eq!(loaded_node.position, node_position, "Position should match");
-    assert_eq!(loaded_node.component_id, node_component_id, "Component ID should match");
+    assert_eq!(
+        loaded_node.component_id, node_component_id,
+        "Component ID should match"
+    );
 
     // Verify value preserved
     if let Some(NodeValue::F32(val)) = loaded_node.outputs[0].current_value.as_ref() {
@@ -114,10 +120,18 @@ fn test_complex_graph_roundtrip() {
     graph.add_node(mult_node);
 
     // Create 4 connections
-    graph.add_connection(const_1_id, const_1_out, add_id, add_a).unwrap();
-    graph.add_connection(const_2_id, const_2_out, add_id, add_b).unwrap();
-    graph.add_connection(add_id, add_out, mult_id, mult_a).unwrap();
-    graph.add_connection(const_3_id, const_3_out, mult_id, mult_b).unwrap();
+    graph
+        .add_connection(const_1_id, const_1_out, add_id, add_a)
+        .unwrap();
+    graph
+        .add_connection(const_2_id, const_2_out, add_id, add_b)
+        .unwrap();
+    graph
+        .add_connection(add_id, add_out, mult_id, mult_a)
+        .unwrap();
+    graph
+        .add_connection(const_3_id, const_3_out, mult_id, mult_b)
+        .unwrap();
 
     // Serialize
     let bytes = graph.to_bytes().expect("Serialization should succeed");
@@ -128,7 +142,10 @@ fn test_complex_graph_roundtrip() {
     // Verify metadata
     assert_eq!(loaded.name, "Complex Graph", "Graph name should match");
     assert_eq!(loaded.metadata.author, "Test Author", "Author should match");
-    assert_eq!(loaded.metadata.description, "Test description", "Description should match");
+    assert_eq!(
+        loaded.metadata.description, "Test description",
+        "Description should match"
+    );
 
     // Verify structure
     assert_eq!(loaded.nodes.len(), 5, "Should have 5 nodes");
@@ -136,18 +153,27 @@ fn test_complex_graph_roundtrip() {
 
     // Verify specific nodes
     let loaded_const_1 = loaded.nodes.get(&const_1_id).expect("Const 1 should exist");
-    assert_eq!(loaded_const_1.position, egui::Pos2::new(10.5, 20.3), "Position should match");
+    assert_eq!(
+        loaded_const_1.position,
+        egui::Pos2::new(10.5, 20.3),
+        "Position should match"
+    );
     if let Some(NodeValue::F32(val)) = loaded_const_1.outputs[0].current_value.as_ref() {
         assert_eq!(*val, 1.5, "Value should be preserved");
     }
 
     let loaded_add = loaded.nodes.get(&add_id).expect("Add node should exist");
-    assert_eq!(loaded_add.component_id, "builtin:math:add", "Component ID should match");
+    assert_eq!(
+        loaded_add.component_id, "builtin:math:add",
+        "Component ID should match"
+    );
     assert_eq!(loaded_add.inputs.len(), 2, "Should have 2 inputs");
     assert_eq!(loaded_add.outputs.len(), 1, "Should have 1 output");
 
     // Verify connections
-    let conn_1 = loaded.connections.iter()
+    let conn_1 = loaded
+        .connections
+        .iter()
         .find(|c| c.from_node == const_1_id && c.to_node == add_id)
         .expect("Connection 1→Add should exist");
     assert_eq!(conn_1.from_port, const_1_out, "From port should match");
@@ -174,14 +200,22 @@ fn test_metadata_preservation() {
 
     // Verify all metadata
     assert_eq!(loaded.name, "Metadata Test", "Name should match");
-    assert_eq!(loaded.metadata.author, "Original Author", "Author should match");
     assert_eq!(
-        loaded.metadata.description,
-        "Test description with special chars: éñ中文",
+        loaded.metadata.author, "Original Author",
+        "Author should match"
+    );
+    assert_eq!(
+        loaded.metadata.description, "Test description with special chars: éñ中文",
         "Description should match"
     );
-    assert_eq!(loaded.metadata.created_at, original_created, "Created timestamp should match");
-    assert_eq!(loaded.metadata.modified_at, original_modified, "Modified timestamp should match");
+    assert_eq!(
+        loaded.metadata.created_at, original_created,
+        "Created timestamp should match"
+    );
+    assert_eq!(
+        loaded.metadata.modified_at, original_modified,
+        "Modified timestamp should match"
+    );
 
     println!("✓ Metadata preservation: all fields including Unicode preserved");
 }
@@ -212,7 +246,10 @@ fn test_checksum_validation() {
 
     // Corrupted deserialization should fail
     let corrupted_result = NodeGraph::from_bytes(&bytes);
-    assert!(corrupted_result.is_err(), "Corrupted bytes should fail validation");
+    assert!(
+        corrupted_result.is_err(),
+        "Corrupted bytes should fail validation"
+    );
 
     // Verify it fails (corruption detected via checksum or deserialization error)
     if let Err(e) = corrupted_result {
@@ -327,12 +364,22 @@ fn test_large_graph_roundtrip() {
     let original_conn_count = graph.connections.len();
 
     // Roundtrip
-    let bytes = graph.to_bytes().expect("Large graph serialization should succeed");
+    let bytes = graph
+        .to_bytes()
+        .expect("Large graph serialization should succeed");
     let loaded = NodeGraph::from_bytes(&bytes).expect("Large graph deserialization should succeed");
 
     // Verify
-    assert_eq!(loaded.nodes.len(), original_node_count, "Node count should match");
-    assert_eq!(loaded.connections.len(), original_conn_count, "Connection count should match");
+    assert_eq!(
+        loaded.nodes.len(),
+        original_node_count,
+        "Node count should match"
+    );
+    assert_eq!(
+        loaded.connections.len(),
+        original_conn_count,
+        "Connection count should match"
+    );
 
     println!(
         "✓ Large graph roundtrip: {} nodes, {} connections preserved",

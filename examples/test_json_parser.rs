@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo run --example test_json_parser
 
-use wasmflow::builtin::json_parser::{parse, JsonValue, JsonParserError};
+use wasmflow::builtin::json_parser::{parse, JsonParserError, JsonValue};
 
 fn main() {
     println!("JSON Parser Test Suite\n");

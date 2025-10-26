@@ -17,7 +17,10 @@ impl ConstantNode {
     }
 
     /// Execute the constant node (always returns the configured value)
-    pub fn execute(&self, _inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    pub fn execute(
+        &self,
+        _inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
         let mut outputs = HashMap::new();
         outputs.insert("value".to_string(), self.value.clone());
         Ok(outputs)
@@ -39,7 +42,9 @@ impl ConstantNode {
                     ("String List", DataType::List(Box::new(DataType::String)))
                 } else {
                     match &items[0] {
-                        NodeValue::String(_) => ("String List", DataType::List(Box::new(DataType::String))),
+                        NodeValue::String(_) => {
+                            ("String List", DataType::List(Box::new(DataType::String)))
+                        }
                         NodeValue::U32(_) => ("U32 List", DataType::List(Box::new(DataType::U32))),
                         NodeValue::F32(_) => ("F32 List", DataType::List(Box::new(DataType::F32))),
                         NodeValue::I32(_) => ("I32 List", DataType::List(Box::new(DataType::I32))),
@@ -51,12 +56,19 @@ impl ConstantNode {
         };
 
         ComponentSpec::new_builtin(
-            format!("builtin:constant:{}", type_name.to_lowercase().replace(" ", "-")),
+            format!(
+                "builtin:constant:{}",
+                type_name.to_lowercase().replace(" ", "-")
+            ),
             format!("Constant ({})", type_name),
             format!("Outputs a constant {} value", type_name.to_lowercase()),
             Some("Builtin".to_string()),
         )
-        .with_output("value".to_string(), data_type, format!("Constant {} value", type_name.to_lowercase()))
+        .with_output(
+            "value".to_string(),
+            data_type,
+            format!("Constant {} value", type_name.to_lowercase()),
+        )
     }
 }
 
@@ -90,21 +102,21 @@ impl ConstantNode {
     /// Create a String list constant
     pub fn string_list(values: Vec<String>) -> Self {
         Self::new(NodeValue::List(
-            values.into_iter().map(NodeValue::String).collect()
+            values.into_iter().map(NodeValue::String).collect(),
         ))
     }
 
     /// Create a U32 list constant
     pub fn u32_list(values: Vec<u32>) -> Self {
         Self::new(NodeValue::List(
-            values.into_iter().map(NodeValue::U32).collect()
+            values.into_iter().map(NodeValue::U32).collect(),
         ))
     }
 
     /// Create an F32 list constant
     pub fn f32_list(values: Vec<f32>) -> Self {
         Self::new(NodeValue::List(
-            values.into_iter().map(NodeValue::F32).collect()
+            values.into_iter().map(NodeValue::F32).collect(),
         ))
     }
 }
@@ -118,39 +130,39 @@ pub fn register_constant_nodes(registry: &mut crate::graph::node::ComponentRegis
     registry.register_builtin(
         ConstantNode::f32(0.0)
             .spec()
-            .with_footer_view(footer_view.clone())
+            .with_footer_view(footer_view.clone()),
     );
     registry.register_builtin(
         ConstantNode::i32(0)
             .spec()
-            .with_footer_view(footer_view.clone())
+            .with_footer_view(footer_view.clone()),
     );
     registry.register_builtin(
         ConstantNode::u32(0)
             .spec()
-            .with_footer_view(footer_view.clone())
+            .with_footer_view(footer_view.clone()),
     );
     registry.register_builtin(
         ConstantNode::string("".to_string())
             .spec()
-            .with_footer_view(footer_view.clone())
+            .with_footer_view(footer_view.clone()),
     );
 
     // Register list constant nodes with initial values so spec() can detect type
     registry.register_builtin(
         ConstantNode::string_list(vec!["".to_string()])
             .spec()
-            .with_footer_view(footer_view.clone())
+            .with_footer_view(footer_view.clone()),
     );
     registry.register_builtin(
         ConstantNode::u32_list(vec![0])
             .spec()
-            .with_footer_view(footer_view.clone())
+            .with_footer_view(footer_view.clone()),
     );
     registry.register_builtin(
         ConstantNode::f32_list(vec![0.0])
             .spec()
-            .with_footer_view(footer_view)
+            .with_footer_view(footer_view),
     );
 }
 
@@ -187,7 +199,10 @@ mod tests {
         let constant = ConstantNode::string("Hello, World!".to_string());
         let inputs = HashMap::new();
         let result = constant.execute(&inputs).unwrap();
-        assert_eq!(result.get("value"), Some(&NodeValue::String("Hello, World!".to_string())));
+        assert_eq!(
+            result.get("value"),
+            Some(&NodeValue::String("Hello, World!".to_string()))
+        );
     }
 
     #[test]
@@ -202,10 +217,7 @@ mod tests {
 
     #[test]
     fn test_string_list_constant() {
-        let constant = ConstantNode::string_list(vec![
-            "hello".to_string(),
-            "world".to_string(),
-        ]);
+        let constant = ConstantNode::string_list(vec!["hello".to_string(), "world".to_string()]);
         let inputs = HashMap::new();
         let result = constant.execute(&inputs).unwrap();
 
@@ -294,12 +306,10 @@ mod tests {
 
         // Check that the output type is a list of strings
         match &spec.output_spec[0].data_type {
-            crate::graph::node::DataType::List(inner) => {
-                match **inner {
-                    crate::graph::node::DataType::String => (),
-                    _ => panic!("Expected List<String> type"),
-                }
-            }
+            crate::graph::node::DataType::List(inner) => match **inner {
+                crate::graph::node::DataType::String => (),
+                _ => panic!("Expected List<String> type"),
+            },
             _ => panic!("Expected List type"),
         }
     }
@@ -313,12 +323,10 @@ mod tests {
 
         // Check that the output type is a list of u32
         match &spec.output_spec[0].data_type {
-            crate::graph::node::DataType::List(inner) => {
-                match **inner {
-                    crate::graph::node::DataType::U32 => (),
-                    _ => panic!("Expected List<U32> type"),
-                }
-            }
+            crate::graph::node::DataType::List(inner) => match **inner {
+                crate::graph::node::DataType::U32 => (),
+                _ => panic!("Expected List<U32> type"),
+            },
             _ => panic!("Expected List type"),
         }
     }
@@ -332,12 +340,10 @@ mod tests {
 
         // Check that the output type is a list of f32
         match &spec.output_spec[0].data_type {
-            crate::graph::node::DataType::List(inner) => {
-                match **inner {
-                    crate::graph::node::DataType::F32 => (),
-                    _ => panic!("Expected List<F32> type"),
-                }
-            }
+            crate::graph::node::DataType::List(inner) => match **inner {
+                crate::graph::node::DataType::F32 => (),
+                _ => panic!("Expected List<F32> type"),
+            },
             _ => panic!("Expected List type"),
         }
     }
@@ -351,12 +357,10 @@ mod tests {
 
         // Check that empty list defaults to string list type
         match &spec.output_spec[0].data_type {
-            crate::graph::node::DataType::List(inner) => {
-                match **inner {
-                    crate::graph::node::DataType::String => (),
-                    _ => panic!("Expected List<String> type for empty list"),
-                }
-            }
+            crate::graph::node::DataType::List(inner) => match **inner {
+                crate::graph::node::DataType::String => (),
+                _ => panic!("Expected List<String> type for empty list"),
+            },
             _ => panic!("Expected List type"),
         }
     }

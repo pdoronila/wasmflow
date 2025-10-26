@@ -3,8 +3,8 @@
 //! Tests the ability to replace existing components when recompiling
 //! with the same component name.
 
-use wasmflow::graph::node::{ComponentRegistry, ComponentSpec, ComponentType, DataType};
 use std::path::PathBuf;
+use wasmflow::graph::node::{ComponentRegistry, ComponentSpec, ComponentType, DataType};
 
 #[cfg(test)]
 mod tests {
@@ -107,7 +107,11 @@ mod tests {
             .iter()
             .filter(|c| c.id == "user:TestComponent")
             .collect();
-        assert_eq!(test_components.len(), 1, "Should only have one component with this ID");
+        assert_eq!(
+            test_components.len(),
+            1,
+            "Should only have one component with this ID"
+        );
     }
 
     #[test]
@@ -143,7 +147,8 @@ mod tests {
         registry.register_component(spec).unwrap();
 
         // Verify still have 5 components total
-        let user_components: Vec<_> = registry.list_all()
+        let user_components: Vec<_> = registry
+            .list_all()
             .iter()
             .filter(|c| matches!(c.component_type, ComponentType::UserDefined(_)))
             .collect();
@@ -261,7 +266,8 @@ mod tests {
         }
 
         // Filter user-defined components
-        let user_components: Vec<_> = registry.list_all()
+        let user_components: Vec<_> = registry
+            .list_all()
             .iter()
             .filter(|c| matches!(c.component_type, ComponentType::UserDefined(_)))
             .collect();

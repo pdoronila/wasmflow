@@ -227,10 +227,8 @@ impl WasmFlowApp {
                 if let Err(e) = self.history.execute(cmd, &mut self.graph) {
                     self.error_message = Some(format!("Failed to add node: {}", e));
                 } else {
-                    self.status_message = format!(
-                        "Added {} node (reusing existing permissions)",
-                        spec.name
-                    );
+                    self.status_message =
+                        format!("Added {} node (reusing existing permissions)", spec.name);
                     self.error_message = None;
                     self.dirty = true;
                 }

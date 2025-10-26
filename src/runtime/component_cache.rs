@@ -80,8 +80,9 @@ impl ComponentCache {
 
         // Create cache directory if it doesn't exist
         if !cache_dir.exists() {
-            fs::create_dir_all(&cache_dir)
-                .with_context(|| format!("Failed to create cache directory: {}", cache_dir.display()))?;
+            fs::create_dir_all(&cache_dir).with_context(|| {
+                format!("Failed to create cache directory: {}", cache_dir.display())
+            })?;
             log::info!("Created cache directory: {}", cache_dir.display());
         }
 
@@ -142,7 +143,11 @@ impl ComponentCache {
                     return Ok(None);
                 }
 
-                log::info!("Cache hit: {} (cached at {})", component_name, cached.cached_at);
+                log::info!(
+                    "Cache hit: {} (cached at {})",
+                    component_name,
+                    cached.cached_at
+                );
                 Ok(Some(cached.component_spec))
             }
             Err(e) => {
@@ -182,8 +187,8 @@ impl ComponentCache {
         };
 
         // Serialize to JSON
-        let json = serde_json::to_string_pretty(&cached)
-            .context("Failed to serialize cached spec")?;
+        let json =
+            serde_json::to_string_pretty(&cached).context("Failed to serialize cached spec")?;
 
         // Write cache file
         fs::write(&cache_path, json)
@@ -193,7 +198,11 @@ impl ComponentCache {
         fs::write(&md5_path, checksum)
             .with_context(|| format!("Failed to write MD5 file: {}", md5_path.display()))?;
 
-        log::debug!("Cached component: {} at {}", component_name, cache_path.display());
+        log::debug!(
+            "Cached component: {} at {}",
+            component_name,
+            cache_path.display()
+        );
         Ok(())
     }
 
@@ -206,7 +215,10 @@ impl ComponentCache {
     ///
     /// Returns Ok(()) on success or an error if deletion fails
     pub fn invalidate_all(&self) -> Result<()> {
-        log::info!("Invalidating all cache entries in: {}", self.cache_dir.display());
+        log::info!(
+            "Invalidating all cache entries in: {}",
+            self.cache_dir.display()
+        );
 
         let mut deleted_count = 0;
         let mut error_count = 0;
@@ -288,8 +300,8 @@ impl ComponentCache {
 
         if version_path.exists() {
             // Validate existing version
-            let existing_version = fs::read_to_string(&version_path)
-                .context("Failed to read cache version file")?;
+            let existing_version =
+                fs::read_to_string(&version_path).context("Failed to read cache version file")?;
 
             if existing_version.trim() != self.cache_version {
                 log::warn!(
@@ -511,7 +523,10 @@ mod tests {
 
         // Cache should be invalid now
         let loaded = cache.get_cached_spec(&wasm_path).unwrap();
-        assert!(loaded.is_none(), "Cache should be invalid after file modification");
+        assert!(
+            loaded.is_none(),
+            "Cache should be invalid after file modification"
+        );
     }
 
     #[test]

@@ -7,7 +7,7 @@ use crate::GraphError;
 use petgraph::algo;
 use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 use uuid::Uuid;
 
 /// Graph metadata
@@ -89,9 +89,10 @@ impl NodeGraph {
         self.connections.retain(|conn| !conn.involves_node(node_id));
 
         // Remove the node
-        let node = self.nodes.remove(&node_id).ok_or_else(|| {
-            GraphError::InvalidConnection(format!("Node {} not found", node_id))
-        })?;
+        let node = self
+            .nodes
+            .remove(&node_id)
+            .ok_or_else(|| GraphError::InvalidConnection(format!("Node {} not found", node_id)))?;
 
         self.invalidate_cache();
         self.metadata.touch();
@@ -114,7 +115,11 @@ impl NodeGraph {
             }
         }
         if count > 0 {
-            log::info!("Marked {} nodes using component '{}' for refresh", count, component_id);
+            log::info!(
+                "Marked {} nodes using component '{}' for refresh",
+                count,
+                component_id
+            );
             self.metadata.touch();
         }
     }
@@ -182,11 +187,7 @@ impl NodeGraph {
         }
 
         // Check if target port already has a connection
-        if self
-            .connections
-            .iter()
-            .any(|conn| conn.to_port == to_port)
-        {
+        if self.connections.iter().any(|conn| conn.to_port == to_port) {
             return Err(GraphError::InvalidConnection(
                 "Input port already has a connection".to_string(),
             ));
@@ -457,16 +458,10 @@ mod tests {
 
     #[test]
     fn test_type_compatibility() {
-        assert!(NodeGraph::types_compatible(
-            &DataType::F32,
-            &DataType::F32
-        ));
+        assert!(NodeGraph::types_compatible(&DataType::F32, &DataType::F32));
         assert!(NodeGraph::types_compatible(&DataType::Any, &DataType::F32));
         assert!(NodeGraph::types_compatible(&DataType::F32, &DataType::Any));
-        assert!(!NodeGraph::types_compatible(
-            &DataType::F32,
-            &DataType::I32
-        ));
+        assert!(!NodeGraph::types_compatible(&DataType::F32, &DataType::I32));
     }
 
     #[test]
@@ -503,12 +498,8 @@ mod tests {
         graph.add_node(node3);
 
         // Create chain: node1 -> node2 -> node3
-        graph
-            .add_connection(id1, port1_out, id2, port2_in)
-            .unwrap();
-        graph
-            .add_connection(id2, port2_out, id3, port3_in)
-            .unwrap();
+        graph.add_connection(id1, port1_out, id2, port2_in).unwrap();
+        graph.add_connection(id2, port2_out, id3, port3_in).unwrap();
 
         // Try to create cycle: node3 -> node1
         let result = graph.add_connection(id3, port3_out, id1, port1_in);

@@ -49,7 +49,9 @@ fn parse_args() -> Args {
                 if let Some(level) = iter.next() {
                     args.log_level = level;
                 } else {
-                    eprintln!("Error: --log-level requires a value (error, warn, info, debug, trace)");
+                    eprintln!(
+                        "Error: --log-level requires a value (error, warn, info, debug, trace)"
+                    );
                     std::process::exit(1);
                 }
             }
@@ -70,7 +72,10 @@ fn parse_args() -> Args {
 
 /// Print help message
 fn print_help() {
-    println!("WasmFlow v{} - WebAssembly Node-Based Visual Composition", env!("CARGO_PKG_VERSION"));
+    println!(
+        "WasmFlow v{} - WebAssembly Node-Based Visual Composition",
+        env!("CARGO_PKG_VERSION")
+    );
     println!();
     println!("USAGE:");
     println!("    wasmflow [OPTIONS]");
@@ -92,9 +97,8 @@ fn main() -> Result<(), eframe::Error> {
     let args = parse_args();
 
     // T086: Initialize logging with configured level
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or(&args.log_level)
-    ).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(&args.log_level))
+        .init();
 
     log::info!("Starting WasmFlow v{}", env!("CARGO_PKG_VERSION"));
     log::debug!("Arguments: {:?}", args);
@@ -123,7 +127,10 @@ fn main() -> Result<(), eframe::Error> {
 
             // T099: Defer graph file loading until components are ready
             if let Some(path) = graph_file {
-                log::info!("Graph file will be loaded after components are ready: {}", path.display());
+                log::info!(
+                    "Graph file will be loaded after components are ready: {}",
+                    path.display()
+                );
                 app.set_pending_graph_load(path);
             }
 

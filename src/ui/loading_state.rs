@@ -52,7 +52,9 @@ impl std::fmt::Debug for LoadingState {
                 .field("total", total)
                 .field("errors", errors)
                 .finish(),
-            LoadingState::Failed { error } => f.debug_struct("Failed").field("error", error).finish(),
+            LoadingState::Failed { error } => {
+                f.debug_struct("Failed").field("error", error).finish()
+            }
         }
     }
 }

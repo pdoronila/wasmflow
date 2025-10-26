@@ -15,5 +15,5 @@ pub mod wasm_host;
 pub use capabilities::CapabilitySet;
 pub use compiler::{CompilationConfig, CompilationResult, ComponentCompiler};
 pub use component_cache::{CacheStatistics, ComponentCache};
-pub use continuous::{ControlMessage, ContinuousExecutionManager, ExecutionResult};
+pub use continuous::{ContinuousExecutionManager, ControlMessage, ExecutionResult};
 pub use template_generator::{ComponentMetadata, PortSpec, TemplateGenerator, TemplateType};

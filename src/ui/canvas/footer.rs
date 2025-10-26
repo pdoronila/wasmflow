@@ -3,9 +3,9 @@
 //! This module handles the rendering of node footer sections, including
 //! input editors for unconnected inputs and output value displays.
 
+use super::node_data::SnarlNodeData;
 use crate::graph::node::{DataType, ExecutionState, GraphNode, NodeValue};
 use egui_snarl::{NodeId, Snarl};
-use super::node_data::SnarlNodeData;
 
 /// Helper to render default footer view with FooterHead and FooterBody sections
 pub(super) struct DefaultFooterView;
@@ -73,93 +73,78 @@ impl DefaultFooterView {
                 // Input label
                 ui.label(
                     egui::RichText::new(format!("{}:", input_port.name))
-                        .color(egui::Color32::from_rgb(180, 180, 180))
+                        .color(egui::Color32::from_rgb(180, 180, 180)),
                 );
 
                 // Match on data type to emit appropriate widget
                 match &input_port.data_type {
-                        DataType::U32 => {
-                            // Initialize if needed
-                            if input_port.current_value.is_none() {
-                                input_port.current_value = Some(NodeValue::U32(0));
-                            }
+                    DataType::U32 => {
+                        // Initialize if needed
+                        if input_port.current_value.is_none() {
+                            input_port.current_value = Some(NodeValue::U32(0));
+                        }
 
-                            if let Some(NodeValue::U32(ref mut v)) =
-                                input_port.current_value
-                            {
-                                if ui.add(egui::DragValue::new(v).speed(1.0)).changed() {
-                                    node.dirty = true;
-                                }
+                        if let Some(NodeValue::U32(ref mut v)) = input_port.current_value {
+                            if ui.add(egui::DragValue::new(v).speed(1.0)).changed() {
+                                node.dirty = true;
                             }
-                        }
-                        DataType::I32 => {
-                            // Initialize if needed
-                            if input_port.current_value.is_none() {
-                                input_port.current_value = Some(NodeValue::I32(0));
-                            }
-
-                            if let Some(NodeValue::I32(ref mut v)) =
-                                input_port.current_value
-                            {
-                                if ui.add(egui::DragValue::new(v).speed(1.0)).changed() {
-                                    node.dirty = true;
-                                }
-                            }
-                        }
-                        DataType::F32 => {
-                            // Initialize if needed
-                            if input_port.current_value.is_none() {
-                                input_port.current_value =
-                                    Some(NodeValue::F32(0.0));
-                            }
-
-                            if let Some(NodeValue::F32(ref mut v)) =
-                                input_port.current_value
-                            {
-                                if ui.add(egui::DragValue::new(v).speed(0.1)).changed() {
-                                    node.dirty = true;
-                                }
-                            }
-                        }
-                        DataType::String => {
-                            // Initialize if needed
-                            if input_port.current_value.is_none() {
-                                input_port.current_value =
-                                    Some(NodeValue::String(String::new()));
-                            }
-
-                            if let Some(NodeValue::String(ref mut s)) =
-                                input_port.current_value
-                            {
-                                if ui
-                                    .add(egui::TextEdit::singleline(s))
-                                    .changed()
-                                {
-                                    node.dirty = true;
-                                }
-                            }
-                        }
-                        DataType::Bool => {
-                            // Initialize if needed
-                            if input_port.current_value.is_none() {
-                                input_port.current_value = Some(NodeValue::Bool(false));
-                            }
-
-                            if let Some(NodeValue::Bool(ref mut b)) =
-                                input_port.current_value
-                            {
-                                if ui.checkbox(b, "").changed() {
-                                    node.dirty = true;
-                                }
-                            }
-                        }
-                        DataType::List(_) | DataType::Record(_) | DataType::Binary => {
-                            ui.label("(complex - needs custom view)");
-                        }
-                        DataType::Any => {
-                            ui.label("(any - no editor)");
                         }
                     }
+                    DataType::I32 => {
+                        // Initialize if needed
+                        if input_port.current_value.is_none() {
+                            input_port.current_value = Some(NodeValue::I32(0));
+                        }
+
+                        if let Some(NodeValue::I32(ref mut v)) = input_port.current_value {
+                            if ui.add(egui::DragValue::new(v).speed(1.0)).changed() {
+                                node.dirty = true;
+                            }
+                        }
+                    }
+                    DataType::F32 => {
+                        // Initialize if needed
+                        if input_port.current_value.is_none() {
+                            input_port.current_value = Some(NodeValue::F32(0.0));
+                        }
+
+                        if let Some(NodeValue::F32(ref mut v)) = input_port.current_value {
+                            if ui.add(egui::DragValue::new(v).speed(0.1)).changed() {
+                                node.dirty = true;
+                            }
+                        }
+                    }
+                    DataType::String => {
+                        // Initialize if needed
+                        if input_port.current_value.is_none() {
+                            input_port.current_value = Some(NodeValue::String(String::new()));
+                        }
+
+                        if let Some(NodeValue::String(ref mut s)) = input_port.current_value {
+                            if ui.add(egui::TextEdit::singleline(s)).changed() {
+                                node.dirty = true;
+                            }
+                        }
+                    }
+                    DataType::Bool => {
+                        // Initialize if needed
+                        if input_port.current_value.is_none() {
+                            input_port.current_value = Some(NodeValue::Bool(false));
+                        }
+
+                        if let Some(NodeValue::Bool(ref mut b)) = input_port.current_value {
+                            if ui.checkbox(b, "").changed() {
+                                node.dirty = true;
+                            }
+                        }
+                    }
+                    DataType::List(_) | DataType::Record(_) | DataType::Binary => {
+                        ui.label("(complex - needs custom view)");
+                    }
+                    DataType::Any => {
+                        ui.label("(any - no editor)");
+                    }
+                }
 
                 ui.add_space(4.0);
             }
@@ -215,7 +200,7 @@ impl DefaultFooterView {
                     // Output name
                     ui.label(
                         egui::RichText::new(format!("{}:", output_port.name))
-                            .color(egui::Color32::from_rgb(180, 180, 180))
+                            .color(egui::Color32::from_rgb(180, 180, 180)),
                     );
 
                     // Output value with wrapping (use full available width)
@@ -224,8 +209,9 @@ impl DefaultFooterView {
                         egui::vec2(ui.available_width(), 0.0),
                         egui::Label::new(
                             egui::RichText::new(value_text)
-                                .color(egui::Color32::from_rgb(100, 200, 255))
-                        ).wrap()
+                                .color(egui::Color32::from_rgb(100, 200, 255)),
+                        )
+                        .wrap(),
                     );
 
                     ui.add_space(4.0);

@@ -127,7 +127,10 @@ pub fn async_component_loader(
     cache: Arc<ComponentCache>,
     progress: Arc<Mutex<ComponentLoadProgress>>,
 ) {
-    log::info!("Starting async component loading from: {}", components_dir.display());
+    log::info!(
+        "Starting async component loading from: {}",
+        components_dir.display()
+    );
 
     // Check if directory exists
     if !components_dir.exists() {
@@ -136,7 +139,10 @@ pub fn async_component_loader(
             "components/bin".to_string(),
             format!("Directory not found: {}", components_dir.display()),
         );
-        log::error!("Components directory not found: {}", components_dir.display());
+        log::error!(
+            "Components directory not found: {}",
+            components_dir.display()
+        );
         return;
     }
 

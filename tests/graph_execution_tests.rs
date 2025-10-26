@@ -143,12 +143,24 @@ fn test_chain_execution() {
     graph.add_node(sub_node);
 
     // Connect chain
-    graph.add_connection(const_2_id, const_2_out, mult_id, mult_a).unwrap();
-    graph.add_connection(const_mult_id, const_mult_out, mult_id, mult_b).unwrap();
-    graph.add_connection(mult_id, mult_out, add_id, add_a).unwrap();
-    graph.add_connection(const_add_id, const_add_out, add_id, add_b).unwrap();
-    graph.add_connection(add_id, add_out, sub_id, sub_a).unwrap();
-    graph.add_connection(const_sub_id, const_sub_out, sub_id, sub_b).unwrap();
+    graph
+        .add_connection(const_2_id, const_2_out, mult_id, mult_a)
+        .unwrap();
+    graph
+        .add_connection(const_mult_id, const_mult_out, mult_id, mult_b)
+        .unwrap();
+    graph
+        .add_connection(mult_id, mult_out, add_id, add_a)
+        .unwrap();
+    graph
+        .add_connection(const_add_id, const_add_out, add_id, add_b)
+        .unwrap();
+    graph
+        .add_connection(add_id, add_out, sub_id, sub_a)
+        .unwrap();
+    graph
+        .add_connection(const_sub_id, const_sub_out, sub_id, sub_b)
+        .unwrap();
 
     // Execute
     let mut engine = ExecutionEngine::new();
@@ -236,12 +248,24 @@ fn test_diamond_graph_execution() {
     graph.add_node(sub_node);
 
     // Connect diamond
-    graph.add_connection(const_10_id, const_10_out, add_id, add_a).unwrap();
-    graph.add_connection(const_5_id, const_5_out, add_id, add_b).unwrap();
-    graph.add_connection(const_10_id, const_10_out, mult_id, mult_a).unwrap();
-    graph.add_connection(const_2_id, const_2_out, mult_id, mult_b).unwrap();
-    graph.add_connection(add_id, add_out, sub_id, sub_a).unwrap();
-    graph.add_connection(mult_id, mult_out, sub_id, sub_b).unwrap();
+    graph
+        .add_connection(const_10_id, const_10_out, add_id, add_a)
+        .unwrap();
+    graph
+        .add_connection(const_5_id, const_5_out, add_id, add_b)
+        .unwrap();
+    graph
+        .add_connection(const_10_id, const_10_out, mult_id, mult_a)
+        .unwrap();
+    graph
+        .add_connection(const_2_id, const_2_out, mult_id, mult_b)
+        .unwrap();
+    graph
+        .add_connection(add_id, add_out, sub_id, sub_a)
+        .unwrap();
+    graph
+        .add_connection(mult_id, mult_out, sub_id, sub_b)
+        .unwrap();
 
     // Execute
     let mut engine = ExecutionEngine::new();
@@ -296,8 +320,12 @@ fn test_division_by_zero_error() {
     graph.add_node(const_0);
     graph.add_node(div_node);
 
-    graph.add_connection(const_5_id, const_5_out, div_id, div_a).unwrap();
-    graph.add_connection(const_0_id, const_0_out, div_id, div_b).unwrap();
+    graph
+        .add_connection(const_5_id, const_5_out, div_id, div_a)
+        .unwrap();
+    graph
+        .add_connection(const_0_id, const_0_out, div_id, div_b)
+        .unwrap();
 
     // Execute
     let mut engine = ExecutionEngine::new();
@@ -373,14 +401,26 @@ fn test_multiple_outputs() {
     graph.add_node(sub_node);
 
     // Connect const_10 to all three operations
-    graph.add_connection(const_10_id, const_10_out, add_id, add_a).unwrap();
-    graph.add_connection(const_5_id, const_5_out, add_id, add_b).unwrap();
+    graph
+        .add_connection(const_10_id, const_10_out, add_id, add_a)
+        .unwrap();
+    graph
+        .add_connection(const_5_id, const_5_out, add_id, add_b)
+        .unwrap();
 
-    graph.add_connection(const_10_id, const_10_out, mult_id, mult_a).unwrap();
-    graph.add_connection(const_5_id, const_5_out, mult_id, mult_b).unwrap();
+    graph
+        .add_connection(const_10_id, const_10_out, mult_id, mult_a)
+        .unwrap();
+    graph
+        .add_connection(const_5_id, const_5_out, mult_id, mult_b)
+        .unwrap();
 
-    graph.add_connection(const_10_id, const_10_out, sub_id, sub_a).unwrap();
-    graph.add_connection(const_5_id, const_5_out, sub_id, sub_b).unwrap();
+    graph
+        .add_connection(const_10_id, const_10_out, sub_id, sub_a)
+        .unwrap();
+    graph
+        .add_connection(const_5_id, const_5_out, sub_id, sub_b)
+        .unwrap();
 
     // Execute
     let mut engine = ExecutionEngine::new();

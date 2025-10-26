@@ -317,7 +317,10 @@ let body = fetch_url(&url)?;
         // TODO: This will be tested in T028 (contract test)
         // For now, just a placeholder
 
-        assert!(false, "Metadata extraction will be tested in contract tests");
+        assert!(
+            false,
+            "Metadata extraction will be tested in contract tests"
+        );
     }
 
     #[test]
@@ -339,7 +342,10 @@ let body = fetch_url(&url)?;
         // Second compilation should be much faster (cached)
         // assert!(build_time_2 < build_time_1 / 2);
 
-        assert!(false, "Incremental compilation not yet implemented (future enhancement)");
+        assert!(
+            false,
+            "Incremental compilation not yet implemented (future enhancement)"
+        );
     }
 
     #[test]

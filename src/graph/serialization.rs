@@ -111,8 +111,7 @@ impl NodeGraph {
         }
 
         let save_format = GraphSaveFormat::new(graph_to_save);
-        bincode::serialize(&save_format)
-            .context("Failed to serialize graph to bincode")
+        bincode::serialize(&save_format).context("Failed to serialize graph to bincode")
     }
 
     /// Deserialize a graph from bytes
@@ -154,18 +153,27 @@ impl NodeGraph {
         };
 
         // Validate magic and version
-        save_format.validate_magic()
+        save_format
+            .validate_magic()
             .context("Magic bytes validation failed")?;
         log::info!("Magic bytes valid");
 
-        save_format.validate_version()
+        save_format
+            .validate_version()
             .context("Version validation failed")?;
-        log::info!("Version {} is compatible (current: {})", save_format.version, FORMAT_VERSION);
+        log::info!(
+            "Version {} is compatible (current: {})",
+            save_format.version,
+            FORMAT_VERSION
+        );
 
         // Try checksum validation, but don't fail if it doesn't match
         // This allows loading older files after code structure changes
         if let Err(e) = save_format.validate_checksum() {
-            log::warn!("Checksum validation failed (this is OK for older files): {}", e);
+            log::warn!(
+                "Checksum validation failed (this is OK for older files): {}",
+                e
+            );
             log::warn!("Loading graph anyway - please re-save to update checksum");
         } else {
             log::info!("Checksum valid");
@@ -173,10 +181,14 @@ impl NodeGraph {
 
         // Validate graph structure
         let mut graph = save_format.graph;
-        log::info!("Validating graph structure: {} nodes, {} connections",
-                   graph.nodes.len(), graph.connections.len());
+        log::info!(
+            "Validating graph structure: {} nodes, {} connections",
+            graph.nodes.len(),
+            graph.connections.len()
+        );
 
-        graph.validate_structure()
+        graph
+            .validate_structure()
             .context("Graph structure validation failed")?;
 
         // T009: Ensure all continuous nodes start in stopped state
@@ -202,11 +214,19 @@ impl NodeGraph {
 
     /// Load a graph from a file
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let bytes = std::fs::read(path.as_ref())
-            .with_context(|| format!("Failed to read graph from file: {}", path.as_ref().display()))?;
+        let bytes = std::fs::read(path.as_ref()).with_context(|| {
+            format!(
+                "Failed to read graph from file: {}",
+                path.as_ref().display()
+            )
+        })?;
 
-        Self::from_bytes(&bytes)
-            .with_context(|| format!("Failed to load graph from file: {}", path.as_ref().display()))
+        Self::from_bytes(&bytes).with_context(|| {
+            format!(
+                "Failed to load graph from file: {}",
+                path.as_ref().display()
+            )
+        })
     }
 
     /// Validate the graph structure after deserialization
@@ -220,34 +240,44 @@ impl NodeGraph {
         // Check all connections reference valid nodes
         for conn in &self.connections {
             // Validate source node exists
-            let source_node = self.nodes.get(&conn.from_node)
-                .with_context(|| format!(
+            let source_node = self.nodes.get(&conn.from_node).with_context(|| {
+                format!(
                     "Connection {} references non-existent source node {}",
                     conn.id, conn.from_node
-                ))?;
+                )
+            })?;
 
             // Validate target node exists
-            let target_node = self.nodes.get(&conn.to_node)
-                .with_context(|| format!(
+            let target_node = self.nodes.get(&conn.to_node).with_context(|| {
+                format!(
                     "Connection {} references non-existent target node {}",
                     conn.id, conn.to_node
-                ))?;
+                )
+            })?;
 
             // Validate source port exists
-            let source_port = source_node.outputs.iter()
+            let source_port = source_node
+                .outputs
+                .iter()
                 .find(|p| p.id == conn.from_port)
-                .with_context(|| format!(
-                    "Connection {} references non-existent source port {} on node {}",
-                    conn.id, conn.from_port, conn.from_node
-                ))?;
+                .with_context(|| {
+                    format!(
+                        "Connection {} references non-existent source port {} on node {}",
+                        conn.id, conn.from_port, conn.from_node
+                    )
+                })?;
 
             // Validate target port exists
-            let target_port = target_node.inputs.iter()
+            let target_port = target_node
+                .inputs
+                .iter()
                 .find(|p| p.id == conn.to_port)
-                .with_context(|| format!(
-                    "Connection {} references non-existent target port {} on node {}",
-                    conn.id, conn.to_port, conn.to_node
-                ))?;
+                .with_context(|| {
+                    format!(
+                        "Connection {} references non-existent target port {} on node {}",
+                        conn.id, conn.to_port, conn.to_node
+                    )
+                })?;
 
             // Validate type compatibility using NodeGraph's type checking
             if !NodeGraph::types_compatible(&source_port.data_type, &target_port.data_type) {
@@ -286,9 +316,8 @@ mod tests {
 
     #[test]
     fn test_invalid_magic_bytes() {
-        let mut save_format = GraphSaveFormat::new(
-            NodeGraph::new("Test".to_string(), "Author".to_string())
-        );
+        let mut save_format =
+            GraphSaveFormat::new(NodeGraph::new("Test".to_string(), "Author".to_string()));
         save_format.magic = b"INVALID".to_vec();
 
         let bytes = bincode::serialize(&save_format).unwrap();
@@ -339,7 +368,9 @@ mod tests {
         graph.add_node(node2);
 
         // Serialize to bytes
-        let bytes = graph.to_bytes().expect("Failed to serialize graph with nodes");
+        let bytes = graph
+            .to_bytes()
+            .expect("Failed to serialize graph with nodes");
 
         // Deserialize from bytes
         let loaded = NodeGraph::from_bytes(&bytes).expect("Failed to deserialize graph with nodes");
@@ -375,14 +406,20 @@ mod tests {
         graph.add_node(creator_node.clone());
 
         // Serialize to bytes
-        let bytes = graph.to_bytes().expect("Failed to serialize graph with creator node");
+        let bytes = graph
+            .to_bytes()
+            .expect("Failed to serialize graph with creator node");
 
         // Deserialize from bytes
-        let loaded = NodeGraph::from_bytes(&bytes).expect("Failed to deserialize graph with creator node");
+        let loaded =
+            NodeGraph::from_bytes(&bytes).expect("Failed to deserialize graph with creator node");
 
         assert_eq!(loaded.nodes.len(), 1);
         let loaded_node = loaded.nodes.values().next().unwrap();
-        let loaded_creator_data = loaded_node.creator_data.as_ref().expect("Creator data should be present");
+        let loaded_creator_data = loaded_node
+            .creator_data
+            .as_ref()
+            .expect("Creator data should be present");
 
         assert_eq!(loaded_creator_data.component_name, "TestComponent");
         assert_eq!(loaded_creator_data.save_code, true);
@@ -415,14 +452,20 @@ mod tests {
         graph.add_node(creator_node.clone());
 
         // Serialize to bytes
-        let bytes = graph.to_bytes().expect("Failed to serialize graph with creator node");
+        let bytes = graph
+            .to_bytes()
+            .expect("Failed to serialize graph with creator node");
 
         // Deserialize from bytes
-        let loaded = NodeGraph::from_bytes(&bytes).expect("Failed to deserialize graph with creator node");
+        let loaded =
+            NodeGraph::from_bytes(&bytes).expect("Failed to deserialize graph with creator node");
 
         assert_eq!(loaded.nodes.len(), 1);
         let loaded_node = loaded.nodes.values().next().unwrap();
-        let loaded_creator_data = loaded_node.creator_data.as_ref().expect("Creator data should be present");
+        let loaded_creator_data = loaded_node
+            .creator_data
+            .as_ref()
+            .expect("Creator data should be present");
 
         assert_eq!(loaded_creator_data.component_name, "TestComponent");
         assert_eq!(loaded_creator_data.save_code, false);

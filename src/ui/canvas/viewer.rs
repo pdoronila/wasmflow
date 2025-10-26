@@ -3,6 +3,8 @@
 //! This module implements the egui-snarl SnarlViewer trait which handles
 //! node rendering, pin rendering, and user interactions with nodes.
 
+use super::footer::DefaultFooterView;
+use super::node_data::SnarlNodeData;
 use crate::graph::graph::NodeGraph;
 use crate::graph::node::{ComponentRegistry, DataType};
 use crate::ui::execution_status;
@@ -11,8 +13,6 @@ use egui_snarl::ui::{NodeLayout, PinInfo, SnarlViewer};
 use egui_snarl::{InPin, NodeId, OutPin, Snarl};
 use std::collections::HashMap;
 use uuid::Uuid;
-use super::node_data::SnarlNodeData;
-use super::footer::DefaultFooterView;
 
 /// Viewer implementation for egui-snarl
 pub(super) struct CanvasViewer<'a> {
@@ -44,24 +44,34 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
             let node_uuid = node_data.uuid;
             let (recently_completed, continuous_state, is_continuous_enabled, is_selected) =
                 if let Some(graph_node) = self.graph.nodes.get(&node_uuid) {
-                    let recently_completed = if let Some(completed_at) = graph_node.execution_completed_at {
-                        completed_at.elapsed().as_millis() < 500
-                    } else {
-                        false
-                    };
+                    let recently_completed =
+                        if let Some(completed_at) = graph_node.execution_completed_at {
+                            completed_at.elapsed().as_millis() < 500
+                        } else {
+                            false
+                        };
 
-                    let (continuous_state, is_enabled) = if let Some(config) = &graph_node.continuous_config {
-                        (Some(config.runtime_state.execution_state), config.enabled)
-                    } else {
-                        (None, false)
-                    };
+                    let (continuous_state, is_enabled) =
+                        if let Some(config) = &graph_node.continuous_config {
+                            (Some(config.runtime_state.execution_state), config.enabled)
+                        } else {
+                            (None, false)
+                        };
 
-                    (recently_completed, continuous_state, is_enabled, graph_node.selected)
+                    (
+                        recently_completed,
+                        continuous_state,
+                        is_enabled,
+                        graph_node.selected,
+                    )
                 } else {
                     (false, None, false, false)
                 };
 
-            let is_running = matches!(node_data.execution_state, crate::graph::node::ExecutionState::Running);
+            let is_running = matches!(
+                node_data.execution_state,
+                crate::graph::node::ExecutionState::Running
+            );
 
             // Check continuous execution state
             let is_continuous_running = matches!(
@@ -76,13 +86,15 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                 continuous_state,
                 Some(crate::graph::node::ContinuousExecutionState::Stopping)
             );
-            let can_start_continuous = is_continuous_enabled && matches!(
-                continuous_state,
-                Some(crate::graph::node::ContinuousExecutionState::Idle) |
-                Some(crate::graph::node::ContinuousExecutionState::Stopped) |
-                Some(crate::graph::node::ContinuousExecutionState::Error)
-            );
-            let can_stop_continuous = is_continuous_enabled && (is_continuous_running || is_continuous_starting);
+            let can_start_continuous = is_continuous_enabled
+                && matches!(
+                    continuous_state,
+                    Some(crate::graph::node::ContinuousExecutionState::Idle)
+                        | Some(crate::graph::node::ContinuousExecutionState::Stopped)
+                        | Some(crate::graph::node::ContinuousExecutionState::Error)
+                );
+            let can_stop_continuous =
+                is_continuous_enabled && (is_continuous_running || is_continuous_starting);
 
             // T033-T037: Enhanced state visualization for continuous nodes
             if let Some(state) = continuous_state {
@@ -103,19 +115,29 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                 ui.horizontal(|ui| {
                     // T019: Show selection indicator for selected nodes
                     if is_selected {
-                        ui.label(egui::RichText::new("✓").color(egui::Color32::from_rgb(100, 200, 255)).strong());
+                        ui.label(
+                            egui::RichText::new("✓")
+                                .color(egui::Color32::from_rgb(100, 200, 255))
+                                .strong(),
+                        );
                     }
 
                     // State icon with color
                     // T034: Apply pulsing animation for running state
                     if !icon.is_empty() {
-                        let display_color = if matches!(state, crate::graph::node::ContinuousExecutionState::Running) {
+                        let display_color = if matches!(
+                            state,
+                            crate::graph::node::ContinuousExecutionState::Running
+                        ) {
                             // Get pulsing alpha based on when node started
                             if let Some(graph_node) = self.graph.nodes.get(&node_uuid) {
                                 if let Some(config) = &graph_node.continuous_config {
                                     if let Some(started_at) = config.runtime_state.started_at {
                                         let pulse_speed = 2.0;
-                                        let alpha = execution_status::pulsing_alpha(Some(started_at), pulse_speed);
+                                        let alpha = execution_status::pulsing_alpha(
+                                            Some(started_at),
+                                            pulse_speed,
+                                        );
                                         let [r, g, b, _] = color.to_array();
                                         egui::Color32::from_rgba_premultiplied(
                                             (r as f32 * alpha) as u8,
@@ -148,7 +170,7 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                                 ui.label(
                                     egui::RichText::new(format!("#{}", iterations))
                                         .color(egui::Color32::from_rgb(150, 150, 150))
-                                        .size(10.0)
+                                        .size(10.0),
                                 );
                             }
                         }
@@ -156,8 +178,10 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
 
                     // T059: Show warning icon if component was updated
                     if node_data.needs_component_refresh {
-                        ui.label(egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)))
-                            .on_hover_text("Component updated - node may need refresh");
+                        ui.label(
+                            egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)),
+                        )
+                        .on_hover_text("Component updated - node may need refresh");
                     }
 
                     // Right-aligned buttons
@@ -189,12 +213,16 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                     });
                 })
                 // T037: Add tooltip with execution state details
-                .response.on_hover_ui(|ui| {
+                .response
+                .on_hover_ui(|ui| {
                     ui.label(format!("State: {}", state_name));
                     if let Some(graph_node) = self.graph.nodes.get(&node_uuid) {
                         if let Some(config) = &graph_node.continuous_config {
                             if config.runtime_state.iterations > 0 {
-                                ui.label(format!("Iterations: {}", config.runtime_state.iterations));
+                                ui.label(format!(
+                                    "Iterations: {}",
+                                    config.runtime_state.iterations
+                                ));
                             }
                             if let Some(started_at) = config.runtime_state.started_at {
                                 let duration = execution_status::format_duration(Some(started_at));
@@ -214,7 +242,11 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                 ui.horizontal(|ui| {
                     // T019: Show selection indicator for selected nodes
                     if is_selected {
-                        ui.label(egui::RichText::new("✓").color(egui::Color32::from_rgb(100, 200, 255)).strong());
+                        ui.label(
+                            egui::RichText::new("✓")
+                                .color(egui::Color32::from_rgb(100, 200, 255))
+                                .strong(),
+                        );
                     }
 
                     ui.label(egui::RichText::new("⏳").color(color));
@@ -222,8 +254,10 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
 
                     // T059: Show warning icon if component was updated
                     if node_data.needs_component_refresh {
-                        ui.label(egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)))
-                            .on_hover_text("Component updated - node may need refresh");
+                        ui.label(
+                            egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)),
+                        )
+                        .on_hover_text("Component updated - node may need refresh");
                     }
 
                     // Right-aligned buttons
@@ -252,7 +286,11 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                 ui.horizontal(|ui| {
                     // T019: Show selection indicator for selected nodes
                     if is_selected {
-                        ui.label(egui::RichText::new("◆").color(egui::Color32::from_rgb(100, 200, 255)).strong());
+                        ui.label(
+                            egui::RichText::new("◆")
+                                .color(egui::Color32::from_rgb(100, 200, 255))
+                                .strong(),
+                        );
                     }
 
                     ui.label(egui::RichText::new("✓").color(color));
@@ -260,8 +298,10 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
 
                     // T059: Show warning icon if component was updated
                     if node_data.needs_component_refresh {
-                        ui.label(egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)))
-                            .on_hover_text("Component updated - node may need refresh");
+                        ui.label(
+                            egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)),
+                        )
+                        .on_hover_text("Component updated - node may need refresh");
                     }
 
                     // Right-aligned buttons
@@ -288,21 +328,31 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                 ui.horizontal(|ui| {
                     // T047: Show composition badge for composite nodes
                     if node_data.is_composite {
-                        ui.label(egui::RichText::new("⚙").color(egui::Color32::from_rgb(255, 200, 80)).strong())
-                            .on_hover_text("Composite Node - Right-click to drill down");
+                        ui.label(
+                            egui::RichText::new("⚙")
+                                .color(egui::Color32::from_rgb(255, 200, 80))
+                                .strong(),
+                        )
+                        .on_hover_text("Composite Node - Right-click to drill down");
                     }
 
                     // T019: Show selection indicator for selected nodes
                     if is_selected {
-                        ui.label(egui::RichText::new("◆").color(egui::Color32::from_rgb(100, 200, 255)).strong());
+                        ui.label(
+                            egui::RichText::new("◆")
+                                .color(egui::Color32::from_rgb(100, 200, 255))
+                                .strong(),
+                        );
                     }
 
                     ui.label(&node_data.display_name);
 
                     // T059: Show warning icon if component was updated
                     if node_data.needs_component_refresh {
-                        ui.label(egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)))
-                            .on_hover_text("Component updated - node may need refresh");
+                        ui.label(
+                            egui::RichText::new("⚠").color(egui::Color32::from_rgb(255, 180, 0)),
+                        )
+                        .on_hover_text("Component updated - node may need refresh");
                     }
 
                     // Right-aligned buttons
@@ -363,31 +413,49 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                         // T045: Render footer with component names
                         ui.add_space(4.0);
 
-                        ui.add(egui::Label::new(
-                            egui::RichText::new(format!("Composed from {} components",
-                                composition_data.metadata.component_count))
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(format!(
+                                    "Composed from {} components",
+                                    composition_data.metadata.component_count
+                                ))
                                 .small()
-                                .color(egui::Color32::from_rgb(150, 150, 160))
-                        ).wrap());
+                                .color(egui::Color32::from_rgb(150, 150, 160)),
+                            )
+                            .wrap(),
+                        );
 
                         // List component names (limited to avoid tall nodes)
                         let display_count = composition_data.metadata.component_names.len().min(3);
-                        for name in composition_data.metadata.component_names.iter().take(display_count) {
-                            ui.add(egui::Label::new(
-                                egui::RichText::new(format!("  • {}", name))
-                                    .small()
-                                    .color(egui::Color32::from_rgb(180, 180, 190))
-                            ).wrap());
+                        for name in composition_data
+                            .metadata
+                            .component_names
+                            .iter()
+                            .take(display_count)
+                        {
+                            ui.add(
+                                egui::Label::new(
+                                    egui::RichText::new(format!("  • {}", name))
+                                        .small()
+                                        .color(egui::Color32::from_rgb(180, 180, 190)),
+                                )
+                                .wrap(),
+                            );
                         }
 
                         if composition_data.metadata.component_names.len() > 3 {
-                            ui.add(egui::Label::new(
-                                egui::RichText::new(format!("  ... and {} more",
-                                    composition_data.metadata.component_names.len() - 3))
+                            ui.add(
+                                egui::Label::new(
+                                    egui::RichText::new(format!(
+                                        "  ... and {} more",
+                                        composition_data.metadata.component_names.len() - 3
+                                    ))
                                     .small()
                                     .italics()
-                                    .color(egui::Color32::from_rgb(120, 120, 130))
-                            ).wrap());
+                                    .color(egui::Color32::from_rgb(120, 120, 130)),
+                                )
+                                .wrap(),
+                            );
                         }
 
                         ui.add_space(4.0);
@@ -406,11 +474,15 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
         let color = if let Some(node) = snarl.get_node(pin.id.node) {
             if let Some(port) = node.inputs.get(pin.id.input) {
                 // Show port name and type with wrapping
-                let label = ui.add(egui::Label::new(format!("{}: {}", port.name, port.data_type.name())).wrap());
+                let label = ui.add(
+                    egui::Label::new(format!("{}: {}", port.name, port.data_type.name())).wrap(),
+                );
 
                 // T048: Add tooltip for composite nodes showing internal mapping
                 if node.is_composite {
-                    if let Some((internal_node, internal_port)) = node.input_mappings.get(&port.name) {
+                    if let Some((internal_node, internal_port)) =
+                        node.input_mappings.get(&port.name)
+                    {
                         label.on_hover_text(format!("from {}.{}", internal_node, internal_port));
                     }
                 }
@@ -437,11 +509,15 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
             if let Some(port) = node.outputs.get(pin.id.output) {
                 // Show port name and type only (values moved to default footer)
                 // This is the connections section - keep it clean and focused
-                let label = ui.add(egui::Label::new(format!("{}: {}", port.name, port.data_type.name())).wrap());
+                let label = ui.add(
+                    egui::Label::new(format!("{}: {}", port.name, port.data_type.name())).wrap(),
+                );
 
                 // T048: Add tooltip for composite nodes showing internal mapping
                 if node.is_composite {
-                    if let Some((internal_node, internal_port)) = node.output_mappings.get(&port.name) {
+                    if let Some((internal_node, internal_port)) =
+                        node.output_mappings.get(&port.name)
+                    {
                         label.on_hover_text(format!("to {}.{}", internal_node, internal_port));
                     }
                 }
@@ -566,18 +642,18 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
         ui.add_space(6.0);
 
         // Get node data to check if it has custom width (e.g., WASM Creator)
-        let is_wasm_creator = snarl.get_node(node)
+        let is_wasm_creator = snarl
+            .get_node(node)
             .map(|n| n.component_id == "builtin:development:wasm-creator")
             .unwrap_or(false);
 
-        let custom_width = snarl.get_node(node)
-            .and_then(|n| n.custom_width);
+        let custom_width = snarl.get_node(node).and_then(|n| n.custom_width);
 
         // Wrap all footer content in a scope with width constraint
         if is_wasm_creator {
             // WASM Creator nodes are resizable - use Resize container
             let resize_id = ui.id().with(node);
-            let min_width = 600.0;  // 400.0 * 1.5
+            let min_width = 600.0; // 400.0 * 1.5
             let max_width = 1800.0; // 1200.0 * 1.5
             let current_width = custom_width.unwrap_or(975.0); // 650.0 * 1.5
 

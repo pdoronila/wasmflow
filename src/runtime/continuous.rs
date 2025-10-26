@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-use crate::graph::{NodeValue, NodeGraph};
+use crate::graph::{NodeGraph, NodeValue};
 use crate::runtime::wasm_host::ComponentManager;
 use crate::ContinuousNodeError;
 
@@ -170,14 +170,21 @@ impl ContinuousExecutionManager {
                     if handle.is_finished() {
                         let _ = handle.join();
                         // T062: Log successful graceful shutdown
-                        log::info!("Continuous node {} stopped gracefully in {:?}", node_id, start.elapsed());
+                        log::info!(
+                            "Continuous node {} stopped gracefully in {:?}",
+                            node_id,
+                            start.elapsed()
+                        );
                         return Ok(());
                     }
                     thread::sleep(Duration::from_millis(10));
                 }
 
                 // Phase 3: Force abort if still running
-                log::warn!("Node {} did not stop gracefully, forcing termination", node_id);
+                log::warn!(
+                    "Node {} did not stop gracefully, forcing termination",
+                    node_id
+                );
                 // Thread will be dropped, which terminates it
             }
 
@@ -271,7 +278,10 @@ impl ContinuousExecutionManager {
                     let iteration_result = catch_unwind(AssertUnwindSafe(|| {
                         // Determine which continuous node type this is and execute accordingly
                         let component_id = if let Ok(graph_lock) = graph.lock() {
-                            graph_lock.nodes.get(&node_id).map(|n| n.component_id.clone())
+                            graph_lock
+                                .nodes
+                                .get(&node_id)
+                                .map(|n| n.component_id.clone())
                         } else {
                             None
                         };
@@ -281,8 +291,14 @@ impl ContinuousExecutionManager {
                                 // Timer node: generate counter and elapsed time
                                 let elapsed_seconds = started_at.elapsed().as_secs_f32();
                                 let mut outputs = HashMap::new();
-                                outputs.insert("counter".to_string(), NodeValue::U32(iterations as u32));
-                                outputs.insert("elapsed_seconds".to_string(), NodeValue::F32(elapsed_seconds));
+                                outputs.insert(
+                                    "counter".to_string(),
+                                    NodeValue::U32(iterations as u32),
+                                );
+                                outputs.insert(
+                                    "elapsed_seconds".to_string(),
+                                    NodeValue::F32(elapsed_seconds),
+                                );
                                 Ok(outputs)
                             }
                             Some("builtin:continuous:combiner") => {
@@ -295,13 +311,29 @@ impl ContinuousExecutionManager {
                                     for connection in graph_lock.connections.iter() {
                                         if connection.to_node == node_id {
                                             // Get the source node's output value
-                                            if let Some(source_node) = graph_lock.nodes.get(&connection.from_node) {
-                                                if let Some(source_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
-                                                    if let Some(value) = &source_port.current_value {
+                                            if let Some(source_node) =
+                                                graph_lock.nodes.get(&connection.from_node)
+                                            {
+                                                if let Some(source_port) = source_node
+                                                    .outputs
+                                                    .iter()
+                                                    .find(|p| p.id == connection.from_port)
+                                                {
+                                                    if let Some(value) = &source_port.current_value
+                                                    {
                                                         // Map to target input port name
-                                                        if let Some(target_node) = graph_lock.nodes.get(&node_id) {
-                                                            if let Some(target_port) = target_node.inputs.iter().find(|p| p.id == connection.to_port) {
-                                                                inputs.insert(target_port.name.clone(), value.clone());
+                                                        if let Some(target_node) =
+                                                            graph_lock.nodes.get(&node_id)
+                                                        {
+                                                            if let Some(target_port) =
+                                                                target_node.inputs.iter().find(
+                                                                    |p| p.id == connection.to_port,
+                                                                )
+                                                            {
+                                                                inputs.insert(
+                                                                    target_port.name.clone(),
+                                                                    value.clone(),
+                                                                );
                                                             }
                                                         }
                                                     }
@@ -342,14 +374,16 @@ impl ContinuousExecutionManager {
                     match iteration_result {
                         Ok(Ok(outputs)) => {
                             // Execution succeeded - send outputs
-                            let _ = result_tx.send(ExecutionResult::OutputsUpdated {
-                                node_id,
-                                outputs,
-                            });
+                            let _ = result_tx
+                                .send(ExecutionResult::OutputsUpdated { node_id, outputs });
                         }
                         Ok(Err(exec_error)) => {
                             // Execution returned an error
-                            log::error!("Continuous node {} execution failed: {}", node_id, exec_error);
+                            log::error!(
+                                "Continuous node {} execution failed: {}",
+                                node_id,
+                                exec_error
+                            );
 
                             let _ = result_tx.send(ExecutionResult::Error {
                                 node_id,
@@ -444,7 +478,11 @@ impl ContinuousExecutionManager {
                 "Unknown panic in execution loop".to_string()
             };
 
-            log::error!("Continuous execution loop panicked for node {}: {}", node_id, panic_msg);
+            log::error!(
+                "Continuous execution loop panicked for node {}: {}",
+                node_id,
+                panic_msg
+            );
 
             let _ = result_tx.send(ExecutionResult::Error {
                 node_id,

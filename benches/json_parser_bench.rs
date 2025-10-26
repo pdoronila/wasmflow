@@ -4,7 +4,7 @@
 //!
 //! Run with: cargo bench --bench json_parser_bench
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use wasmflow::builtin::json_parser::parse;
 
 /// Generate JSON of specified size
@@ -102,16 +102,12 @@ fn bench_deep_nesting(c: &mut Criterion) {
             .join(".");
         let final_path = format!("{}.value", path);
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(depth),
-            depth,
-            |b, _| {
-                b.iter(|| {
-                    let result = parse(black_box(&json), black_box(&final_path));
-                    black_box(result)
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(depth), depth, |b, _| {
+            b.iter(|| {
+                let result = parse(black_box(&json), black_box(&final_path));
+                black_box(result)
+            })
+        });
     }
 
     group.finish();
@@ -129,16 +125,12 @@ fn bench_large_array_access(c: &mut Criterion) {
         let mid_index = size / 2;
         let path = format!("items[{}].value", mid_index);
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(size),
-            size,
-            |b, _| {
-                b.iter(|| {
-                    let result = parse(black_box(&json), black_box(&path));
-                    black_box(result)
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {
+            b.iter(|| {
+                let result = parse(black_box(&json), black_box(&path));
+                black_box(result)
+            })
+        });
     }
 
     group.finish();

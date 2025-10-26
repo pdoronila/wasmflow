@@ -165,10 +165,7 @@ impl SplashScreen {
             );
         } else {
             // Show placeholder to maintain consistent spacing
-            ui.label(
-                egui::RichText::new(" ")
-                    .size(14.0),
-            );
+            ui.label(egui::RichText::new(" ").size(14.0));
         }
     }
 
@@ -243,12 +240,12 @@ impl SplashScreen {
 
             let start = center + egui::vec2(i_angle.cos() * radius, i_angle.sin() * radius);
             let end = center
-                + egui::vec2(i_angle.cos() * (radius + 5.0), i_angle.sin() * (radius + 5.0));
+                + egui::vec2(
+                    i_angle.cos() * (radius + 5.0),
+                    i_angle.sin() * (radius + 5.0),
+                );
 
-            painter.line_segment(
-                [start, end],
-                egui::Stroke::new(3.0, color),
-            );
+            painter.line_segment([start, end], egui::Stroke::new(3.0, color));
         }
 
         // Allocate space for the spinner

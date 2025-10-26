@@ -3,12 +3,12 @@
 //! A special development node that allows users to create custom WASM components
 //! directly in the visual editor using Rust code and structured comments.
 
-use crate::graph::node::{CompilationState, ComponentSpec, NodeValue, GraphNode, Language};
+use crate::graph::node::{CompilationState, ComponentSpec, GraphNode, Language, NodeValue};
 use crate::runtime::{CompilationConfig, ComponentCompiler, TemplateGenerator};
 use crate::ui::code_editor::{CodeEditorWidget, CodeTheme};
 use crate::ui::component_view::ComponentFooterView;
 use crate::ComponentError;
-use egui::{RichText, Color32};
+use egui::{Color32, RichText};
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -111,7 +111,8 @@ impl WasmCreatorNode {
 
 // Your code here
 let result = value * 2.0;
-"#.to_string()
+"#
+        .to_string()
     }
 
     /// Default Python template
@@ -123,7 +124,8 @@ let result = value * 2.0;
 
 # Your code here
 result = value * 2.0
-"#.to_string()
+"#
+        .to_string()
     }
 
     /// Default JavaScript template
@@ -135,7 +137,8 @@ result = value * 2.0
 
 // Your code here
 const result = value * 2.0;
-"#.to_string()
+"#
+        .to_string()
     }
 
     /// Get the component spec for this creator node
@@ -228,8 +231,10 @@ const result = value * 2.0;
                     });
                 }
                 CompilationState::Success { build_time_ms, .. } => {
-                    ui.label(RichText::new(format!("✓ Compiled successfully in {}ms", build_time_ms))
-                        .color(Color32::from_rgb(100, 200, 100)));
+                    ui.label(
+                        RichText::new(format!("✓ Compiled successfully in {}ms", build_time_ms))
+                            .color(Color32::from_rgb(100, 200, 100)),
+                    );
 
                     if ui.button("Compile Again").clicked() {
                         if let Err(error) = self.on_execute_clicked() {
@@ -237,9 +242,15 @@ const result = value * 2.0;
                         }
                     }
                 }
-                CompilationState::Failed { error_message, line_number, .. } => {
-                    ui.label(RichText::new("✗ Compilation failed")
-                        .color(Color32::from_rgb(255, 100, 100)));
+                CompilationState::Failed {
+                    error_message,
+                    line_number,
+                    ..
+                } => {
+                    ui.label(
+                        RichText::new("✗ Compilation failed")
+                            .color(Color32::from_rgb(255, 100, 100)),
+                    );
 
                     if let Some(line) = line_number {
                         ui.label(format!("Error at line {}: {}", line, error_message));
@@ -266,7 +277,10 @@ const result = value * 2.0;
             ui.horizontal(|ui| {
                 let line_count = CodeEditorWidget::line_count(&self.source_code);
                 let byte_count = self.source_code.len();
-                ui.label(format!("Lines: {} | Size: {} bytes", line_count, byte_count));
+                ui.label(format!(
+                    "Lines: {} | Size: {} bytes",
+                    line_count, byte_count
+                ));
             });
         });
 
@@ -330,11 +344,18 @@ const result = value * 2.0;
         const MAX_BYTES: usize = 500_000; // 500KB
 
         if line_count > MAX_LINES {
-            return Err(format!("Code exceeds maximum {} lines (current: {})", MAX_LINES, line_count));
+            return Err(format!(
+                "Code exceeds maximum {} lines (current: {})",
+                MAX_LINES, line_count
+            ));
         }
 
         if byte_count > MAX_BYTES {
-            return Err(format!("Code exceeds maximum {}KB (current: {}KB)", MAX_BYTES / 1024, byte_count / 1024));
+            return Err(format!(
+                "Code exceeds maximum {}KB (current: {}KB)",
+                MAX_BYTES / 1024,
+                byte_count / 1024
+            ));
         }
 
         Ok(())
@@ -360,7 +381,10 @@ const result = value * 2.0;
         // T054: Log compilation start
         // Note: If a component with this name already exists, it will be replaced
         // during registration (see register_dynamic_component in ComponentRegistry)
-        log::info!("Starting compilation for component: {}", self.component_name);
+        log::info!(
+            "Starting compilation for component: {}",
+            self.component_name
+        );
 
         // Set state to Compiling
         self.compilation_state = CompilationState::Compiling {
@@ -371,14 +395,23 @@ const result = value * 2.0;
 
         // Parse annotations and generate metadata (T006, T007)
         // Note: This old struct doesn't have language field, defaulting to Rust
-        let metadata = TemplateGenerator::parse_annotations(&self.component_name, &self.source_code, Language::Rust)
-            .map_err(|e| format!("Failed to parse annotations: {}", e))?;
+        let metadata = TemplateGenerator::parse_annotations(
+            &self.component_name,
+            &self.source_code,
+            Language::Rust,
+        )
+        .map_err(|e| format!("Failed to parse annotations: {}", e))?;
 
         // Select template type (T008)
         let template_type = TemplateGenerator::select_template(&metadata);
 
         // Generate complete component code (T009)
-        let generated_code = TemplateGenerator::generate_component_code(&metadata, &self.source_code, template_type, Language::Rust);
+        let generated_code = TemplateGenerator::generate_component_code(
+            &metadata,
+            &self.source_code,
+            template_type,
+            Language::Rust,
+        );
 
         // Generate WIT interface (T010)
         let wit_definition = TemplateGenerator::generate_wit(&metadata);
@@ -393,18 +426,27 @@ const result = value * 2.0;
             wit_definition,
             cargo_toml,
             timeout: Duration::from_secs(120), // 2 minute timeout (T015)
-            language: Language::Rust, // Old struct defaults to Rust
+            language: Language::Rust,          // Old struct defaults to Rust
         };
 
         // Compile the component (T014)
         let compiler = ComponentCompiler::with_default_workspace();
-        let compilation_result = compiler.compile(config)
+        let compilation_result = compiler
+            .compile(config)
             .map_err(|e| format!("Compilation failed: {}", e))?;
 
         // T037: Update state based on compilation result
         match compilation_result {
-            crate::runtime::CompilationResult::Success { wasm_path, build_time_ms, .. } => {
-                log::info!("Compilation succeeded for {} in {}ms", self.component_name, build_time_ms);
+            crate::runtime::CompilationResult::Success {
+                wasm_path,
+                build_time_ms,
+                ..
+            } => {
+                log::info!(
+                    "Compilation succeeded for {} in {}ms",
+                    self.component_name,
+                    build_time_ms
+                );
 
                 self.compilation_state = CompilationState::Success {
                     compiled_at: chrono::Utc::now(),
@@ -419,8 +461,16 @@ const result = value * 2.0;
 
                 Ok(())
             }
-            crate::runtime::CompilationResult::Failure { error_message, line_number, .. } => {
-                log::error!("Compilation failed for {}: {}", self.component_name, error_message);
+            crate::runtime::CompilationResult::Failure {
+                error_message,
+                line_number,
+                ..
+            } => {
+                log::error!(
+                    "Compilation failed for {}: {}",
+                    self.component_name,
+                    error_message
+                );
 
                 self.compilation_state = CompilationState::Failed {
                     error_message: error_message.clone(),
@@ -479,7 +529,10 @@ const result = value * 2.0;
     /// Execute method for the node (no-op for creator nodes)
     ///
     /// Creator nodes don't execute in the traditional sense - they create components instead.
-    pub fn execute(&self, _inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    pub fn execute(
+        &self,
+        _inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
         // Creator nodes don't produce outputs
         Ok(HashMap::new())
     }
@@ -525,7 +578,9 @@ impl WasmCreatorFooterView {
     }
 
     /// Execute compilation workflow
-    fn execute_compilation(creator_data: &mut crate::graph::node::WasmCreatorNodeData) -> Result<(), String> {
+    fn execute_compilation(
+        creator_data: &mut crate::graph::node::WasmCreatorNodeData,
+    ) -> Result<(), String> {
         // Validate inputs
         validate_name(&creator_data.component_name)?;
         validate_code(&creator_data.source_code)?;
@@ -535,7 +590,10 @@ impl WasmCreatorFooterView {
         }
 
         // Log compilation start
-        log::info!("Starting compilation for component: {}", creator_data.component_name);
+        log::info!(
+            "Starting compilation for component: {}",
+            creator_data.component_name
+        );
 
         // Set state to Compiling
         creator_data.compilation_state = CompilationState::Compiling {
@@ -544,14 +602,23 @@ impl WasmCreatorFooterView {
         };
 
         // Parse annotations and generate metadata
-        let metadata = TemplateGenerator::parse_annotations(&creator_data.component_name, &creator_data.source_code, creator_data.language)
-            .map_err(|e| format!("Failed to parse annotations: {}", e))?;
+        let metadata = TemplateGenerator::parse_annotations(
+            &creator_data.component_name,
+            &creator_data.source_code,
+            creator_data.language,
+        )
+        .map_err(|e| format!("Failed to parse annotations: {}", e))?;
 
         // Select template type
         let template_type = TemplateGenerator::select_template(&metadata);
 
         // Generate complete component code
-        let generated_code = TemplateGenerator::generate_component_code(&metadata, &creator_data.source_code, template_type, creator_data.language);
+        let generated_code = TemplateGenerator::generate_component_code(
+            &metadata,
+            &creator_data.source_code,
+            template_type,
+            creator_data.language,
+        );
 
         // Generate WIT interface
         let wit_definition = TemplateGenerator::generate_wit(&metadata);
@@ -571,13 +638,22 @@ impl WasmCreatorFooterView {
 
         // Compile the component
         let compiler = ComponentCompiler::with_default_workspace();
-        let compilation_result = compiler.compile(config)
+        let compilation_result = compiler
+            .compile(config)
             .map_err(|e| format!("Compilation failed: {}", e))?;
 
         // Update state based on compilation result
         match compilation_result {
-            crate::runtime::CompilationResult::Success { wasm_path, build_time_ms, .. } => {
-                log::info!("Compilation succeeded for {} in {}ms", creator_data.component_name, build_time_ms);
+            crate::runtime::CompilationResult::Success {
+                wasm_path,
+                build_time_ms,
+                ..
+            } => {
+                log::info!(
+                    "Compilation succeeded for {} in {}ms",
+                    creator_data.component_name,
+                    build_time_ms
+                );
 
                 // Copy the compiled .wasm file to components/bin/ directory
                 // Use current directory + "components/bin" for reliable path resolution
@@ -589,7 +665,10 @@ impl WasmCreatorFooterView {
                 // Ensure directory exists
                 match std::fs::create_dir_all(&components_dir) {
                     Ok(_) => {
-                        let dest_filename = format!("{}.wasm", Self::component_name_to_filename(&creator_data.component_name));
+                        let dest_filename = format!(
+                            "{}.wasm",
+                            Self::component_name_to_filename(&creator_data.component_name)
+                        );
                         let dest_path = components_dir.join(&dest_filename);
 
                         match std::fs::copy(&wasm_path, &dest_path) {
@@ -602,7 +681,11 @@ impl WasmCreatorFooterView {
                                 };
                             }
                             Err(e) => {
-                                log::error!("Failed to copy component to components/bin/{}: {}", dest_filename, e);
+                                log::error!(
+                                    "Failed to copy component to components/bin/{}: {}",
+                                    dest_filename,
+                                    e
+                                );
                                 creator_data.compilation_state = CompilationState::Success {
                                     compiled_at: chrono::Utc::now(),
                                     component_path: wasm_path.clone(),
@@ -612,7 +695,11 @@ impl WasmCreatorFooterView {
                         }
                     }
                     Err(e) => {
-                        log::error!("Failed to create components/bin/ directory at {}: {}", components_dir.display(), e);
+                        log::error!(
+                            "Failed to create components/bin/ directory at {}: {}",
+                            components_dir.display(),
+                            e
+                        );
                         creator_data.compilation_state = CompilationState::Success {
                             compiled_at: chrono::Utc::now(),
                             component_path: wasm_path.clone(),
@@ -622,12 +709,21 @@ impl WasmCreatorFooterView {
                 }
 
                 // Store the component ID
-                creator_data.generated_component_id = Some(format!("user:{}", creator_data.component_name));
+                creator_data.generated_component_id =
+                    Some(format!("user:{}", creator_data.component_name));
 
                 Ok(())
             }
-            crate::runtime::CompilationResult::Failure { error_message, line_number, .. } => {
-                log::error!("Compilation failed for {}: {}", creator_data.component_name, error_message);
+            crate::runtime::CompilationResult::Failure {
+                error_message,
+                line_number,
+                ..
+            } => {
+                log::error!(
+                    "Compilation failed for {}: {}",
+                    creator_data.component_name,
+                    error_message
+                );
 
                 creator_data.compilation_state = CompilationState::Failed {
                     error_message: error_message.clone(),
@@ -885,11 +981,18 @@ fn validate_code(source_code: &str) -> Result<(), String> {
     const MAX_BYTES: usize = 500_000; // 500KB
 
     if line_count > MAX_LINES {
-        return Err(format!("Code exceeds maximum {} lines (current: {})", MAX_LINES, line_count));
+        return Err(format!(
+            "Code exceeds maximum {} lines (current: {})",
+            MAX_LINES, line_count
+        ));
     }
 
     if byte_count > MAX_BYTES {
-        return Err(format!("Code exceeds maximum {}KB (current: {}KB)", MAX_BYTES / 1024, byte_count / 1024));
+        return Err(format!(
+            "Code exceeds maximum {}KB (current: {}KB)",
+            MAX_BYTES / 1024,
+            byte_count / 1024
+        ));
     }
 
     Ok(())
@@ -918,9 +1021,17 @@ fn validate_name(name: &str) -> Result<(), String> {
         if name.chars().next().unwrap().is_lowercase() {
             return Err(format!("Component name '{}' must start with an uppercase letter (PascalCase). Try '{}' instead.", name, capitalize_first(name)));
         } else if name.contains('-') {
-            return Err(format!("Component name '{}' cannot contain hyphens. Use PascalCase instead (e.g., '{}').", name, name.replace('-', "")));
+            return Err(format!(
+                "Component name '{}' cannot contain hyphens. Use PascalCase instead (e.g., '{}').",
+                name,
+                name.replace('-', "")
+            ));
         } else if name.contains(' ') {
-            return Err(format!("Component name '{}' cannot contain spaces. Use PascalCase instead (e.g., '{}').", name, name.replace(' ', "")));
+            return Err(format!(
+                "Component name '{}' cannot contain spaces. Use PascalCase instead (e.g., '{}').",
+                name,
+                name.replace(' ', "")
+            ));
         } else if name.contains(|c: char| !c.is_alphanumeric() && c != '_') {
             return Err(format!("Component name '{}' contains invalid characters. Only letters, numbers, and underscores are allowed (PascalCase).", name));
         } else {
@@ -933,8 +1044,7 @@ fn validate_name(name: &str) -> Result<(), String> {
 
 /// T040: Register the WASM Creator Node in the component registry
 pub fn register_wasm_creator_node(registry: &mut crate::graph::node::ComponentRegistry) {
-    let spec = WasmCreatorNode::spec()
-        .with_footer_view(WasmCreatorFooterView::new());
+    let spec = WasmCreatorNode::spec().with_footer_view(WasmCreatorFooterView::new());
     registry.register_builtin(spec);
     log::info!("Registered WASM Creator Node with footer view");
 }

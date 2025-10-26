@@ -9,9 +9,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub enum Command {
     /// Add a node to the graph
-    AddNode {
-        node: GraphNode,
-    },
+    AddNode { node: GraphNode },
     /// Remove a node from the graph
     RemoveNode {
         node_id: Uuid,
@@ -33,9 +31,7 @@ pub enum Command {
         connection_id: Option<Uuid>,
     },
     /// Remove a connection
-    RemoveConnection {
-        connection: Connection,
-    },
+    RemoveConnection { connection: Connection },
     /// Change a node's constant value
     ChangeConstantValue {
         node_id: Uuid,
@@ -61,9 +57,16 @@ impl Command {
                 // Store the node and its connections before removal
                 if let Some(removed_node) = graph.nodes.get(node_id) {
                     *node = removed_node.clone();
-                    *connections = graph.node_connections(*node_id).into_iter().cloned().collect();
+                    *connections = graph
+                        .node_connections(*node_id)
+                        .into_iter()
+                        .cloned()
+                        .collect();
                 }
-                graph.remove_node(*node_id).map(|_| ()).map_err(|e| e.to_string())
+                graph
+                    .remove_node(*node_id)
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
             }
             Command::MoveNode {
                 node_id,
@@ -90,12 +93,10 @@ impl Command {
                 *connection_id = Some(conn_id);
                 Ok(())
             }
-            Command::RemoveConnection { connection } => {
-                graph
-                    .remove_connection(connection.id)
-                    .map(|_| ())
-                    .map_err(|e| e.to_string())
-            }
+            Command::RemoveConnection { connection } => graph
+                .remove_connection(connection.id)
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
             Command::ChangeConstantValue {
                 node_id,
                 port_index,
@@ -119,13 +120,12 @@ impl Command {
     /// Undo the command
     pub fn undo(&self, graph: &mut NodeGraph) -> Result<(), String> {
         match self {
-            Command::AddNode { node } => {
-                graph.remove_node(node.id).map(|_| ()).map_err(|e| e.to_string())
-            }
+            Command::AddNode { node } => graph
+                .remove_node(node.id)
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
             Command::RemoveNode {
-                node,
-                connections,
-                ..
+                node, connections, ..
             } => {
                 graph.add_node(node.clone());
                 // Restore connections
@@ -153,22 +153,23 @@ impl Command {
             }
             Command::AddConnection { connection_id, .. } => {
                 if let Some(conn_id) = connection_id {
-                    graph.remove_connection(*conn_id).map(|_| ()).map_err(|e| e.to_string())
+                    graph
+                        .remove_connection(*conn_id)
+                        .map(|_| ())
+                        .map_err(|e| e.to_string())
                 } else {
                     Err("Connection ID not set".to_string())
                 }
             }
-            Command::RemoveConnection { connection } => {
-                graph
-                    .add_connection(
-                        connection.from_node,
-                        connection.from_port,
-                        connection.to_node,
-                        connection.to_port,
-                    )
-                    .map(|_| ())
-                    .map_err(|e| e.to_string())
-            }
+            Command::RemoveConnection { connection } => graph
+                .add_connection(
+                    connection.from_node,
+                    connection.from_port,
+                    connection.to_node,
+                    connection.to_port,
+                )
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
             Command::ChangeConstantValue {
                 node_id,
                 port_index,
@@ -333,10 +334,16 @@ mod tests {
         };
         history.execute(cmd, &mut graph).unwrap();
 
-        assert_eq!(graph.nodes.get(&node_id).unwrap().position, egui::Pos2::new(100.0, 100.0));
+        assert_eq!(
+            graph.nodes.get(&node_id).unwrap().position,
+            egui::Pos2::new(100.0, 100.0)
+        );
 
         // Undo
         history.undo(&mut graph).unwrap();
-        assert_eq!(graph.nodes.get(&node_id).unwrap().position, egui::Pos2::new(0.0, 0.0));
+        assert_eq!(
+            graph.nodes.get(&node_id).unwrap().position,
+            egui::Pos2::new(0.0, 0.0)
+        );
     }
 }

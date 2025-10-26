@@ -25,17 +25,19 @@ pub struct ExecutionEngine {
 
 /// Trait for executing a node
 pub trait NodeExecutor: Send + Sync {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError>;
+    fn execute(
+        &self,
+        inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError>;
 }
 
 impl ExecutionEngine {
     /// Create a new execution engine
     pub fn new() -> Self {
-        let component_manager = ComponentManager::new()
-            .unwrap_or_else(|e| {
-                log::error!("Failed to create component manager: {}", e);
-                ComponentManager::default()
-            });
+        let component_manager = ComponentManager::new().unwrap_or_else(|e| {
+            log::error!("Failed to create component manager: {}", e);
+            ComponentManager::default()
+        });
 
         Self {
             executors: HashMap::new(),
@@ -90,8 +92,8 @@ impl ExecutionEngine {
             // Check if this is a constant node with pre-set values
             let is_constant_with_value = {
                 let node = graph.nodes.get(node_id).unwrap();
-                node.component_id.starts_with("builtin:constant:") &&
-                    node.outputs.iter().all(|p| p.current_value.is_some())
+                node.component_id.starts_with("builtin:constant:")
+                    && node.outputs.iter().all(|p| p.current_value.is_some())
             };
 
             if is_constant_with_value {
@@ -145,8 +147,11 @@ impl ExecutionEngine {
     /// This method only executes nodes marked as dirty and automatically marks
     /// executed nodes as clean. This provides significant performance improvements
     /// for large graphs where only a few nodes have changed.
-    pub fn execute_graph_incremental(&mut self, graph: &mut NodeGraph) -> Result<ExecutionReport, GraphError> {
-        use crate::graph::execution::{get_dirty_execution_order, count_dirty_nodes};
+    pub fn execute_graph_incremental(
+        &mut self,
+        graph: &mut NodeGraph,
+    ) -> Result<ExecutionReport, GraphError> {
+        use crate::graph::execution::{count_dirty_nodes, get_dirty_execution_order};
 
         let mut report = ExecutionReport::default();
 
@@ -178,8 +183,8 @@ impl ExecutionEngine {
             // Check if this is a constant node with pre-set values
             let is_constant_with_value = {
                 let node = graph.nodes.get(node_id).unwrap();
-                node.component_id.starts_with("builtin:constant:") &&
-                    node.outputs.iter().all(|p| p.current_value.is_some())
+                node.component_id.starts_with("builtin:constant:")
+                    && node.outputs.iter().all(|p| p.current_value.is_some())
             };
 
             if is_constant_with_value {
@@ -238,7 +243,11 @@ impl ExecutionEngine {
     }
 
     /// Execute a single node - internal helper that doesn't update the graph
-    fn execute_node(&self, graph: &NodeGraph, node_id: Uuid) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    fn execute_node(
+        &self,
+        graph: &NodeGraph,
+        node_id: Uuid,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
         self.execute_node_with_outputs(graph, node_id)
     }
 
@@ -248,9 +257,10 @@ impl ExecutionEngine {
         graph: &NodeGraph,
         node_id: Uuid,
     ) -> Result<HashMap<String, NodeValue>, ComponentError> {
-        let node = graph.nodes.get(&node_id).ok_or_else(|| {
-            ComponentError::ExecutionError(format!("Node {} not found", node_id))
-        })?;
+        let node = graph
+            .nodes
+            .get(&node_id)
+            .ok_or_else(|| ComponentError::ExecutionError(format!("Node {} not found", node_id)))?;
 
         // Gather input values from connected output ports
         let mut inputs = HashMap::new();
@@ -299,8 +309,10 @@ impl ExecutionEngine {
 
         // Check if this is a composite node
         if let Some(composition_data) = &node.composition_data {
-            log::debug!("Executing composite node with {} internal nodes",
-                composition_data.internal_nodes.len());
+            log::debug!(
+                "Executing composite node with {} internal nodes",
+                composition_data.internal_nodes.len()
+            );
 
             // Map external inputs to internal node inputs using port mappings
             // For now, we'll execute the composed WASM binary directly
@@ -310,7 +322,13 @@ impl ExecutionEngine {
             let capability_set = CapabilitySet::Full;
 
             // Execute the composed WASM binary
-            return self.execute_composite_node(node_id, &node.component_id, &inputs, &capability_set, composition_data);
+            return self.execute_composite_node(
+                node_id,
+                &node.component_id,
+                &inputs,
+                &capability_set,
+                composition_data,
+            );
         }
 
         // Check if this is a user-defined component
@@ -321,12 +339,20 @@ impl ExecutionEngine {
                 .map(|grant| grant.capability_set.clone())
                 .unwrap_or_else(|| {
                     // No grant found - use None (no permissions)
-                    log::warn!("No capability grant found for node {}, using None permissions", node_id);
+                    log::warn!(
+                        "No capability grant found for node {}, using None permissions",
+                        node_id
+                    );
                     CapabilitySet::none()
                 });
 
             // Execute WASM component with timeout and error handling
-            return self.execute_wasm_component(node_id, &node.component_id, &inputs, &capability_set);
+            return self.execute_wasm_component(
+                node_id,
+                &node.component_id,
+                &inputs,
+                &capability_set,
+            );
         }
 
         // Get the builtin executor
@@ -371,8 +397,9 @@ impl ExecutionEngine {
         let result = runtime.block_on(async {
             tokio::time::timeout(
                 timeout,
-                component_manager.execute_component(&component_id_str, &inputs, capabilities)
-            ).await
+                component_manager.execute_component(&component_id_str, &inputs, capabilities),
+            )
+            .await
         });
 
         match result {
@@ -405,8 +432,11 @@ impl ExecutionEngine {
         _capabilities: &CapabilitySet,
         composition_data: &crate::graph::node::CompositionData,
     ) -> Result<HashMap<String, NodeValue>, ComponentError> {
-        log::debug!("Executing composite node '{}' with {} internal nodes",
-            component_id, composition_data.internal_nodes.len());
+        log::debug!(
+            "Executing composite node '{}' with {} internal nodes",
+            component_id,
+            composition_data.internal_nodes.len()
+        );
 
         // Create a temporary graph from the internal structure
         let mut internal_graph = crate::graph::graph::NodeGraph::new(
@@ -434,13 +464,20 @@ impl ExecutionEngine {
         // Map external inputs to internal node inputs
         for (external_name, value) in external_inputs {
             if let Some(mapping) = composition_data.exposed_inputs.get(external_name) {
-                log::debug!("Mapping external input '{}' to internal node '{}'",
-                    external_name, mapping.internal_node_id);
+                log::debug!(
+                    "Mapping external input '{}' to internal node '{}'",
+                    external_name,
+                    mapping.internal_node_id
+                );
 
                 // Set the input value on the internal node
-                if let Some(internal_node) = internal_graph.nodes.get_mut(&mapping.internal_node_id) {
-                    if let Some(input_port) = internal_node.inputs.iter_mut()
-                        .find(|p| p.name == mapping.internal_port_name) {
+                if let Some(internal_node) = internal_graph.nodes.get_mut(&mapping.internal_node_id)
+                {
+                    if let Some(input_port) = internal_node
+                        .inputs
+                        .iter_mut()
+                        .find(|p| p.name == mapping.internal_port_name)
+                    {
                         input_port.current_value = Some(value.clone());
                     }
                 }
@@ -448,14 +485,18 @@ impl ExecutionEngine {
         }
 
         // Execute the internal graph in topological order
-        log::debug!("Executing internal graph with {} nodes", internal_graph.nodes.len());
+        log::debug!(
+            "Executing internal graph with {} nodes",
+            internal_graph.nodes.len()
+        );
         let execution_order = match internal_graph.execution_order() {
             Ok(order) => order,
             Err(e) => {
                 log::error!("Failed to get execution order for internal graph: {}", e);
-                return Err(ComponentError::ExecutionError(
-                    format!("Composite node execution order failed: {}", e)
-                ));
+                return Err(ComponentError::ExecutionError(format!(
+                    "Composite node execution order failed: {}",
+                    e
+                )));
             }
         };
 
@@ -468,7 +509,9 @@ impl ExecutionEngine {
                     // Update the internal graph with outputs
                     if let Some(node) = internal_graph.nodes.get_mut(internal_node_id) {
                         for (port_name, value) in outputs {
-                            if let Some(output_port) = node.outputs.iter_mut().find(|p| p.name == port_name) {
+                            if let Some(output_port) =
+                                node.outputs.iter_mut().find(|p| p.name == port_name)
+                            {
                                 output_port.current_value = Some(value);
                             }
                         }
@@ -480,34 +523,50 @@ impl ExecutionEngine {
                     if let Some(node) = internal_graph.nodes.get_mut(internal_node_id) {
                         node.execution_state = crate::graph::node::ExecutionState::Failed;
                     }
-                    return Err(ComponentError::ExecutionError(
-                        format!("Composite node internal execution failed at node {}: {}", internal_node_id, e)
-                    ));
+                    return Err(ComponentError::ExecutionError(format!(
+                        "Composite node internal execution failed at node {}: {}",
+                        internal_node_id, e
+                    )));
                 }
             }
         }
 
-        log::debug!("Internal graph execution completed: {} nodes executed", execution_order.len());
+        log::debug!(
+            "Internal graph execution completed: {} nodes executed",
+            execution_order.len()
+        );
 
         // Map internal outputs to external outputs
         let mut external_outputs = HashMap::new();
         for (external_name, mapping) in &composition_data.exposed_outputs {
             if let Some(internal_node) = internal_graph.nodes.get(&mapping.internal_node_id) {
-                if let Some(output_port) = internal_node.outputs.iter()
-                    .find(|p| p.name == mapping.internal_port_name) {
+                if let Some(output_port) = internal_node
+                    .outputs
+                    .iter()
+                    .find(|p| p.name == mapping.internal_port_name)
+                {
                     if let Some(value) = &output_port.current_value {
-                        log::debug!("Mapping internal output from node '{}' to external '{}'",
-                            mapping.internal_node_id, external_name);
+                        log::debug!(
+                            "Mapping internal output from node '{}' to external '{}'",
+                            mapping.internal_node_id,
+                            external_name
+                        );
                         external_outputs.insert(external_name.clone(), value.clone());
                     } else {
-                        log::warn!("Internal output port '{}' on node '{}' has no value",
-                            mapping.internal_port_name, mapping.internal_node_id);
+                        log::warn!(
+                            "Internal output port '{}' on node '{}' has no value",
+                            mapping.internal_port_name,
+                            mapping.internal_node_id
+                        );
                     }
                 }
             }
         }
 
-        log::debug!("Composite node execution complete with {} outputs", external_outputs.len());
+        log::debug!(
+            "Composite node execution complete with {} outputs",
+            external_outputs.len()
+        );
         Ok(external_outputs)
     }
 
@@ -520,18 +579,17 @@ impl ExecutionEngine {
         error: ComponentError,
     ) -> ComponentError {
         match error {
-            ComponentError::ExecutionError(msg) => {
-                ComponentError::ExecutionError(format!(
-                    "Node {} ({}): {}",
-                    node_id, component_id, msg
-                ))
-            }
-            ComponentError::PermissionDenied { node_id: _, capability } => {
-                ComponentError::PermissionDenied {
-                    node_id,
-                    capability: format!("{} (component: {})", capability, component_id),
-                }
-            }
+            ComponentError::ExecutionError(msg) => ComponentError::ExecutionError(format!(
+                "Node {} ({}): {}",
+                node_id, component_id, msg
+            )),
+            ComponentError::PermissionDenied {
+                node_id: _,
+                capability,
+            } => ComponentError::PermissionDenied {
+                node_id,
+                capability: format!("{} (component: {})", capability, component_id),
+            },
             other => other,
         }
     }
@@ -540,16 +598,17 @@ impl ExecutionEngine {
     ///
     /// This updates the `current_value` field of input ports with values from
     /// their connected output ports, so that the UI can display them in footer views.
-    fn update_input_values_from_connections(
-        graph: &mut NodeGraph,
-        node_id: Uuid,
-    ) {
+    fn update_input_values_from_connections(graph: &mut NodeGraph, node_id: Uuid) {
         // Collect updates first (to avoid borrow checker issues)
         let mut updates: Vec<(Uuid, NodeValue)> = Vec::new();
 
         for connection in graph.incoming_connections(node_id) {
             if let Some(source_node) = graph.nodes.get(&connection.from_node) {
-                if let Some(source_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
+                if let Some(source_port) = source_node
+                    .outputs
+                    .iter()
+                    .find(|p| p.id == connection.from_port)
+                {
                     if let Some(value) = &source_port.current_value {
                         updates.push((connection.to_port, value.clone()));
                     }
@@ -573,9 +632,10 @@ impl ExecutionEngine {
         node_id: Uuid,
         outputs: HashMap<String, NodeValue>,
     ) -> Result<(), ComponentError> {
-        let node = graph.nodes.get_mut(&node_id).ok_or_else(|| {
-            ComponentError::ExecutionError(format!("Node {} not found", node_id))
-        })?;
+        let node = graph
+            .nodes
+            .get_mut(&node_id)
+            .ok_or_else(|| ComponentError::ExecutionError(format!("Node {} not found", node_id)))?;
 
         for (output_name, output_value) in outputs {
             if let Some(output_port) = node.outputs.iter_mut().find(|p| p.name == output_name) {
@@ -620,7 +680,10 @@ impl ExecutionEngine {
             }
             Ok(None) => {
                 // Component doesn't provide a footer view
-                log::trace!("Component {} doesn't provide footer view", node.component_id);
+                log::trace!(
+                    "Component {} doesn't provide footer view",
+                    node.component_id
+                );
             }
             Err(e) => {
                 // Error getting footer view - log but don't fail execution
@@ -664,7 +727,10 @@ impl ConstantExecutor {
 }
 
 impl NodeExecutor for ConstantExecutor {
-    fn execute(&self, _inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    fn execute(
+        &self,
+        _inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
         let constant = ConstantNode::new(self.value.clone());
         constant.execute(&HashMap::new())
     }
@@ -760,8 +826,12 @@ mod tests {
         graph.add_node(const2);
         graph.add_node(add);
 
-        graph.add_connection(const1_id, const1_out, add_id, add_in_a).unwrap();
-        graph.add_connection(const2_id, const2_out, add_id, add_in_b).unwrap();
+        graph
+            .add_connection(const1_id, const1_out, add_id, add_in_a)
+            .unwrap();
+        graph
+            .add_connection(const2_id, const2_out, add_id, add_in_b)
+            .unwrap();
 
         // Execute graph
         let report = engine.execute_graph(&mut graph).unwrap();

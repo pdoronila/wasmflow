@@ -3,8 +3,8 @@
 //! This module implements the visual node editor using egui-snarl for
 //! node rendering, connection management, and user interactions.
 
-mod node_data;
 mod footer;
+mod node_data;
 mod selection;
 mod viewer;
 
@@ -67,12 +67,12 @@ impl NodeCanvas {
             pending_continuous_start: Vec::new(),
             pending_continuous_stop: Vec::new(),
             pending_drill_down: None, // T038: No pending drill-down initially
-            needs_sync: true, // T085: Initially dirty
+            needs_sync: true,         // T085: Initially dirty
             cached_node_count: 0,
             cached_connection_count: 0,
             selection: SelectionState::new(), // T008: Initialize selection state
-            canvas_mode: CanvasMode::Normal, // Start in normal mode
-            viewport_scale: 1.0, // Default scale
+            canvas_mode: CanvasMode::Normal,  // Start in normal mode
+            viewport_scale: 1.0,              // Default scale
             viewport_offset: egui::Vec2::ZERO, // Default offset
         }
     }
@@ -178,29 +178,51 @@ impl NodeCanvas {
             .collect();
 
         // T048: Build port mappings for composite nodes
-        let (input_mappings, output_mappings) = if let Some(comp_data) = &node.composition_data {
-            let input_map = comp_data.exposed_inputs.iter()
-                .filter_map(|(ext_name, mapping)| {
-                    comp_data.internal_nodes.get(&mapping.internal_node_id)
-                        .map(|internal_node| {
-                            (ext_name.clone(), (internal_node.display_name.clone(), mapping.internal_port_name.clone()))
-                        })
-                })
-                .collect();
+        let (input_mappings, output_mappings) =
+            if let Some(comp_data) = &node.composition_data {
+                let input_map = comp_data
+                    .exposed_inputs
+                    .iter()
+                    .filter_map(|(ext_name, mapping)| {
+                        comp_data.internal_nodes.get(&mapping.internal_node_id).map(
+                            |internal_node| {
+                                (
+                                    ext_name.clone(),
+                                    (
+                                        internal_node.display_name.clone(),
+                                        mapping.internal_port_name.clone(),
+                                    ),
+                                )
+                            },
+                        )
+                    })
+                    .collect();
 
-            let output_map = comp_data.exposed_outputs.iter()
-                .filter_map(|(ext_name, mapping)| {
-                    comp_data.internal_nodes.get(&mapping.internal_node_id)
-                        .map(|internal_node| {
-                            (ext_name.clone(), (internal_node.display_name.clone(), mapping.internal_port_name.clone()))
-                        })
-                })
-                .collect();
+                let output_map = comp_data
+                    .exposed_outputs
+                    .iter()
+                    .filter_map(|(ext_name, mapping)| {
+                        comp_data.internal_nodes.get(&mapping.internal_node_id).map(
+                            |internal_node| {
+                                (
+                                    ext_name.clone(),
+                                    (
+                                        internal_node.display_name.clone(),
+                                        mapping.internal_port_name.clone(),
+                                    ),
+                                )
+                            },
+                        )
+                    })
+                    .collect();
 
-            (input_map, output_map)
-        } else {
-            (std::collections::BTreeMap::new(), std::collections::BTreeMap::new())
-        };
+                (input_map, output_map)
+            } else {
+                (
+                    std::collections::BTreeMap::new(),
+                    std::collections::BTreeMap::new(),
+                )
+            };
 
         SnarlNodeData {
             uuid: node.id,
@@ -261,18 +283,16 @@ impl NodeCanvas {
                 }
             }
 
-            mode_button.on_hover_ui(|ui| {
-                match self.canvas_mode {
-                    CanvasMode::Normal => {
-                        ui.label("Switch to Selection Mode");
-                        ui.label("• Rectangle selection enabled");
-                        ui.label("• Node dragging disabled");
-                    }
-                    CanvasMode::Selection => {
-                        ui.label("Switch to Normal Mode");
-                        ui.label("• Node dragging enabled");
-                        ui.label("• Rectangle selection disabled");
-                    }
+            mode_button.on_hover_ui(|ui| match self.canvas_mode {
+                CanvasMode::Normal => {
+                    ui.label("Switch to Selection Mode");
+                    ui.label("• Rectangle selection enabled");
+                    ui.label("• Node dragging disabled");
+                }
+                CanvasMode::Selection => {
+                    ui.label("Switch to Normal Mode");
+                    ui.label("• Node dragging enabled");
+                    ui.label("• Rectangle selection disabled");
                 }
             });
 
@@ -307,7 +327,8 @@ impl NodeCanvas {
             let mut input = ui.input_mut(|i| i.clone());
 
             // Check for scroll events and swap modifier behavior
-            let has_scroll = input.smooth_scroll_delta != egui::Vec2::ZERO || input.raw_scroll_delta != egui::Vec2::ZERO;
+            let has_scroll = input.smooth_scroll_delta != egui::Vec2::ZERO
+                || input.raw_scroll_delta != egui::Vec2::ZERO;
 
             if has_scroll {
                 let is_cmd_pressed = input.modifiers.command;
@@ -341,8 +362,8 @@ impl NodeCanvas {
             let style = SnarlStyle {
                 pin_placement: Some(PinPlacement::Edge),
                 node_layout: Some(NodeLayout::coil()),
-                min_scale: Some(0.1),  // Allow zooming out to 10%
-                max_scale: Some(5.0),  // Allow zooming in to 500%
+                min_scale: Some(0.1), // Allow zooming out to 10%
+                max_scale: Some(5.0), // Allow zooming in to 500%
                 ..Default::default()
             };
 
@@ -375,7 +396,7 @@ impl NodeCanvas {
                     painter.add(egui::Shape::rect_filled(
                         rect,
                         0.0,
-                        Color32::from_rgba_unmultiplied(100, 150, 200, 50)
+                        Color32::from_rgba_unmultiplied(100, 150, 200, 50),
                     ));
 
                     // Draw border
@@ -383,7 +404,7 @@ impl NodeCanvas {
                         rect,
                         0.0,
                         egui::Stroke::new(1.5, Color32::from_rgb(100, 150, 200)),
-                        egui::epaint::StrokeKind::Middle
+                        egui::epaint::StrokeKind::Middle,
                     ));
                 }
             });
@@ -523,7 +544,11 @@ impl NodeCanvas {
     ///
     /// Note: This assumes no viewport transform (scale=1, offset=0).
     /// Works best when canvas hasn't been panned/zoomed before entering Selection mode.
-    pub fn find_nodes_in_rect(&self, rect: egui::Rect, graph: &NodeGraph) -> std::collections::HashSet<Uuid> {
+    pub fn find_nodes_in_rect(
+        &self,
+        rect: egui::Rect,
+        graph: &NodeGraph,
+    ) -> std::collections::HashSet<Uuid> {
         SelectionHelper::find_nodes_in_rect(
             rect,
             graph,

@@ -64,18 +64,18 @@ impl CodeTheme {
         ColorTheme {
             name: "Catppuccin Mocha",
             dark: true,
-            bg: "#1e1e2e",        // Base
-            cursor: "#f5e0dc",    // Rosewater
-            selection: "#f5c2e7", // Pink
-            comments: "#6c7086",  // Overlay0
-            functions: "#89b4fa", // Blue
-            keywords: "#cba6f7",  // Mauve
-            literals: "#fab387",  // Peach
-            numerics: "#fab387",  // Peach
+            bg: "#1e1e2e",          // Base
+            cursor: "#f5e0dc",      // Rosewater
+            selection: "#f5c2e7",   // Pink
+            comments: "#6c7086",    // Overlay0
+            functions: "#89b4fa",   // Blue
+            keywords: "#cba6f7",    // Mauve
+            literals: "#fab387",    // Peach
+            numerics: "#fab387",    // Peach
             punctuation: "#cdd6f4", // Text
-            strs: "#a6e3a1",      // Green
-            types: "#f9e2af",     // Yellow
-            special: "#f5c2e7",   // Pink
+            strs: "#a6e3a1",        // Green
+            types: "#f9e2af",       // Yellow
+            special: "#f5c2e7",     // Pink
         }
     }
 
@@ -84,18 +84,18 @@ impl CodeTheme {
         ColorTheme {
             name: "Catppuccin Macchiato",
             dark: true,
-            bg: "#24273a",        // Base
-            cursor: "#f4dbd6",    // Rosewater
-            selection: "#f5bde6", // Pink
-            comments: "#6e738d",  // Overlay0
-            functions: "#8aadf4", // Blue
-            keywords: "#c6a0f6",  // Mauve
-            literals: "#f5a97f",  // Peach
-            numerics: "#f5a97f",  // Peach
+            bg: "#24273a",          // Base
+            cursor: "#f4dbd6",      // Rosewater
+            selection: "#f5bde6",   // Pink
+            comments: "#6e738d",    // Overlay0
+            functions: "#8aadf4",   // Blue
+            keywords: "#c6a0f6",    // Mauve
+            literals: "#f5a97f",    // Peach
+            numerics: "#f5a97f",    // Peach
             punctuation: "#cad3f5", // Text
-            strs: "#a6da95",      // Green
-            types: "#eed49f",     // Yellow
-            special: "#f5bde6",   // Pink
+            strs: "#a6da95",        // Green
+            types: "#eed49f",       // Yellow
+            special: "#f5bde6",     // Pink
         }
     }
 
@@ -104,18 +104,18 @@ impl CodeTheme {
         ColorTheme {
             name: "Catppuccin Frappé",
             dark: true,
-            bg: "#303446",        // Base
-            cursor: "#f2d5cf",    // Rosewater
-            selection: "#f4b8e4", // Pink
-            comments: "#737994",  // Overlay0
-            functions: "#8caaee", // Blue
-            keywords: "#ca9ee6",  // Mauve
-            literals: "#ef9f76",  // Peach
-            numerics: "#ef9f76",  // Peach
+            bg: "#303446",          // Base
+            cursor: "#f2d5cf",      // Rosewater
+            selection: "#f4b8e4",   // Pink
+            comments: "#737994",    // Overlay0
+            functions: "#8caaee",   // Blue
+            keywords: "#ca9ee6",    // Mauve
+            literals: "#ef9f76",    // Peach
+            numerics: "#ef9f76",    // Peach
             punctuation: "#c6d0f5", // Text
-            strs: "#a6d189",      // Green
-            types: "#e5c890",     // Yellow
-            special: "#f4b8e4",   // Pink
+            strs: "#a6d189",        // Green
+            types: "#e5c890",       // Yellow
+            special: "#f4b8e4",     // Pink
         }
     }
 
@@ -124,18 +124,18 @@ impl CodeTheme {
         ColorTheme {
             name: "Catppuccin Latte",
             dark: false,
-            bg: "#eff1f5",        // Base
-            cursor: "#dc8a78",    // Rosewater
-            selection: "#ea76cb", // Pink
-            comments: "#9ca0b0",  // Overlay0
-            functions: "#1e66f5", // Blue
-            keywords: "#8839ef",  // Mauve
-            literals: "#fe640b",  // Peach
-            numerics: "#fe640b",  // Peach
+            bg: "#eff1f5",          // Base
+            cursor: "#dc8a78",      // Rosewater
+            selection: "#ea76cb",   // Pink
+            comments: "#9ca0b0",    // Overlay0
+            functions: "#1e66f5",   // Blue
+            keywords: "#8839ef",    // Mauve
+            literals: "#fe640b",    // Peach
+            numerics: "#fe640b",    // Peach
             punctuation: "#4c4f69", // Text
-            strs: "#40a02b",      // Green
-            types: "#df8e1d",     // Yellow
-            special: "#ea76cb",   // Pink
+            strs: "#40a02b",        // Green
+            types: "#df8e1d",       // Yellow
+            special: "#ea76cb",     // Pink
         }
     }
 
@@ -163,20 +163,62 @@ impl CodeEditorWidget {
             .with_comment("//")
             .with_comment_multiline(["/*", "*/"])
             .with_keywords([
-                "async", "await", "break", "case", "catch", "class", "const", "continue",
-                "debugger", "default", "delete", "do", "else", "export", "extends", "finally",
-                "for", "function", "if", "import", "in", "instanceof", "let", "new", "of",
-                "return", "static", "super", "switch", "this", "throw", "try", "typeof",
-                "var", "void", "while", "with", "yield",
+                "async",
+                "await",
+                "break",
+                "case",
+                "catch",
+                "class",
+                "const",
+                "continue",
+                "debugger",
+                "default",
+                "delete",
+                "do",
+                "else",
+                "export",
+                "extends",
+                "finally",
+                "for",
+                "function",
+                "if",
+                "import",
+                "in",
+                "instanceof",
+                "let",
+                "new",
+                "of",
+                "return",
+                "static",
+                "super",
+                "switch",
+                "this",
+                "throw",
+                "try",
+                "typeof",
+                "var",
+                "void",
+                "while",
+                "with",
+                "yield",
             ])
             .with_types([
-                "Array", "Boolean", "Date", "Error", "Function", "JSON", "Map", "Math",
-                "Number", "Object", "Promise", "Proxy", "RegExp", "Set", "String", "Symbol",
-                "WeakMap", "WeakSet",
+                "Array", "Boolean", "Date", "Error", "Function", "JSON", "Map", "Math", "Number",
+                "Object", "Promise", "Proxy", "RegExp", "Set", "String", "Symbol", "WeakMap",
+                "WeakSet",
             ])
             .with_special([
-                "console", "document", "window", "global", "process", "undefined", "null",
-                "true", "false", "NaN", "Infinity",
+                "console",
+                "document",
+                "window",
+                "global",
+                "process",
+                "undefined",
+                "null",
+                "true",
+                "false",
+                "NaN",
+                "Infinity",
             ])
     }
 
@@ -276,7 +318,11 @@ impl CodeEditorWidget {
                 .selected_text(theme.display_name())
                 .show_ui(ui, |ui| {
                     for available_theme in CodeTheme::all() {
-                        ui.selectable_value(theme, *available_theme, available_theme.display_name());
+                        ui.selectable_value(
+                            theme,
+                            *available_theme,
+                            available_theme.display_name(),
+                        );
                     }
                 });
         });

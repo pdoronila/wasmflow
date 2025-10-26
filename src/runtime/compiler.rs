@@ -91,20 +91,24 @@ impl ComponentCompiler {
 
         // If compilation succeeded, copy the wasm file to a persistent location before cleanup
         let result = match result {
-            CompilationResult::Success { wasm_path, output, .. } => {
+            CompilationResult::Success {
+                wasm_path, output, ..
+            } => {
                 // Copy to persistent temp directory before workspace cleanup
                 let persistent_temp = std::env::temp_dir().join("wasmflow-compiled");
                 if let Err(e) = fs::create_dir_all(&persistent_temp) {
                     log::warn!("Failed to create persistent temp directory: {}", e);
                 }
 
-                let persistent_path = persistent_temp.join(
-                    wasm_path.file_name().ok_or("Invalid wasm path")?
-                );
+                let persistent_path =
+                    persistent_temp.join(wasm_path.file_name().ok_or("Invalid wasm path")?);
 
                 match fs::copy(&wasm_path, &persistent_path) {
                     Ok(_) => {
-                        log::debug!("Copied wasm to persistent location: {}", persistent_path.display());
+                        log::debug!(
+                            "Copied wasm to persistent location: {}",
+                            persistent_path.display()
+                        );
                         CompilationResult::Success {
                             wasm_path: persistent_path,
                             build_time_ms: 0, // Will be set below
@@ -149,7 +153,10 @@ impl ComponentCompiler {
                 log::error!("Generated source saved to: {}", debug_file.display());
             }
 
-            log::error!("Compilation failed. Workspace was at: {}", workspace.display());
+            log::error!(
+                "Compilation failed. Workspace was at: {}",
+                workspace.display()
+            );
             log::error!("Inspect the generated files to debug the issue.");
         }
 
@@ -161,9 +168,7 @@ impl ComponentCompiler {
         // T080: Add build time to result and log slow compilations
         match result {
             CompilationResult::Success {
-                wasm_path,
-                output,
-                ..
+                wasm_path, output, ..
             } => {
                 let build_time_ms = start.elapsed().as_millis() as u64;
 
@@ -280,7 +285,8 @@ impl ComponentCompiler {
                         For more information, visit:\n\
                         https://github.com/bytecodealliance/cargo-component\n\
                         \n\
-                        Original error: {}", e
+                        Original error: {}",
+                        e
                     )
                 } else {
                     format!("Failed to spawn cargo-component: {}", e)
@@ -311,23 +317,30 @@ impl ComponentCompiler {
                         // Try multiple possible locations
                         let crate_name = Self::component_name_to_crate_name(component_name);
                         let possible_paths = vec![
-                            workspace.join("target/wasm32-wasip2/release").join(format!("{}.wasm", crate_name)),
-                            workspace.join("target/wasm32-wasi/release").join(format!("{}.wasm", crate_name)),
-                            workspace.join("target/release").join(format!("{}.wasm", crate_name)),
+                            workspace
+                                .join("target/wasm32-wasip2/release")
+                                .join(format!("{}.wasm", crate_name)),
+                            workspace
+                                .join("target/wasm32-wasi/release")
+                                .join(format!("{}.wasm", crate_name)),
+                            workspace
+                                .join("target/release")
+                                .join(format!("{}.wasm", crate_name)),
                         ];
 
-                        let wasm_path = possible_paths.iter()
-                            .find(|p| p.exists())
-                            .cloned();
+                        let wasm_path = possible_paths.iter().find(|p| p.exists()).cloned();
 
                         let wasm_path = match wasm_path {
                             Some(path) => path,
                             None => {
                                 // Search the entire target directory for .wasm files
                                 let target_dir = workspace.join("target");
-                                let stderr_output = String::from_utf8_lossy(&output.stderr).to_string();
+                                let stderr_output =
+                                    String::from_utf8_lossy(&output.stderr).to_string();
 
-                                if let Ok(found_wasm) = Self::find_wasm_file(&target_dir, &crate_name) {
+                                if let Ok(found_wasm) =
+                                    Self::find_wasm_file(&target_dir, &crate_name)
+                                {
                                     found_wasm
                                 } else {
                                     return Ok(CompilationResult::Failure {
@@ -443,10 +456,7 @@ impl ComponentCompiler {
                         .to_string()
                 } else if line.contains("error: ") {
                     // Format: "error: expected expression"
-                    line.split("error: ")
-                        .nth(1)
-                        .unwrap_or(line)
-                        .to_string()
+                    line.split("error: ").nth(1).unwrap_or(line).to_string()
                 } else {
                     line.to_string()
                 };
@@ -548,7 +558,10 @@ impl ComponentCompiler {
             }
         }
 
-        Err(format!("Could not find {}.wasm in target directory", crate_name))
+        Err(format!(
+            "Could not find {}.wasm in target directory",
+            crate_name
+        ))
     }
 
     /// Invoke componentize-py to compile Python component
@@ -559,9 +572,7 @@ impl ComponentCompiler {
         timeout: Duration,
     ) -> Result<CompilationResult, String> {
         // Check if componentize-py is installed
-        let check_result = Command::new("componentize-py")
-            .arg("--version")
-            .output();
+        let check_result = Command::new("componentize-py").arg("--version").output();
 
         if check_result.is_err() {
             return Ok(CompilationResult::Failure {
@@ -591,14 +602,20 @@ impl ComponentCompiler {
         // Invoke componentize-py to build the component
         // Note: We define types directly in app.py instead of generating bindings
         // componentize-py will automatically convert between Python types and WIT types
-        let output_file = format!("{}.wasm", Self::component_name_to_crate_name(component_name));
+        let output_file = format!(
+            "{}.wasm",
+            Self::component_name_to_crate_name(component_name)
+        );
         let mut child = Command::new("componentize-py")
             .args(&[
-                "-d", "wit",
-                "-w", "component",
+                "-d",
+                "wit",
+                "-w",
+                "component",
                 "componentize",
                 "app",
-                "-o", &output_file
+                "-o",
+                &output_file,
             ])
             .current_dir(workspace)
             .stdout(Stdio::piped())
@@ -630,7 +647,8 @@ impl ComponentCompiler {
 
                         if !wasm_path.exists() {
                             return Ok(CompilationResult::Failure {
-                                error_message: "Compilation succeeded but .wasm file not found".to_string(),
+                                error_message: "Compilation succeeded but .wasm file not found"
+                                    .to_string(),
                                 line_number: None,
                                 stderr: String::from_utf8_lossy(&output.stderr).to_string(),
                             });
@@ -666,9 +684,7 @@ impl ComponentCompiler {
         timeout: Duration,
     ) -> Result<CompilationResult, String> {
         // Check if componentize-js is installed
-        let check_result = Command::new("componentize-js")
-            .arg("--version")
-            .output();
+        let check_result = Command::new("componentize-js").arg("--version").output();
 
         if check_result.is_err() {
             return Ok(CompilationResult::Failure {
@@ -697,14 +713,12 @@ impl ComponentCompiler {
         }
 
         // Invoke componentize-js
-        let output_file = format!("{}.wasm", Self::component_name_to_crate_name(component_name));
+        let output_file = format!(
+            "{}.wasm",
+            Self::component_name_to_crate_name(component_name)
+        );
         let mut child = Command::new("componentize-js")
-            .args(&[
-                "-w", "wit",
-                "-n", "component",
-                "-o", &output_file,
-                "app.js"
-            ])
+            .args(&["-w", "wit", "-n", "component", "-o", &output_file, "app.js"])
             .current_dir(workspace)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -735,7 +749,8 @@ impl ComponentCompiler {
 
                         if !wasm_path.exists() {
                             return Ok(CompilationResult::Failure {
-                                error_message: "Compilation succeeded but .wasm file not found".to_string(),
+                                error_message: "Compilation succeeded but .wasm file not found"
+                                    .to_string(),
                                 line_number: None,
                                 stderr: String::from_utf8_lossy(&output.stderr).to_string(),
                             });

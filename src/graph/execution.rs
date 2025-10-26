@@ -5,8 +5,8 @@
 //! when changes occur, significantly improving performance for large graphs.
 
 use crate::graph::graph::NodeGraph;
-use uuid::Uuid;
 use std::collections::HashSet;
+use uuid::Uuid;
 
 /// T084: Mark a node as dirty (needs re-execution)
 ///
@@ -46,7 +46,11 @@ fn mark_downstream_dirty(graph: &mut NodeGraph, node_id: Uuid) {
                 // This prevents infinite loops in cyclic graphs
                 node.dirty = true;
                 node.execution_state = crate::graph::node::ExecutionState::Idle;
-                log::debug!("Marked downstream node {} ({}) as dirty", node.display_name, downstream_id);
+                log::debug!(
+                    "Marked downstream node {} ({}) as dirty",
+                    node.display_name,
+                    downstream_id
+                );
 
                 // Recurse to mark further downstream nodes
                 mark_downstream_dirty(graph, downstream_id);

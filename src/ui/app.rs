@@ -16,8 +16,8 @@ use super::palette::{Palette, PaletteAction};
 use super::spotlight::{SpotlightAction, SpotlightSearch};
 use super::theme::Theme;
 use crate::builtin::{
-    register_constant_nodes, register_continuous_example,
-    register_http_server_listener, register_wasm_creator_node,
+    register_constant_nodes, register_continuous_example, register_http_server_listener,
+    register_wasm_creator_node,
 };
 use crate::graph::command::CommandHistory;
 use crate::graph::graph::NodeGraph;
@@ -276,16 +276,12 @@ impl WasmFlowApp {
     pub fn poll_loading_progress(&mut self) -> bool {
         use std::sync::Arc;
 
-        log::debug!("poll_loading_progress: checking state");
         match &self.loading_state {
             crate::ui::LoadingState::Loading { progress, registry } => {
                 let p = progress.lock().unwrap();
-                log::debug!("poll_loading_progress: loaded {}/{}, is_complete: {}",
-                    p.loaded_count, p.total_components, p.is_complete());
 
                 // Check if loading is complete
                 if p.is_complete() {
-                    log::info!("poll_loading_progress: LOADING IS COMPLETE, transitioning state");
                     let total = p.total_components;
                     let errors = p.errors.clone();
 
@@ -320,7 +316,11 @@ impl WasmFlowApp {
                             format!("Loaded {} components ({} errors)", total, errors.len());
                     }
 
-                    log::info!("Component loading completed: {} total, {} errors", total, errors.len());
+                    log::info!(
+                        "Component loading completed: {} total, {} errors",
+                        total,
+                        errors.len()
+                    );
 
                     // Load pending graph file if any
                     if let Some(path) = self.pending_graph_load.take() {
@@ -388,13 +388,6 @@ impl WasmFlowApp {
             }
         }
     }
-
-
-
-
-
-
-
 
     /// T099: Control palette visibility (for CLI support)
     pub fn set_palette_visible(&mut self, _visible: bool) {
@@ -878,27 +871,19 @@ impl eframe::App for WasmFlowApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // T011: Show splash screen during component loading
         if self.loading_state.is_loading() {
-            log::debug!("Update: in loading state");
             // Render splash screen
             if let Some(splash) = &mut self.splash_screen {
-                let complete = splash.render(ctx);
-                log::debug!("Splash render complete: {}", complete);
+                splash.render(ctx);
 
                 // IMPORTANT: Always call poll_loading_progress() to allow state transition
                 // Don't use short-circuit OR which would skip the call when complete is true
-                let poll_result = self.poll_loading_progress();
-                if complete || poll_result {
-                    log::info!("Component loading complete - transitioning to main UI");
-                    log::info!("Loading state after transition: {:?}", self.loading_state);
-                }
+                self.poll_loading_progress();
             }
 
             // Keep requesting repaints for smooth animation
             ctx.request_repaint();
             return; // Don't render main UI yet
         }
-
-        log::debug!("Update: rendering main UI");
 
         // Process incremental execution step on main thread
         if self.execution_state.is_some() {

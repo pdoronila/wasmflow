@@ -1,7 +1,7 @@
 // T055: Unit tests for ContinuousExecutionManager
 
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
 use wasmflow::graph::{NodeGraph, NodeValue};
 use wasmflow::runtime::continuous::{ContinuousExecutionManager, ExecutionResult};
 use wasmflow::runtime::wasm_host::ComponentManager;
@@ -88,12 +88,17 @@ fn test_start_node_already_running() {
 
     // Start the node first time
     let (tx1, _rx1) = channel();
-    manager.start_node(node_id, graph.clone(), component_manager.clone(), tx1).unwrap();
+    manager
+        .start_node(node_id, graph.clone(), component_manager.clone(), tx1)
+        .unwrap();
 
     // Try to start again - should fail
     let result = manager.start_node(node_id, graph, component_manager, result_tx);
 
-    assert!(result.is_err(), "Should fail when starting already running node");
+    assert!(
+        result.is_err(),
+        "Should fail when starting already running node"
+    );
 
     // Cleanup
     let _ = manager.stop_node(node_id);
@@ -132,7 +137,9 @@ fn test_stop_node_gracefully() {
     drop(graph_lock);
 
     // Start the node
-    manager.start_node(node_id, graph, component_manager, result_tx).unwrap();
+    manager
+        .start_node(node_id, graph, component_manager, result_tx)
+        .unwrap();
 
     // Stop the node
     let result = manager.stop_node(node_id);
@@ -149,7 +156,10 @@ fn test_stop_node_not_running() {
     let result = manager.stop_node(node_id);
 
     // Should fail gracefully
-    assert!(result.is_err(), "Should fail when stopping non-running node");
+    assert!(
+        result.is_err(),
+        "Should fail when stopping non-running node"
+    );
 }
 
 #[test]
@@ -186,7 +196,9 @@ fn test_shutdown_all() {
         graph_lock.nodes.insert(node_id, node);
         drop(graph_lock);
 
-        manager.start_node(node_id, graph.clone(), component_manager.clone(), result_tx).unwrap();
+        manager
+            .start_node(node_id, graph.clone(), component_manager.clone(), result_tx)
+            .unwrap();
     }
 
     // Shutdown all

@@ -1,42 +1,56 @@
 // T056: Unit tests for continuous execution state management
 
-use wasmflow::graph::node::{ContinuousExecutionState, ContinuousNodeConfig, ContinuousRuntimeState};
-use wasmflow::graph::state::{validate_transition, can_start, can_stop};
+use wasmflow::graph::node::{
+    ContinuousExecutionState, ContinuousNodeConfig, ContinuousRuntimeState,
+};
+use wasmflow::graph::state::{can_start, can_stop, validate_transition};
 
 #[test]
 fn test_state_transition_idle_to_starting() {
     let result = validate_transition(
         ContinuousExecutionState::Idle,
-        ContinuousExecutionState::Starting
+        ContinuousExecutionState::Starting,
     );
-    assert!(result.is_ok(), "Should allow transition from Idle to Starting");
+    assert!(
+        result.is_ok(),
+        "Should allow transition from Idle to Starting"
+    );
 }
 
 #[test]
 fn test_state_transition_starting_to_running() {
     let result = validate_transition(
         ContinuousExecutionState::Starting,
-        ContinuousExecutionState::Running
+        ContinuousExecutionState::Running,
     );
-    assert!(result.is_ok(), "Should allow transition from Starting to Running");
+    assert!(
+        result.is_ok(),
+        "Should allow transition from Starting to Running"
+    );
 }
 
 #[test]
 fn test_state_transition_running_to_stopping() {
     let result = validate_transition(
         ContinuousExecutionState::Running,
-        ContinuousExecutionState::Stopping
+        ContinuousExecutionState::Stopping,
     );
-    assert!(result.is_ok(), "Should allow transition from Running to Stopping");
+    assert!(
+        result.is_ok(),
+        "Should allow transition from Running to Stopping"
+    );
 }
 
 #[test]
 fn test_state_transition_stopping_to_stopped() {
     let result = validate_transition(
         ContinuousExecutionState::Stopping,
-        ContinuousExecutionState::Stopped
+        ContinuousExecutionState::Stopped,
     );
-    assert!(result.is_ok(), "Should allow transition from Stopping to Stopped");
+    assert!(
+        result.is_ok(),
+        "Should allow transition from Stopping to Stopped"
+    );
 }
 
 #[test]
@@ -52,7 +66,11 @@ fn test_state_transition_to_error_from_any() {
 
     for state in states {
         let result = validate_transition(state, ContinuousExecutionState::Error);
-        assert!(result.is_ok(), "Should allow transition from {:?} to Error", state);
+        assert!(
+            result.is_ok(),
+            "Should allow transition from {:?} to Error",
+            state
+        );
     }
 }
 
@@ -60,18 +78,24 @@ fn test_state_transition_to_error_from_any() {
 fn test_state_transition_invalid_idle_to_running() {
     let result = validate_transition(
         ContinuousExecutionState::Idle,
-        ContinuousExecutionState::Running
+        ContinuousExecutionState::Running,
     );
-    assert!(result.is_err(), "Should not allow transition from Idle directly to Running");
+    assert!(
+        result.is_err(),
+        "Should not allow transition from Idle directly to Running"
+    );
 }
 
 #[test]
 fn test_state_transition_invalid_running_to_idle() {
     let result = validate_transition(
         ContinuousExecutionState::Running,
-        ContinuousExecutionState::Idle
+        ContinuousExecutionState::Idle,
     );
-    assert!(result.is_err(), "Should not allow transition from Running directly to Idle");
+    assert!(
+        result.is_err(),
+        "Should not allow transition from Running directly to Idle"
+    );
 }
 
 #[test]
@@ -85,7 +109,10 @@ fn test_can_start_from_idle() {
         },
     };
 
-    assert!(can_start(&config), "Should be able to start from Idle state");
+    assert!(
+        can_start(&config),
+        "Should be able to start from Idle state"
+    );
 }
 
 #[test]
@@ -99,7 +126,10 @@ fn test_can_start_from_stopped() {
         },
     };
 
-    assert!(can_start(&config), "Should be able to start from Stopped state");
+    assert!(
+        can_start(&config),
+        "Should be able to start from Stopped state"
+    );
 }
 
 #[test]
@@ -114,7 +144,10 @@ fn test_can_start_from_error() {
         },
     };
 
-    assert!(can_start(&config), "Should be able to start from Error state (restart after error)");
+    assert!(
+        can_start(&config),
+        "Should be able to start from Error state (restart after error)"
+    );
 }
 
 #[test]
@@ -128,7 +161,10 @@ fn test_cannot_start_from_running() {
         },
     };
 
-    assert!(!can_start(&config), "Should not be able to start from Running state");
+    assert!(
+        !can_start(&config),
+        "Should not be able to start from Running state"
+    );
 }
 
 #[test]
@@ -142,7 +178,10 @@ fn test_cannot_start_when_disabled() {
         },
     };
 
-    assert!(!can_start(&config), "Should not be able to start when continuous execution is disabled");
+    assert!(
+        !can_start(&config),
+        "Should not be able to start when continuous execution is disabled"
+    );
 }
 
 #[test]
@@ -156,7 +195,10 @@ fn test_can_stop_from_running() {
         },
     };
 
-    assert!(can_stop(&config), "Should be able to stop from Running state");
+    assert!(
+        can_stop(&config),
+        "Should be able to stop from Running state"
+    );
 }
 
 #[test]
@@ -170,7 +212,10 @@ fn test_can_stop_from_starting() {
         },
     };
 
-    assert!(can_stop(&config), "Should be able to stop from Starting state");
+    assert!(
+        can_stop(&config),
+        "Should be able to stop from Starting state"
+    );
 }
 
 #[test]
@@ -184,7 +229,10 @@ fn test_cannot_stop_from_idle() {
         },
     };
 
-    assert!(!can_stop(&config), "Should not be able to stop from Idle state");
+    assert!(
+        !can_stop(&config),
+        "Should not be able to stop from Idle state"
+    );
 }
 
 #[test]
@@ -203,5 +251,8 @@ fn test_config_default() {
 
     assert!(!config.supports_continuous);
     assert!(!config.enabled);
-    assert_eq!(config.runtime_state.execution_state, ContinuousExecutionState::Idle);
+    assert_eq!(
+        config.runtime_state.execution_state,
+        ContinuousExecutionState::Idle
+    );
 }

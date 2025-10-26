@@ -227,7 +227,8 @@ impl PermissionDialog {
                     // Show Full Access warning for either:
                     // 1. Components requesting Full access
                     // 2. Users wanting to override with Full access
-                    if is_full_access || !matches!(self.requested_capabilities, CapabilitySet::Full) {
+                    if is_full_access || !matches!(self.requested_capabilities, CapabilitySet::Full)
+                    {
                         ui.separator();
                         ui.add_space(10.0);
 
@@ -244,7 +245,9 @@ impl PermissionDialog {
                                     );
                                     ui.add_space(5.0);
                                     if is_full_access {
-                                        ui.label("This component requests UNRESTRICTED system access.");
+                                        ui.label(
+                                            "This component requests UNRESTRICTED system access.",
+                                        );
                                     } else {
                                         ui.label("Full Access grants UNRESTRICTED system access.");
                                     }
@@ -292,7 +295,9 @@ impl PermissionDialog {
                                 }
                             });
                             if !self.full_access_acknowledged {
-                                ui.label("↑").on_hover_text("Check the box above to enable Full Access override");
+                                ui.label("↑").on_hover_text(
+                                    "Check the box above to enable Full Access override",
+                                );
                             }
                         }
 
@@ -516,7 +521,10 @@ impl PermissionsViewDialog {
                             // Warning box for upgrading to Full access
                             egui::Frame::new()
                                 .fill(egui::Color32::from_rgb(80, 20, 20))
-                                .stroke(egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 80, 80)))
+                                .stroke(egui::Stroke::new(
+                                    2.0,
+                                    egui::Color32::from_rgb(255, 80, 80),
+                                ))
                                 .inner_margin(10.0)
                                 .show(ui, |ui| {
                                     ui.vertical_centered(|ui| {
@@ -526,7 +534,9 @@ impl PermissionsViewDialog {
                                         );
                                         ui.add_space(5.0);
                                         ui.label("Full Access grants UNRESTRICTED system access.");
-                                        ui.label("It can read/write ANY files, access ANY network, and");
+                                        ui.label(
+                                            "It can read/write ANY files, access ANY network, and",
+                                        );
                                         ui.label("read environment variables. Only approve if you");
                                         ui.label("FULLY TRUST this component's author and source.");
                                     });
@@ -555,7 +565,8 @@ impl PermissionsViewDialog {
                             if !is_full_access {
                                 ui.add_enabled_ui(self.full_access_acknowledged, |ui| {
                                     if ui.button("🔓 Upgrade to Full Access").clicked() {
-                                        self.requested_action = Some(PermissionViewAction::UpgradeToFull);
+                                        self.requested_action =
+                                            Some(PermissionViewAction::UpgradeToFull);
                                         close_dialog = true;
                                     }
                                 });

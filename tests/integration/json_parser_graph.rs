@@ -2,7 +2,7 @@
 //!
 //! Tests T017, T022, T027, T032, T033
 
-use wasmflow::builtin::json_parser::{parse, JsonValue, JsonParserError};
+use wasmflow::builtin::json_parser::{parse, JsonParserError, JsonValue};
 
 // ============================================================================
 // T017: Integration test - Simple property extraction
