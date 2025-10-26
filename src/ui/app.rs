@@ -296,9 +296,9 @@ impl WasmFlowApp {
                         let loaded_reg = loaded_reg.into_inner().unwrap();
 
                         // Get all loaded components
-                        for (id, spec) in loaded_reg.list_components() {
+                        for spec in loaded_reg.list_all() {
                             if let Err(e) = self.registry.register_component(spec.clone()) {
-                                log::warn!("Failed to merge component {}: {}", id, e);
+                                log::warn!("Failed to merge component {}: {}", spec.id, e);
                             }
                         }
                     } else {
