@@ -94,6 +94,8 @@ pub struct WasmFlowApp {
     view_stack: crate::graph::drill_down::ViewStack,
     /// T011: Component loading state
     loading_state: crate::ui::LoadingState,
+    /// T011: Splash screen for loading UI
+    splash_screen: Option<crate::ui::SplashScreen>,
     /// T011: Pending graph file to load after components are ready
     pending_graph_load: Option<PathBuf>,
 }
@@ -192,6 +194,7 @@ impl WasmFlowApp {
             composition_error: None,                                             // T032
             view_stack: crate::graph::drill_down::ViewStack::new(),              // T037
             loading_state: crate::ui::LoadingState::NotStarted,                  // T011
+            splash_screen: None,                                                 // T011
             pending_graph_load: None,                                            // T011
         };
 
@@ -215,6 +218,9 @@ impl WasmFlowApp {
 
         // Create progress tracker
         let progress = Arc::new(Mutex::new(ComponentLoadProgress::new()));
+
+        // Create splash screen
+        self.splash_screen = Some(crate::ui::SplashScreen::new(progress.clone()));
 
         // Create a new registry for the background thread
         // (builtin nodes are already registered in self.registry)
@@ -290,6 +296,9 @@ impl WasmFlowApp {
                         total,
                         errors: errors.clone(),
                     };
+
+                    // Clear splash screen
+                    self.splash_screen = None;
 
                     // Merge loaded components into main registry
                     if let Ok(loaded_reg) = Arc::try_unwrap(loaded_registry) {
@@ -870,6 +879,23 @@ impl WasmFlowApp {
 
 impl eframe::App for WasmFlowApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // T011: Show splash screen during component loading
+        if self.loading_state.is_loading() {
+            // Render splash screen
+            if let Some(splash) = &mut self.splash_screen {
+                let complete = splash.render(ctx);
+
+                // Poll loading progress
+                if complete || self.poll_loading_progress() {
+                    log::info!("Component loading complete - transitioning to main UI");
+                }
+            }
+
+            // Keep requesting repaints for smooth animation
+            ctx.request_repaint();
+            return; // Don't render main UI yet
+        }
+
         // Process incremental execution step on main thread
         if self.execution_state.is_some() {
             self.process_execution_step();
