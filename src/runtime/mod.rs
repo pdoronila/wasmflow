@@ -4,6 +4,7 @@
 
 pub mod capabilities;
 pub mod compiler;
+pub mod component_cache; // T011: Component metadata cache
 pub mod continuous;
 pub mod engine;
 pub mod instance_pool;
@@ -13,5 +14,6 @@ pub mod wasm_host;
 
 pub use capabilities::CapabilitySet;
 pub use compiler::{CompilationConfig, CompilationResult, ComponentCompiler};
-pub use continuous::{ControlMessage, ContinuousExecutionManager, ExecutionResult};
+pub use component_cache::{CacheStatistics, ComponentCache};
+pub use continuous::{ContinuousExecutionManager, ControlMessage, ExecutionResult};
 pub use template_generator::{ComponentMetadata, PortSpec, TemplateGenerator, TemplateType};

@@ -1,7 +1,7 @@
 //! Core graph node types and data structures
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -309,7 +309,11 @@ impl WasmCreatorNodeData {
     }
 
     /// Create with specific language
-    pub fn new_with_language(component_name: String, source_code: String, language: Language) -> Self {
+    pub fn new_with_language(
+        component_name: String,
+        source_code: String,
+        language: Language,
+    ) -> Self {
         Self {
             component_name,
             save_code: true,
@@ -400,8 +404,8 @@ impl CompositionData {
         component_names: Vec<String>,
         composed_binary: Vec<u8>,
     ) -> Self {
-        let composition_hash = crc::Crc::<u64>::new(&crc::CRC_64_ECMA_182)
-            .checksum(&composed_binary);
+        let composition_hash =
+            crc::Crc::<u64>::new(&crc::CRC_64_ECMA_182).checksum(&composed_binary);
 
         Self {
             name,
@@ -508,8 +512,8 @@ impl GraphNode {
             execution_started_at: None,
             execution_completed_at: None,
             continuous_config: None, // Continuous config set later if node supports it
-            selected: false, // T019: New nodes start unselected
-            composition_data: None, // T026: Composition data only present for composite nodes
+            selected: false,         // T019: New nodes start unselected
+            composition_data: None,  // T026: Composition data only present for composite nodes
         }
     }
 
@@ -542,10 +546,10 @@ impl GraphNode {
         let mut hasher = DefaultHasher::new();
 
         // Hash each input's current value in a deterministic order (by name)
-        let mut inputs_with_values: Vec<_> = self.inputs.iter()
-            .filter_map(|port| {
-                port.current_value.as_ref().map(|value| (&port.name, value))
-            })
+        let mut inputs_with_values: Vec<_> = self
+            .inputs
+            .iter()
+            .filter_map(|port| port.current_value.as_ref().map(|value| (&port.name, value)))
             .collect();
 
         // Sort by name for deterministic hashing
@@ -859,7 +863,9 @@ impl ComponentSpec {
     /// Get footer view if available
     ///
     /// Returns a reference to the footer view implementation, if one exists.
-    pub fn get_footer_view(&self) -> Option<&Arc<dyn crate::ui::component_view::ComponentFooterView>> {
+    pub fn get_footer_view(
+        &self,
+    ) -> Option<&Arc<dyn crate::ui::component_view::ComponentFooterView>> {
         self.footer_view.as_ref()
     }
 
@@ -896,7 +902,9 @@ impl ComponentSpec {
                     DataType::List(inner_type) => {
                         // Initialize list with one default value based on inner type
                         match **inner_type {
-                            DataType::String => NodeValue::List(vec![NodeValue::String(String::new())]),
+                            DataType::String => {
+                                NodeValue::List(vec![NodeValue::String(String::new())])
+                            }
                             DataType::U32 => NodeValue::List(vec![NodeValue::U32(0)]),
                             DataType::F32 => NodeValue::List(vec![NodeValue::F32(0.0)]),
                             DataType::I32 => NodeValue::List(vec![NodeValue::I32(0)]),
@@ -1045,7 +1053,10 @@ impl ComponentRegistry {
 
         // T055: Check if component already exists (for replacement)
         let was_replaced = if self.has_component(&component_id) {
-            log::info!("Component '{}' already exists - replacing with new version", name);
+            log::info!(
+                "Component '{}' already exists - replacing with new version",
+                name
+            );
             self.unregister_component(&component_id);
             true
         } else {
@@ -1064,20 +1075,12 @@ impl ComponentRegistry {
 
         // Add input ports from metadata
         for input in metadata.inputs {
-            spec = spec.with_input(
-                input.name,
-                input.data_type,
-                input.description,
-            );
+            spec = spec.with_input(input.name, input.data_type, input.description);
         }
 
         // Add output ports from metadata
         for output in metadata.outputs {
-            spec = spec.with_output(
-                output.name,
-                output.data_type,
-                output.description,
-            );
+            spec = spec.with_output(output.name, output.data_type, output.description);
         }
 
         // Set capabilities if any

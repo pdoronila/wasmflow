@@ -3,11 +3,11 @@
 //! This module provides instance pooling to reuse WASM component instances,
 //! significantly improving performance by avoiding repeated instantiation overhead.
 
+use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Engine, Store};
-use anyhow::Result;
 
 use super::wasm_host::HostState;
 
@@ -42,11 +42,7 @@ impl InstancePool {
     ///
     /// If an instance is available in the pool, it will be returned immediately.
     /// Otherwise, a new InstancePre will be created from the component.
-    pub fn get(
-        &self,
-        component_id: &str,
-        component: &Component,
-    ) -> Result<InstancePre<HostState>> {
+    pub fn get(&self, component_id: &str, component: &Component) -> Result<InstancePre<HostState>> {
         let mut pool = self.pool.lock().unwrap();
 
         // Try to get from pool
@@ -172,7 +168,10 @@ mod tests {
 
         assert_eq!(stats.total_pooled_instances, 0);
         assert_eq!(stats.components_with_instances, 0);
-        assert_eq!(stats.max_instances_per_component, MAX_INSTANCES_PER_COMPONENT);
+        assert_eq!(
+            stats.max_instances_per_component,
+            MAX_INSTANCES_PER_COMPONENT
+        );
     }
 
     #[test]

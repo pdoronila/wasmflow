@@ -20,12 +20,7 @@ pub struct Connection {
 
 impl Connection {
     /// Create a new connection between ports
-    pub fn new(
-        from_node: Uuid,
-        from_port: Uuid,
-        to_node: Uuid,
-        to_port: Uuid,
-    ) -> Self {
+    pub fn new(from_node: Uuid, from_port: Uuid, to_node: Uuid, to_port: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
             from_node,

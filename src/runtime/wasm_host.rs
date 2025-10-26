@@ -282,7 +282,7 @@ impl ComponentManager {
 
         // Set memory limits to handle large data (e.g., HTTP responses)
         config.max_wasm_stack(2 * 1024 * 1024); // 2MB stack
-        // Note: Linear memory limit is per-instance and controlled by WASM module itself
+                                                // Note: Linear memory limit is per-instance and controlled by WASM module itself
 
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);

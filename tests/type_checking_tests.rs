@@ -10,11 +10,26 @@ use wasmflow::graph::node::{ComponentRegistry, DataType};
 #[test]
 fn test_exact_type_match() {
     // Test that identical types are compatible
-    assert!(NodeGraph::types_compatible(&DataType::F32, &DataType::F32), "F32 should match F32");
-    assert!(NodeGraph::types_compatible(&DataType::I32, &DataType::I32), "I32 should match I32");
-    assert!(NodeGraph::types_compatible(&DataType::U32, &DataType::U32), "U32 should match U32");
-    assert!(NodeGraph::types_compatible(&DataType::String, &DataType::String), "String should match String");
-    assert!(NodeGraph::types_compatible(&DataType::Binary, &DataType::Binary), "Binary should match Binary");
+    assert!(
+        NodeGraph::types_compatible(&DataType::F32, &DataType::F32),
+        "F32 should match F32"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::I32, &DataType::I32),
+        "I32 should match I32"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::U32, &DataType::U32),
+        "U32 should match U32"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::String, &DataType::String),
+        "String should match String"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::Binary, &DataType::Binary),
+        "Binary should match Binary"
+    );
 
     println!("✓ Exact type matching works correctly");
 }
@@ -22,11 +37,26 @@ fn test_exact_type_match() {
 #[test]
 fn test_type_mismatch() {
     // Test that different types are not compatible
-    assert!(!NodeGraph::types_compatible(&DataType::F32, &DataType::I32), "F32 should not match I32");
-    assert!(!NodeGraph::types_compatible(&DataType::I32, &DataType::U32), "I32 should not match U32");
-    assert!(!NodeGraph::types_compatible(&DataType::U32, &DataType::F32), "U32 should not match F32");
-    assert!(!NodeGraph::types_compatible(&DataType::String, &DataType::F32), "String should not match F32");
-    assert!(!NodeGraph::types_compatible(&DataType::F32, &DataType::Binary), "F32 should not match Binary");
+    assert!(
+        !NodeGraph::types_compatible(&DataType::F32, &DataType::I32),
+        "F32 should not match I32"
+    );
+    assert!(
+        !NodeGraph::types_compatible(&DataType::I32, &DataType::U32),
+        "I32 should not match U32"
+    );
+    assert!(
+        !NodeGraph::types_compatible(&DataType::U32, &DataType::F32),
+        "U32 should not match F32"
+    );
+    assert!(
+        !NodeGraph::types_compatible(&DataType::String, &DataType::F32),
+        "String should not match F32"
+    );
+    assert!(
+        !NodeGraph::types_compatible(&DataType::F32, &DataType::Binary),
+        "F32 should not match Binary"
+    );
 
     println!("✓ Type mismatch detection works correctly");
 }
@@ -34,17 +64,44 @@ fn test_type_mismatch() {
 #[test]
 fn test_any_type_compatibility() {
     // Test that Any type accepts all other types
-    assert!(NodeGraph::types_compatible(&DataType::F32, &DataType::Any), "F32 should connect to Any");
-    assert!(NodeGraph::types_compatible(&DataType::I32, &DataType::Any), "I32 should connect to Any");
-    assert!(NodeGraph::types_compatible(&DataType::U32, &DataType::Any), "U32 should connect to Any");
-    assert!(NodeGraph::types_compatible(&DataType::String, &DataType::Any), "String should connect to Any");
-    assert!(NodeGraph::types_compatible(&DataType::Binary, &DataType::Any), "Binary should connect to Any");
+    assert!(
+        NodeGraph::types_compatible(&DataType::F32, &DataType::Any),
+        "F32 should connect to Any"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::I32, &DataType::Any),
+        "I32 should connect to Any"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::U32, &DataType::Any),
+        "U32 should connect to Any"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::String, &DataType::Any),
+        "String should connect to Any"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::Binary, &DataType::Any),
+        "Binary should connect to Any"
+    );
 
     // Test that Any can output to specific types
-    assert!(NodeGraph::types_compatible(&DataType::Any, &DataType::F32), "Any should output to F32");
-    assert!(NodeGraph::types_compatible(&DataType::Any, &DataType::I32), "Any should output to I32");
-    assert!(NodeGraph::types_compatible(&DataType::Any, &DataType::U32), "Any should output to U32");
-    assert!(NodeGraph::types_compatible(&DataType::Any, &DataType::String), "Any should output to String");
+    assert!(
+        NodeGraph::types_compatible(&DataType::Any, &DataType::F32),
+        "Any should output to F32"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::Any, &DataType::I32),
+        "Any should output to I32"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::Any, &DataType::U32),
+        "Any should output to U32"
+    );
+    assert!(
+        NodeGraph::types_compatible(&DataType::Any, &DataType::String),
+        "Any should output to String"
+    );
 
     println!("✓ Any type compatibility works correctly");
 }
@@ -94,7 +151,10 @@ fn test_record_type_compatibility() {
     let record2 = DataType::Record(fields2);
     let record3 = DataType::Record(fields3);
 
-    assert!(NodeGraph::types_compatible(&record1, &record2), "Same record structure should match");
+    assert!(
+        NodeGraph::types_compatible(&record1, &record2),
+        "Same record structure should match"
+    );
     assert!(
         !NodeGraph::types_compatible(&record1, &record3),
         "Different field types should not match"
@@ -150,7 +210,9 @@ fn test_connection_type_validation() {
     let error = result.unwrap_err();
     let error_msg = error.to_string();
     assert!(
-        error_msg.contains("type") || error_msg.contains("Type") || error_msg.contains("compatible"),
+        error_msg.contains("type")
+            || error_msg.contains("Type")
+            || error_msg.contains("compatible"),
         "Error should mention type incompatibility: {}",
         error_msg
     );
@@ -206,17 +268,25 @@ fn test_multiple_type_validation() {
     graph.add_node(add_node);
 
     // Valid: F32 → F32
-    assert!(graph.add_connection(f32_1_id, f32_1_out, add_id, add_a).is_ok());
-    assert!(graph.add_connection(f32_2_id, f32_2_out, add_id, add_b).is_ok());
+    assert!(graph
+        .add_connection(f32_1_id, f32_1_out, add_id, add_a)
+        .is_ok());
+    assert!(graph
+        .add_connection(f32_2_id, f32_2_out, add_id, add_b)
+        .is_ok());
 
     // After valid connections, clear and try invalid ones
     graph.connections.clear();
 
     // Invalid: U32 → F32
-    assert!(graph.add_connection(u32_id, u32_out, add_id, add_a).is_err());
+    assert!(graph
+        .add_connection(u32_id, u32_out, add_id, add_a)
+        .is_err());
 
     // Invalid: String → F32
-    assert!(graph.add_connection(string_id, string_out, add_id, add_a).is_err());
+    assert!(graph
+        .add_connection(string_id, string_out, add_id, add_a)
+        .is_err());
 
     println!("✓ Multiple type validation works correctly");
 }
@@ -302,12 +372,17 @@ fn test_duplicate_input_prevention() {
 
     // Second connection to same input A should fail
     let result2 = graph.add_connection(const2_id, const2_out, add_id, add_input_a);
-    assert!(result2.is_err(), "Duplicate connection to same input should fail");
+    assert!(
+        result2.is_err(),
+        "Duplicate connection to same input should fail"
+    );
 
     let error = result2.unwrap_err();
     let error_msg = error.to_string();
     assert!(
-        error_msg.contains("already") || error_msg.contains("duplicate") || error_msg.contains("connected"),
+        error_msg.contains("already")
+            || error_msg.contains("duplicate")
+            || error_msg.contains("connected"),
         "Error should mention duplicate/existing connection: {}",
         error_msg
     );
@@ -350,11 +425,21 @@ fn test_multiple_outputs_allowed() {
     graph.add_node(add3);
 
     // Connect same output to multiple inputs (should all succeed)
-    assert!(graph.add_connection(const_id, const_out, add1_id, add1_input_a).is_ok());
-    assert!(graph.add_connection(const_id, const_out, add2_id, add2_input_a).is_ok());
-    assert!(graph.add_connection(const_id, const_out, add3_id, add3_input_a).is_ok());
+    assert!(graph
+        .add_connection(const_id, const_out, add1_id, add1_input_a)
+        .is_ok());
+    assert!(graph
+        .add_connection(const_id, const_out, add2_id, add2_input_a)
+        .is_ok());
+    assert!(graph
+        .add_connection(const_id, const_out, add3_id, add3_input_a)
+        .is_ok());
 
-    assert_eq!(graph.connections.len(), 3, "All three connections should exist");
+    assert_eq!(
+        graph.connections.len(),
+        3,
+        "All three connections should exist"
+    );
 
     println!("✓ Multiple outputs from single port allowed correctly");
 }

@@ -3,11 +3,11 @@
 //! This module handles the logic for finding nodes within a selection rectangle
 //! during rectangle selection mode.
 
+use super::node_data::SnarlNodeData;
 use crate::graph::graph::NodeGraph;
 use egui_snarl::{NodeId, Snarl};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
-use super::node_data::SnarlNodeData;
 
 /// Selection helper methods
 pub(super) struct SelectionHelper;
@@ -45,7 +45,7 @@ impl SelectionHelper {
             // Transform to screen space using stored viewport
             let screen_pos = egui::pos2(
                 graph_pos.x * viewport_scale + viewport_offset.x,
-                graph_pos.y * viewport_scale + viewport_offset.y
+                graph_pos.y * viewport_scale + viewport_offset.y,
             );
 
             // Calculate node center in screen space

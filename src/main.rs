@@ -49,7 +49,9 @@ fn parse_args() -> Args {
                 if let Some(level) = iter.next() {
                     args.log_level = level;
                 } else {
-                    eprintln!("Error: --log-level requires a value (error, warn, info, debug, trace)");
+                    eprintln!(
+                        "Error: --log-level requires a value (error, warn, info, debug, trace)"
+                    );
                     std::process::exit(1);
                 }
             }
@@ -70,7 +72,10 @@ fn parse_args() -> Args {
 
 /// Print help message
 fn print_help() {
-    println!("WasmFlow v{} - WebAssembly Node-Based Visual Composition", env!("CARGO_PKG_VERSION"));
+    println!(
+        "WasmFlow v{} - WebAssembly Node-Based Visual Composition",
+        env!("CARGO_PKG_VERSION")
+    );
     println!();
     println!("USAGE:");
     println!("    wasmflow [OPTIONS]");
@@ -92,9 +97,8 @@ fn main() -> Result<(), eframe::Error> {
     let args = parse_args();
 
     // T086: Initialize logging with configured level
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or(&args.log_level)
-    ).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(&args.log_level))
+        .init();
 
     log::info!("Starting WasmFlow v{}", env!("CARGO_PKG_VERSION"));
     log::debug!("Arguments: {:?}", args);
@@ -114,12 +118,20 @@ fn main() -> Result<(), eframe::Error> {
         "WasmFlow",
         options,
         Box::new(move |cc| {
+            // T011: Create app without loading components
             let mut app = ui::WasmFlowApp::new(cc);
 
-            // T099: Load graph file if specified
+            // T011: Start async component loading with splash screen
+            log::info!("Starting async component loading...");
+            app.start_async_component_loading();
+
+            // T099: Defer graph file loading until components are ready
             if let Some(path) = graph_file {
-                log::info!("Loading graph from: {}", path.display());
-                app.load_graph_from_path(path);
+                log::info!(
+                    "Graph file will be loaded after components are ready: {}",
+                    path.display()
+                );
+                app.set_pending_graph_load(path);
             }
 
             // T099: Hide palette if requested

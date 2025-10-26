@@ -42,7 +42,9 @@ pub fn validate_transition(from: ContinuousExecutionState, to: ContinuousExecuti
 pub fn can_start(state: ContinuousExecutionState) -> bool {
     matches!(
         state,
-        ContinuousExecutionState::Idle | ContinuousExecutionState::Stopped | ContinuousExecutionState::Error
+        ContinuousExecutionState::Idle
+            | ContinuousExecutionState::Stopped
+            | ContinuousExecutionState::Error
     )
 }
 

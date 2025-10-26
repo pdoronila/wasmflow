@@ -75,47 +75,38 @@ impl NodeExecutor for HttpServerListenerExecutor {
             8080
         };
 
-        let max_request_size = if let Some(NodeValue::U32(size)) = inputs.get("max_request_size")
-        {
+        let max_request_size = if let Some(NodeValue::U32(size)) = inputs.get("max_request_size") {
             *size as usize
         } else {
             1024 * 1024 // 1MB default
         };
 
-        let timeout_ms =
-            if let Some(NodeValue::U32(timeout)) = inputs.get("connection_timeout_ms") {
-                *timeout as u64
-            } else {
-                5000 // 5 seconds default
-            };
+        let timeout_ms = if let Some(NodeValue::U32(timeout)) = inputs.get("connection_timeout_ms")
+        {
+            *timeout as u64
+        } else {
+            5000 // 5 seconds default
+        };
 
         // Lock state
-        let mut state = self.state.lock().map_err(|e| ComponentError {
-            message: format!("Failed to lock server state: {}", e),
-            component_name: "http-server-listener".to_string(),
-            details: None,
+        let mut state = self.state.lock().map_err(|e| {
+            ComponentError::ExecutionError(format!("Failed to lock server state: {}", e))
         })?;
 
         // Initialize listener if needed (or if config changed)
         if state.listener.is_none() || state.host != host || state.port != port {
             let addr = format!("{}:{}", host, port);
-            let listener = TcpListener::bind(&addr).map_err(|e| ComponentError {
-                message: format!("Failed to bind to {}: {}", addr, e),
-                component_name: "http-server-listener".to_string(),
-                details: Some(format!(
-                    "Check if port {} is available and not in use",
-                    port
-                )),
+            let listener = TcpListener::bind(&addr).map_err(|e| {
+                ComponentError::ExecutionError(format!(
+                    "Failed to bind to {}: {}. Check if port {} is available and not in use",
+                    addr, e, port
+                ))
             })?;
 
             // Set non-blocking mode so we can check for stop signals
-            listener
-                .set_nonblocking(true)
-                .map_err(|e| ComponentError {
-                    message: format!("Failed to set non-blocking mode: {}", e),
-                    component_name: "http-server-listener".to_string(),
-                    details: None,
-                })?;
+            listener.set_nonblocking(true).map_err(|e| {
+                ComponentError::ExecutionError(format!("Failed to set non-blocking mode: {}", e))
+            })?;
 
             state.listener = Some(listener);
             state.host = host.clone();
@@ -151,11 +142,12 @@ impl NodeExecutor for HttpServerListenerExecutor {
                                 "client_addr".to_string(),
                                 NodeValue::String(addr.to_string()),
                             );
+                            outputs
+                                .insert("connection_id".to_string(), NodeValue::U32(connection_id));
                             outputs.insert(
-                                "connection_id".to_string(),
-                                NodeValue::U32(connection_id),
+                                "status".to_string(),
+                                NodeValue::String("ready".to_string()),
                             );
-                            outputs.insert("status".to_string(), NodeValue::String("ready".to_string()));
 
                             log::debug!(
                                 "Read HTTP request from connection {} ({})",
@@ -253,7 +245,10 @@ fn read_http_request(
                 if request.len() + length > max_size {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
-                        format!("Request with body exceeds maximum size of {} bytes", max_size),
+                        format!(
+                            "Request with body exceeds maximum size of {} bytes",
+                            max_size
+                        ),
                     ));
                 }
 
@@ -272,9 +267,7 @@ fn extract_content_length(request: &str) -> Option<usize> {
     for line in request.lines() {
         let line_lower = line.to_lowercase();
         if line_lower.starts_with("content-length:") {
-            let value = line_lower
-                .strip_prefix("content-length:")?
-                .trim();
+            let value = line_lower.strip_prefix("content-length:")?.trim();
             return value.parse().ok();
         }
     }

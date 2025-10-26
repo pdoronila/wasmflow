@@ -112,26 +112,26 @@ fn render_element(ui: &mut egui::Ui, element: &UiElement) -> Result<(), String> 
         UiElement::Label(text) => {
             ui.add_sized(
                 egui::vec2(ui.available_width(), 0.0),
-                egui::Label::new(text).wrap()
+                egui::Label::new(text).wrap(),
             );
         }
         UiElement::ColoredLabel(colored) => {
             let color = Color32::from_rgb(colored.r, colored.g, colored.b);
             ui.add_sized(
                 egui::vec2(ui.available_width(), 0.0),
-                egui::Label::new(egui::RichText::new(&colored.text).color(color)).wrap()
+                egui::Label::new(egui::RichText::new(&colored.text).color(color)).wrap(),
             );
         }
         UiElement::KeyValue(kv) => {
             // Render as vertical pair for full-width display
             ui.label(
                 egui::RichText::new(format!("{}:", kv.key))
-                    .color(egui::Color32::from_rgb(180, 180, 180))
+                    .color(egui::Color32::from_rgb(180, 180, 180)),
             );
             // Use full available width for the value
             ui.add_sized(
                 egui::vec2(ui.available_width(), 0.0),
-                egui::Label::new(&kv.value).wrap()
+                egui::Label::new(&kv.value).wrap(),
             );
             ui.add_space(2.0);
         }
@@ -181,12 +181,12 @@ fn render_element_item(ui: &mut egui::Ui, element: &UiElementItem) -> Result<(),
             // Render as vertical pair for full-width display
             ui.label(
                 egui::RichText::new(format!("{}:", kv.key))
-                    .color(egui::Color32::from_rgb(180, 180, 180))
+                    .color(egui::Color32::from_rgb(180, 180, 180)),
             );
             // Use full available width for the value
             ui.add_sized(
                 egui::vec2(ui.available_width(), 0.0),
-                egui::Label::new(&kv.value).wrap()
+                egui::Label::new(&kv.value).wrap(),
             );
             ui.add_space(2.0);
         }

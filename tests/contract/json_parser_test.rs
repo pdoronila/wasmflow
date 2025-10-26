@@ -2,7 +2,7 @@
 //!
 //! Tests T034, T035
 
-use wasmflow::builtin::json_parser::{parse, JsonValue, JsonParserError};
+use wasmflow::builtin::json_parser::{parse, JsonParserError, JsonValue};
 
 // ============================================================================
 // T034: WIT interface validation tests

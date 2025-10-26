@@ -16,8 +16,8 @@ use super::palette::{Palette, PaletteAction};
 use super::spotlight::{SpotlightAction, SpotlightSearch};
 use super::theme::Theme;
 use crate::builtin::{
-    register_constant_nodes, register_continuous_example,
-    register_http_server_listener, register_wasm_creator_node,
+    register_constant_nodes, register_continuous_example, register_http_server_listener,
+    register_wasm_creator_node,
 };
 use crate::graph::command::CommandHistory;
 use crate::graph::graph::NodeGraph;
@@ -92,6 +92,12 @@ pub struct WasmFlowApp {
     composition_error: Option<String>,
     /// T037: View stack for drill-down navigation
     view_stack: crate::graph::drill_down::ViewStack,
+    /// T011: Component loading state
+    loading_state: crate::ui::LoadingState,
+    /// T011: Splash screen for loading UI
+    splash_screen: Option<crate::ui::SplashScreen>,
+    /// T011: Pending graph file to load after components are ready
+    pending_graph_load: Option<PathBuf>,
 }
 
 /// State for incremental execution on the main thread
@@ -156,7 +162,7 @@ impl WasmFlowApp {
         // Create channel for downstream execution results
         let (downstream_result_tx, downstream_result_rx) = channel();
 
-        let mut app = Self {
+        let app = Self {
             graph,
             registry,
             engine,
@@ -187,15 +193,147 @@ impl WasmFlowApp {
             composer: crate::runtime::wac_integration::ComponentComposer::new(), // T028
             composition_error: None,                                             // T032
             view_stack: crate::graph::drill_down::ViewStack::new(),              // T037
+            loading_state: crate::ui::LoadingState::NotStarted,                  // T011
+            splash_screen: None,                                                 // T011
+            pending_graph_load: None,                                            // T011
         };
 
-        // Auto-load components from components/ directory on startup
-        app.reload_components();
+        // T011: Component loading moved to async startup (see start_async_component_loading)
+        // TODO: This will be called from main.rs after app creation
+        // app.reload_components();
 
         app
     }
 
+    /// Start async component loading in background thread
+    ///
+    /// This should be called after app creation to load components asynchronously
+    /// with progress tracking.
+    pub fn start_async_component_loading(&mut self) {
+        use crate::runtime::ComponentCache;
+        use crate::ui::ComponentLoadProgress;
+        use std::sync::{Arc, Mutex};
 
+        log::info!("Starting async component loading");
+
+        // Create progress tracker
+        let progress = Arc::new(Mutex::new(ComponentLoadProgress::new()));
+
+        // Create splash screen
+        self.splash_screen = Some(crate::ui::SplashScreen::new(progress.clone()));
+
+        // Create a new registry for the background thread
+        // (builtin nodes are already registered in self.registry)
+        let registry = Arc::new(Mutex::new(ComponentRegistry::new()));
+
+        // Update loading state to show we're loading
+        self.loading_state = crate::ui::LoadingState::Loading {
+            progress: progress.clone(),
+            registry: registry.clone(),
+        };
+        let component_manager = self.engine.component_manager();
+
+        // Create cache
+        let cache_dir = std::path::PathBuf::from("components/bin/.cache");
+        let cache = match ComponentCache::new(cache_dir) {
+            Ok(cache) => Arc::new(cache),
+            Err(e) => {
+                log::error!("Failed to create component cache: {}", e);
+                self.loading_state = crate::ui::LoadingState::Failed {
+                    error: format!("Failed to create component cache: {}", e),
+                };
+                return;
+            }
+        };
+
+        // Clone for thread
+        let registry_clone = registry.clone();
+        let progress_clone = progress.clone();
+
+        // Spawn loading thread
+        std::thread::spawn(move || {
+            crate::ui::app::components::async_component_loader(
+                std::path::PathBuf::from("components/bin"),
+                registry_clone,
+                component_manager,
+                cache,
+                progress_clone,
+            );
+        });
+
+        // Note: The main registry will be updated in poll_loading_progress() when complete
+    }
+
+    /// Set pending graph file to load after components are ready
+    pub fn set_pending_graph_load(&mut self, path: PathBuf) {
+        self.pending_graph_load = Some(path);
+    }
+
+    /// Poll loading progress and transition state when complete
+    ///
+    /// Should be called from the update loop when loading is in progress.
+    /// Returns true if loading completed this frame.
+    pub fn poll_loading_progress(&mut self) -> bool {
+        match &self.loading_state {
+            crate::ui::LoadingState::Loading { progress, registry } => {
+                let p = progress.lock().unwrap();
+
+                // Check if loading is complete
+                if p.is_complete() {
+                    let total = p.total_components;
+                    let errors = p.errors.clone();
+
+                    // Drop the lock before taking ownership
+                    drop(p);
+
+                    // Merge loaded components into main registry
+                    // Lock the registry and copy components out
+                    {
+                        let loaded_reg = registry.lock().unwrap();
+                        for spec in loaded_reg.list_all() {
+                            if let Err(e) = self.registry.register_component(spec.clone()) {
+                                log::warn!("Failed to merge component {}: {}", spec.id, e);
+                            }
+                        }
+                    }
+
+                    // Transition to completed state
+                    self.loading_state = crate::ui::LoadingState::Completed {
+                        total,
+                        errors: errors.clone(),
+                    };
+
+                    // Clear splash screen
+                    self.splash_screen = None;
+
+                    // Update status message
+                    if errors.is_empty() {
+                        self.status_message = format!("Loaded {} components", total);
+                    } else {
+                        self.status_message =
+                            format!("Loaded {} components ({} errors)", total, errors.len());
+                    }
+
+                    log::info!(
+                        "Component loading completed: {} total, {} errors",
+                        total,
+                        errors.len()
+                    );
+
+                    // Load pending graph file if any
+                    if let Some(path) = self.pending_graph_load.take() {
+                        log::info!("Loading pending graph file: {}", path.display());
+                        self.load_graph_from_path(path);
+                    }
+
+                    return true;
+                }
+            }
+            _ => {}
+        }
+
+        false
+    }
 
     /// Handle quit action (with confirmation if dirty)
     fn quit(&mut self, ctx: &egui::Context) {
@@ -248,13 +386,6 @@ impl WasmFlowApp {
             }
         }
     }
-
-
-
-
-
-
-
 
     /// T099: Control palette visibility (for CLI support)
     pub fn set_palette_visible(&mut self, _visible: bool) {
@@ -736,6 +867,22 @@ impl WasmFlowApp {
 
 impl eframe::App for WasmFlowApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // T011: Show splash screen during component loading
+        if self.loading_state.is_loading() {
+            // Render splash screen
+            if let Some(splash) = &mut self.splash_screen {
+                splash.render(ctx);
+
+                // IMPORTANT: Always call poll_loading_progress() to allow state transition
+                // Don't use short-circuit OR which would skip the call when complete is true
+                self.poll_loading_progress();
+            }
+
+            // Keep requesting repaints for smooth animation
+            ctx.request_repaint();
+            return; // Don't render main UI yet
+        }
+
         // Process incremental execution step on main thread
         if self.execution_state.is_some() {
             self.process_execution_step();

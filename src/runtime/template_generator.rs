@@ -31,8 +31,8 @@ pub struct ComponentMetadata {
 /// Template type selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TemplateType {
-    Simple,  // Pure computation
-    Http,    // Network-enabled
+    Simple, // Pure computation
+    Http,   // Network-enabled
 }
 
 /// Annotation types from code comments
@@ -76,7 +76,11 @@ pub struct TemplateGenerator;
 
 impl TemplateGenerator {
     /// Strip annotation lines and template comments from user code, and add indentation
-    fn strip_annotations_and_indent(code: &str, language: Language, indent_spaces: usize) -> String {
+    fn strip_annotations_and_indent(
+        code: &str,
+        language: Language,
+        indent_spaces: usize,
+    ) -> String {
         let regex = annotation_regex_for_language(language);
         let indent = " ".repeat(indent_spaces);
 
@@ -95,9 +99,15 @@ impl TemplateGenerator {
                 }
 
                 // Skip template comment lines
-                if (language == Language::Python && (trimmed == "# Your code here" || trimmed == "# @description" || trimmed == "# @category"))
-                    || ((language == Language::Rust || language == Language::JavaScript) &&
-                        (trimmed == "// Your code here" || trimmed == "// @description" || trimmed == "// @category")) {
+                if (language == Language::Python
+                    && (trimmed == "# Your code here"
+                        || trimmed == "# @description"
+                        || trimmed == "# @category"))
+                    || ((language == Language::Rust || language == Language::JavaScript)
+                        && (trimmed == "// Your code here"
+                            || trimmed == "// @description"
+                            || trimmed == "// @category"))
+                {
                     return None;
                 }
 
@@ -182,7 +192,9 @@ impl TemplateGenerator {
             "output" => Ok(Some(Annotation::Output(Self::parse_port(content, false)?))),
             "description" => Ok(Some(Annotation::Description(content.to_string()))),
             "category" => Ok(Some(Annotation::Category(content.to_string()))),
-            "capability" => Ok(Some(Annotation::Capability(Self::validate_capability(content)?))),
+            "capability" => Ok(Some(Annotation::Capability(Self::validate_capability(
+                content,
+            )?))),
             _ => Ok(None), // Unknown annotation, ignore
         }
     }
@@ -225,29 +237,24 @@ impl TemplateGenerator {
                 Ok(content.to_string())
             }
             // Common mistakes
-            "http" | "https" | "net" | "Network" => {
-                Err(format!(
-                    "Invalid capability type: '{}'\n\
+            "http" | "https" | "net" | "Network" => Err(format!(
+                "Invalid capability type: '{}'\n\
                     Did you mean 'network'? (lowercase)\n\
                     Valid types: network, file-read, file-write\n\
                     Example: // @capability network:example.com",
-                    cap_type
-                ))
-            }
-            "file" | "File" | "read" | "write" => {
-                Err(format!(
-                    "Invalid capability type: '{}'\n\
+                cap_type
+            )),
+            "file" | "File" | "read" | "write" => Err(format!(
+                "Invalid capability type: '{}'\n\
                     Did you mean 'file-read' or 'file-write'?\n\
                     Valid types: network, file-read, file-write\n\
                     Examples:\n\
                     - // @capability file-read:/data\n\
                     - // @capability file-write:/tmp",
-                    cap_type
-                ))
-            }
-            _ => {
-                Err(format!(
-                    "Invalid capability type: '{}'\n\
+                cap_type
+            )),
+            _ => Err(format!(
+                "Invalid capability type: '{}'\n\
                     Valid capability types:\n\
                     - network:domain (e.g., network:api.example.com)\n\
                     - file-read:path (e.g., file-read:/data)\n\
@@ -255,9 +262,8 @@ impl TemplateGenerator {
                     \n\
                     Note: Capabilities grant access to system resources.\n\
                     Use with caution and only when necessary.",
-                    cap_type
-                ))
-            }
+                cap_type
+            )),
         }
     }
 
@@ -274,7 +280,10 @@ impl TemplateGenerator {
 
         let name = caps.get(1).unwrap().as_str().to_string();
         let type_str = caps.get(2).unwrap().as_str();
-        let description = caps.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+        let description = caps
+            .get(3)
+            .map(|m| m.as_str().to_string())
+            .unwrap_or_default();
 
         // T076: Validate port names are valid Rust identifiers (snake_case recommended)
         if !name.chars().all(|c| c.is_alphanumeric() || c == '_') {
@@ -367,7 +376,11 @@ impl TemplateGenerator {
     /// Select template based on capabilities (T008)
     pub fn select_template(metadata: &ComponentMetadata) -> TemplateType {
         // If any network capability, use HTTP template
-        if metadata.capabilities.iter().any(|cap| cap.starts_with("network:")) {
+        if metadata
+            .capabilities
+            .iter()
+            .any(|cap| cap.starts_with("network:"))
+        {
             TemplateType::Http
         } else {
             TemplateType::Simple
@@ -382,8 +395,12 @@ impl TemplateGenerator {
         language: Language,
     ) -> String {
         let template = match (language, template_type) {
-            (Language::Rust, TemplateType::Simple) => include_str!("../../templates/component_template.rs.tmpl"),
-            (Language::Rust, TemplateType::Http) => include_str!("../../templates/http_component_template.rs.tmpl"),
+            (Language::Rust, TemplateType::Simple) => {
+                include_str!("../../templates/component_template.rs.tmpl")
+            }
+            (Language::Rust, TemplateType::Http) => {
+                include_str!("../../templates/http_component_template.rs.tmpl")
+            }
             (Language::Python, _) => include_str!("../../templates/component_template.py.tmpl"),
             (Language::JavaScript, _) => include_str!("../../templates/component_template.js.tmpl"),
         };
@@ -404,14 +421,27 @@ impl TemplateGenerator {
             .replace("{{CATEGORY}}", &metadata.category)
             .replace("{{INPUTS}}", &Self::format_ports(&metadata.inputs))
             .replace("{{OUTPUTS}}", &Self::format_ports(&metadata.outputs))
-            .replace("{{CAPABILITIES}}", &Self::format_capabilities(&metadata.capabilities))
-            .replace("{{INPUT_EXTRACTION}}", &Self::generate_input_extraction(&metadata.inputs))
+            .replace(
+                "{{CAPABILITIES}}",
+                &Self::format_capabilities(&metadata.capabilities),
+            )
+            .replace(
+                "{{INPUT_EXTRACTION}}",
+                &Self::generate_input_extraction(&metadata.inputs),
+            )
             .replace("{{USER_CODE}}", &cleaned_code)
-            .replace("{{OUTPUT_CONSTRUCTION}}", &Self::generate_output_construction(&metadata.outputs))
+            .replace(
+                "{{OUTPUT_CONSTRUCTION}}",
+                &Self::generate_output_construction(&metadata.outputs),
+            )
     }
 
     /// Generate Python component code
-    fn generate_python_code(template: &str, metadata: &ComponentMetadata, user_code: &str) -> String {
+    fn generate_python_code(
+        template: &str,
+        metadata: &ComponentMetadata,
+        user_code: &str,
+    ) -> String {
         let cleaned_code = Self::strip_annotations_and_indent(user_code, Language::Python, 8);
         template
             .replace("{{COMPONENT_NAME}}", &metadata.name)
@@ -419,25 +449,53 @@ impl TemplateGenerator {
             .replace("{{CATEGORY}}", &metadata.category)
             .replace("{{INPUTS}}", &Self::format_ports_python(&metadata.inputs))
             .replace("{{OUTPUTS}}", &Self::format_ports_python(&metadata.outputs))
-            .replace("{{CAPABILITIES_PYTHON}}", &Self::format_capabilities_python(&metadata.capabilities))
-            .replace("{{INPUT_EXTRACTION_PYTHON}}", &Self::generate_input_extraction_python(&metadata.inputs))
+            .replace(
+                "{{CAPABILITIES_PYTHON}}",
+                &Self::format_capabilities_python(&metadata.capabilities),
+            )
+            .replace(
+                "{{INPUT_EXTRACTION_PYTHON}}",
+                &Self::generate_input_extraction_python(&metadata.inputs),
+            )
             .replace("{{USER_CODE}}", &cleaned_code)
-            .replace("{{OUTPUT_CONSTRUCTION_PYTHON}}", &Self::generate_output_construction_python(&metadata.outputs))
+            .replace(
+                "{{OUTPUT_CONSTRUCTION_PYTHON}}",
+                &Self::generate_output_construction_python(&metadata.outputs),
+            )
     }
 
     /// Generate JavaScript component code
-    fn generate_javascript_code(template: &str, metadata: &ComponentMetadata, user_code: &str) -> String {
+    fn generate_javascript_code(
+        template: &str,
+        metadata: &ComponentMetadata,
+        user_code: &str,
+    ) -> String {
         let cleaned_code = Self::strip_annotations_and_indent(user_code, Language::JavaScript, 8);
         template
             .replace("{{COMPONENT_NAME}}", &metadata.name)
             .replace("{{DESCRIPTION}}", &metadata.description)
             .replace("{{CATEGORY}}", &metadata.category)
-            .replace("{{INPUTS_JS}}", &Self::format_ports_javascript(&metadata.inputs))
-            .replace("{{OUTPUTS_JS}}", &Self::format_ports_javascript(&metadata.outputs))
-            .replace("{{CAPABILITIES_JS}}", &Self::format_capabilities_javascript(&metadata.capabilities))
-            .replace("{{INPUT_EXTRACTION_JS}}", &Self::generate_input_extraction_javascript(&metadata.inputs))
+            .replace(
+                "{{INPUTS_JS}}",
+                &Self::format_ports_javascript(&metadata.inputs),
+            )
+            .replace(
+                "{{OUTPUTS_JS}}",
+                &Self::format_ports_javascript(&metadata.outputs),
+            )
+            .replace(
+                "{{CAPABILITIES_JS}}",
+                &Self::format_capabilities_javascript(&metadata.capabilities),
+            )
+            .replace(
+                "{{INPUT_EXTRACTION_JS}}",
+                &Self::generate_input_extraction_javascript(&metadata.inputs),
+            )
             .replace("{{USER_CODE}}", &cleaned_code)
-            .replace("{{OUTPUT_CONSTRUCTION_JS}}", &Self::generate_output_construction_javascript(&metadata.outputs))
+            .replace(
+                "{{OUTPUT_CONSTRUCTION_JS}}",
+                &Self::generate_output_construction_javascript(&metadata.outputs),
+            )
     }
 
     /// Format ports as Rust code
@@ -731,13 +789,7 @@ strip = true
                     break
         if {} is None:
             raise Exception("Missing '{}' input")"#,
-                    port.name,
-                    port.name,
-                    port.name,
-                    value_variant,
-                    port.name,
-                    port.name,
-                    port.name
+                    port.name, port.name, port.name, value_variant, port.name, port.name, port.name
                 )
             })
             .collect::<Vec<_>>()
@@ -834,13 +886,7 @@ const {} = (() => {{
     }}
     return input[1].val;
 }})();"#,
-                    port.name,
-                    port.name,
-                    port.name,
-                    value_tag,
-                    port.name,
-                    port.name,
-                    port.name
+                    port.name, port.name, port.name, value_tag, port.name, port.name, port.name
                 )
             })
             .collect::<Vec<_>>()
@@ -887,7 +933,8 @@ mod tests {
 // No annotations, should use defaults
 let result = value * 3.0;
 "#;
-        let metadata = TemplateGenerator::parse_annotations("TestComponent", code, Language::Rust).unwrap();
+        let metadata =
+            TemplateGenerator::parse_annotations("TestComponent", code, Language::Rust).unwrap();
 
         assert_eq!(metadata.inputs.len(), 1);
         assert_eq!(metadata.outputs.len(), 1);
@@ -906,9 +953,17 @@ let result = value * 3.0;
             capabilities: vec![],
         };
 
-        assert_eq!(TemplateGenerator::select_template(&metadata), TemplateType::Simple);
+        assert_eq!(
+            TemplateGenerator::select_template(&metadata),
+            TemplateType::Simple
+        );
 
-        metadata.capabilities.push("network:api.example.com".to_string());
-        assert_eq!(TemplateGenerator::select_template(&metadata), TemplateType::Http);
+        metadata
+            .capabilities
+            .push("network:api.example.com".to_string());
+        assert_eq!(
+            TemplateGenerator::select_template(&metadata),
+            TemplateType::Http
+        );
     }
 }

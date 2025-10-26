@@ -31,17 +31,24 @@ fn test_simple_cycle_detection() {
     graph.add_node(node_b);
 
     // Connect A → B
-    graph.add_connection(a_id, a_out, b_id, b_in_a).expect("First connection should succeed");
+    graph
+        .add_connection(a_id, a_out, b_id, b_in_a)
+        .expect("First connection should succeed");
 
     // Try to connect B → A (would create cycle - should be prevented)
     let result = graph.add_connection(b_id, b_out, a_id, a_in_a);
 
     // Should fail at connection time (cycle prevention)
-    assert!(result.is_err(), "Connection creating cycle should be rejected");
+    assert!(
+        result.is_err(),
+        "Connection creating cycle should be rejected"
+    );
     let error = result.unwrap_err();
     let error_msg = error.to_string();
     assert!(
-        error_msg.contains("cycle") || error_msg.contains("Cycle") || error_msg.contains("circular"),
+        error_msg.contains("cycle")
+            || error_msg.contains("Cycle")
+            || error_msg.contains("circular"),
         "Error should mention cycle: {}",
         error_msg
     );
@@ -84,7 +91,10 @@ fn test_three_node_cycle() {
 
     // Try to complete cycle: C → A (should be prevented)
     let result = graph.add_connection(c_id, c_out, a_id, a_in);
-    assert!(result.is_err(), "Connection creating 3-node cycle should be rejected");
+    assert!(
+        result.is_err(),
+        "Connection creating 3-node cycle should be rejected"
+    );
     let error = result.unwrap_err();
     assert!(error.to_string().contains("cycle") || error.to_string().contains("Cycle"));
 
@@ -156,8 +166,12 @@ fn test_acyclic_graph_execution() {
     graph.add_node(c2);
     graph.add_node(add_node);
 
-    graph.add_connection(c1_id, c1_out, add_id, add_a).expect("C1→Add");
-    graph.add_connection(c2_id, c2_out, add_id, add_b).expect("C2→Add");
+    graph
+        .add_connection(c1_id, c1_out, add_id, add_a)
+        .expect("C1→Add");
+    graph
+        .add_connection(c2_id, c2_out, add_id, add_b)
+        .expect("C2→Add");
 
     // Should execute successfully (no cycle)
     let mut engine = ExecutionEngine::new();
@@ -226,14 +240,26 @@ fn test_diamond_dag_no_cycle() {
     graph.add_node(node_d);
 
     // Create diamond
-    graph.add_connection(a_id, a_out, b_id, b_in_a).expect("A→B");
-    graph.add_connection(c1_id, c1_out, b_id, b_in_b).expect("C1→B");
+    graph
+        .add_connection(a_id, a_out, b_id, b_in_a)
+        .expect("A→B");
+    graph
+        .add_connection(c1_id, c1_out, b_id, b_in_b)
+        .expect("C1→B");
 
-    graph.add_connection(a_id, a_out, c_id, c_in_a).expect("A→C");
-    graph.add_connection(c2_id, c2_out, c_id, c_in_b).expect("C2→C");
+    graph
+        .add_connection(a_id, a_out, c_id, c_in_a)
+        .expect("A→C");
+    graph
+        .add_connection(c2_id, c2_out, c_id, c_in_b)
+        .expect("C2→C");
 
-    graph.add_connection(b_id, b_out, d_id, d_in_a).expect("B→D");
-    graph.add_connection(c_id, c_out, d_id, d_in_b).expect("C→D");
+    graph
+        .add_connection(b_id, b_out, d_id, d_in_a)
+        .expect("B→D");
+    graph
+        .add_connection(c_id, c_out, d_id, d_in_b)
+        .expect("C→D");
 
     // Should execute successfully (diamond is a DAG, not a cycle)
     let mut engine = ExecutionEngine::new();
@@ -298,7 +324,9 @@ fn test_complex_cycle_in_larger_graph() {
     graph.add_node(node_e);
 
     // Create chain
-    graph.add_connection(c1_id, c1_out, a_id, a_in).expect("C1→A");
+    graph
+        .add_connection(c1_id, c1_out, a_id, a_in)
+        .expect("C1→A");
     graph.add_connection(a_id, a_out, b_id, b_in).expect("A→B");
     graph.add_connection(b_id, b_out, d_id, d_in).expect("B→D");
     graph.add_connection(d_id, d_out, e_id, e_in).expect("D→E");
@@ -306,7 +334,10 @@ fn test_complex_cycle_in_larger_graph() {
 
     // Try to create cycle: C→B (already have C1→A→B→D→E→C, so C→B would create cycle)
     let result = graph.add_connection(c_id, c_out, b_id, b_in);
-    assert!(result.is_err(), "Connection creating complex cycle should be prevented");
+    assert!(
+        result.is_err(),
+        "Connection creating complex cycle should be prevented"
+    );
 
     println!("✓ Cycle prevented in larger graph structure");
 }
@@ -358,19 +389,31 @@ fn test_disconnected_components_no_cycle() {
     graph.add_node(node_b);
 
     // First disconnected component: C1 → Add_A (both inputs from same constant for simplicity)
-    graph.add_connection(c1_id, c1_out, a_id, a_in_a).expect("C1→A.a");
-    graph.add_connection(c1_id, c1_out, a_id, a_in_b).expect("C1→A.b");
+    graph
+        .add_connection(c1_id, c1_out, a_id, a_in_a)
+        .expect("C1→A.a");
+    graph
+        .add_connection(c1_id, c1_out, a_id, a_in_b)
+        .expect("C1→A.b");
 
     // Second disconnected component: C2 → Add_B.a, C3 → Add_B.b
-    graph.add_connection(c2_id, c2_out, b_id, b_in_a).expect("C2→B.a");
-    graph.add_connection(c3_id, c3_out, b_id, b_in_b).expect("C3→B.b");
+    graph
+        .add_connection(c2_id, c2_out, b_id, b_in_a)
+        .expect("C2→B.a");
+    graph
+        .add_connection(c3_id, c3_out, b_id, b_in_b)
+        .expect("C3→B.b");
 
     // Should execute fine (no cycles, both components have all inputs)
     let mut engine = ExecutionEngine::new();
     register_builtin_executors(&mut engine);
 
     let result = engine.execute_graph(&mut graph);
-    assert!(result.is_ok(), "Disconnected components should execute without errors: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Disconnected components should execute without errors: {:?}",
+        result
+    );
 
     println!("✓ Disconnected components execute correctly");
 }

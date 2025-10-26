@@ -57,10 +57,7 @@ pub enum GraphError {
     CycleDetected(Vec<uuid::Uuid>),
 
     #[error("Type mismatch: cannot connect {from:?} to {to:?}")]
-    TypeMismatch {
-        from: String,
-        to: String,
-    },
+    TypeMismatch { from: String, to: String },
 
     #[error("Invalid connection: {0}")]
     InvalidConnection(String),

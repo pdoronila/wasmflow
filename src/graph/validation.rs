@@ -58,9 +58,8 @@ pub fn is_connected_subgraph(graph: &NodeGraph, node_ids: &[NodeId]) -> Result<b
     // We add edges in both directions to treat as undirected graph
     for conn in &graph.connections {
         // Check if both endpoints are in our selected set
-        if uuid_to_index.contains_key(&conn.from_node)
-            && uuid_to_index.contains_key(&conn.to_node) {
-
+        if uuid_to_index.contains_key(&conn.from_node) && uuid_to_index.contains_key(&conn.to_node)
+        {
             let from_idx = uuid_to_index[&conn.from_node];
             let to_idx = uuid_to_index[&conn.to_node];
 
@@ -102,7 +101,10 @@ mod tests {
         let graph = NodeGraph::new("test".to_string(), "test_author".to_string());
 
         let result = is_connected_subgraph(&graph, &[]).unwrap();
-        assert!(!result, "Empty selection should not be considered connected");
+        assert!(
+            !result,
+            "Empty selection should not be considered connected"
+        );
     }
 
     #[test]
@@ -112,6 +114,9 @@ mod tests {
         let node_id2 = uuid::Uuid::new_v4();
 
         let result = is_connected_subgraph(&graph, &[node_id1, node_id2]).unwrap();
-        assert!(!result, "Nonexistent nodes should not be considered connected");
+        assert!(
+            !result,
+            "Nonexistent nodes should not be considered connected"
+        );
     }
 }

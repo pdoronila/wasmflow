@@ -121,7 +121,9 @@ impl CapabilitySet {
             (CapabilitySet::None, _) => false,
             (CapabilitySet::FileRead { .. }, Capability::FileRead) => true,
             (CapabilitySet::FileWrite { .. }, Capability::FileWrite) => true,
-            (CapabilitySet::FileReadWrite { .. }, Capability::FileRead | Capability::FileWrite) => true,
+            (CapabilitySet::FileReadWrite { .. }, Capability::FileRead | Capability::FileWrite) => {
+                true
+            }
             (CapabilitySet::Network { .. }, Capability::NetworkHttp) => true,
             (CapabilitySet::Full, _) => true,
             _ => false,
@@ -164,7 +166,8 @@ impl CapabilitySet {
         if paths.is_empty() {
             "none".to_string()
         } else {
-            paths.iter()
+            paths
+                .iter()
                 .map(|p| p.display().to_string())
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -224,9 +227,9 @@ impl CapabilityGrant {
             CapabilitySet::None => {
                 // Empty context - no system access
             }
-            CapabilitySet::FileRead { paths } |
-            CapabilitySet::FileWrite { paths } |
-            CapabilitySet::FileReadWrite { paths } => {
+            CapabilitySet::FileRead { paths }
+            | CapabilitySet::FileWrite { paths }
+            | CapabilitySet::FileReadWrite { paths } => {
                 // T068-T069: File capability enforcement
                 use wasmtime_wasi::{DirPerms, FilePerms};
 
@@ -234,7 +237,8 @@ impl CapabilityGrant {
                     if !path.is_absolute() {
                         anyhow::bail!("Path must be absolute: {:?}", path);
                     }
-                    let path_str = path.to_str()
+                    let path_str = path
+                        .to_str()
                         .ok_or_else(|| anyhow::anyhow!("Invalid UTF-8 in path"))?;
                     builder.preopened_dir(
                         path.clone(),
@@ -250,10 +254,7 @@ impl CapabilityGrant {
             }
             CapabilitySet::Full => {
                 // Full access - inherit everything
-                builder
-                    .inherit_stdio()
-                    .inherit_env()
-                    .inherit_network();
+                builder.inherit_stdio().inherit_env().inherit_network();
             }
         }
 
@@ -323,7 +324,8 @@ mod tests {
         let none = CapabilitySet::none();
         assert_eq!(none.description(), "No system access (pure computation)");
 
-        let file_read = CapabilitySet::file_read(vec![PathBuf::from("/tmp"), PathBuf::from("/data")]);
+        let file_read =
+            CapabilitySet::file_read(vec![PathBuf::from("/tmp"), PathBuf::from("/data")]);
         assert!(file_read.description().contains("/tmp"));
         assert!(file_read.description().contains("/data"));
 
@@ -352,7 +354,7 @@ mod tests {
 
         let grant = CapabilityGrant::new(
             node_id,
-            CapabilitySet::file_read(vec![PathBuf::from("/data")])
+            CapabilitySet::file_read(vec![PathBuf::from("/data")]),
         );
 
         assert!(grant.satisfies(&CapabilitySet::None));

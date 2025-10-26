@@ -240,8 +240,12 @@ impl SpotlightSearch {
                                             ui.label(name_text);
 
                                             // Category and description
-                                            let category = spec.category.clone().unwrap_or_else(|| "Other".to_string());
-                                            let meta_text = format!("{} · {}", category, spec.description);
+                                            let category = spec
+                                                .category
+                                                .clone()
+                                                .unwrap_or_else(|| "Other".to_string());
+                                            let meta_text =
+                                                format!("{} · {}", category, spec.description);
                                             ui.label(
                                                 egui::RichText::new(meta_text)
                                                     .size(11.0)
@@ -252,13 +256,16 @@ impl SpotlightSearch {
 
                                     // Scroll to selected item if needed
                                     if is_selected && self.scroll_to_selected {
-                                        row_response.response.scroll_to_me(Some(egui::Align::Center));
+                                        row_response
+                                            .response
+                                            .scroll_to_me(Some(egui::Align::Center));
                                         self.scroll_to_selected = false;
                                     }
 
                                     // Handle click
                                     if row_response.response.clicked() {
-                                        let position = mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
+                                        let position =
+                                            mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
                                         action = Some(SpotlightAction::AddComponent {
                                             spec: (*spec).clone(),
                                             position,
@@ -312,7 +319,10 @@ impl SpotlightSearch {
     }
 
     /// Get filtered and sorted components based on search query
-    fn get_filtered_components<'a>(&self, registry: &'a ComponentRegistry) -> Vec<&'a ComponentSpec> {
+    fn get_filtered_components<'a>(
+        &self,
+        registry: &'a ComponentRegistry,
+    ) -> Vec<&'a ComponentSpec> {
         if self.query.is_empty() {
             // Show all components sorted by name when no query
             let mut all = registry.list_all();

@@ -5,8 +5,8 @@
 
 use wasmflow::graph::graph::NodeGraph;
 // Test file for capability-based security system
-use wasmflow::runtime::capabilities::{CapabilityGrant, CapabilitySet};
 use uuid::Uuid;
+use wasmflow::runtime::capabilities::{CapabilityGrant, CapabilitySet};
 
 #[test]
 fn test_capability_set_variants() {
@@ -18,7 +18,10 @@ fn test_capability_set_variants() {
     let full = CapabilitySet::full();
 
     // Verify descriptions
-    assert!(none.description().contains("No system access") || none.description().contains("pure computation"));
+    assert!(
+        none.description().contains("No system access")
+            || none.description().contains("pure computation")
+    );
     assert!(file_read.description().contains("/tmp"));
     assert!(file_write.description().contains("/output"));
     assert!(network.description().contains("api.example.com"));
@@ -54,7 +57,10 @@ fn test_capability_grant_creation() {
     };
 
     assert_eq!(grant.node_id, node_id, "Node ID should match");
-    assert_eq!(grant.capability_set, capabilities, "Capabilities should match");
+    assert_eq!(
+        grant.capability_set, capabilities,
+        "Capabilities should match"
+    );
     assert_eq!(grant.scope, "graph", "Scope should be graph");
 
     println!("✓ Capability grant created successfully");
@@ -84,7 +90,10 @@ fn test_graph_capability_storage() {
 
     let retrieved_grant = retrieved.unwrap();
     assert_eq!(retrieved_grant.node_id, node_id, "Node ID should match");
-    assert_eq!(retrieved_grant.capability_set, capabilities, "Capabilities should match");
+    assert_eq!(
+        retrieved_grant.capability_set, capabilities,
+        "Capabilities should match"
+    );
 
     println!("✓ Graph capability storage and retrieval works");
 }
@@ -108,13 +117,19 @@ fn test_capability_revocation() {
     graph.grant_capability(grant);
 
     // Verify it exists
-    assert!(graph.get_capability_grant(node_id).is_some(), "Grant should exist");
+    assert!(
+        graph.get_capability_grant(node_id).is_some(),
+        "Grant should exist"
+    );
 
     // Revoke capability
     graph.revoke_capability(node_id);
 
     // Verify it's gone
-    assert!(graph.get_capability_grant(node_id).is_none(), "Grant should be revoked");
+    assert!(
+        graph.get_capability_grant(node_id).is_none(),
+        "Grant should be revoked"
+    );
 
     println!("✓ Capability revocation works correctly");
 }
@@ -123,7 +138,10 @@ fn test_capability_revocation() {
 fn test_capability_escalation_detection() {
     // Test detecting when a component requests different capabilities
     let original_caps = CapabilitySet::file_read(vec![std::path::PathBuf::from("/tmp")]);
-    let escalated_caps = CapabilitySet::file_read(vec![std::path::PathBuf::from("/tmp"), std::path::PathBuf::from("/etc")]);
+    let escalated_caps = CapabilitySet::file_read(vec![
+        std::path::PathBuf::from("/tmp"),
+        std::path::PathBuf::from("/etc"),
+    ]);
 
     assert_ne!(
         original_caps, escalated_caps,
@@ -164,12 +182,21 @@ fn test_capability_serialization() {
 
     // Verify grant is preserved
     let loaded_grant = loaded.get_capability_grant(node_id);
-    assert!(loaded_grant.is_some(), "Grant should be preserved after save/load");
+    assert!(
+        loaded_grant.is_some(),
+        "Grant should be preserved after save/load"
+    );
 
     let loaded_grant = loaded_grant.unwrap();
     assert_eq!(loaded_grant.node_id, node_id, "Node ID should match");
-    assert_eq!(loaded_grant.capability_set, capabilities, "Capabilities should match");
-    assert_eq!(loaded_grant.granted_at, "2024-01-01T00:00:00Z", "Timestamp should match");
+    assert_eq!(
+        loaded_grant.capability_set, capabilities,
+        "Capabilities should match"
+    );
+    assert_eq!(
+        loaded_grant.granted_at, "2024-01-01T00:00:00Z",
+        "Timestamp should match"
+    );
 
     println!("✓ Capability grants preserved through serialization");
 }
@@ -235,7 +262,10 @@ fn test_full_capability_warning() {
 
     // Verify it's different from specific capabilities
     let file_caps = CapabilitySet::file_read(vec![std::path::PathBuf::from("/tmp")]);
-    assert_ne!(full_caps, file_caps, "Full should differ from specific capabilities");
+    assert_ne!(
+        full_caps, file_caps,
+        "Full should differ from specific capabilities"
+    );
 
     println!("✓ Full capability is clearly distinguished");
 }
@@ -284,7 +314,10 @@ fn test_capability_grant_replacement() {
     // Should have the latest grant
     let current_grant = graph.get_capability_grant(node_id).unwrap();
     assert!(
-        current_grant.capability_set.description().contains("api.example.com"),
+        current_grant
+            .capability_set
+            .description()
+            .contains("api.example.com"),
         "Should have network capability, not file-read"
     );
     assert_eq!(
@@ -301,7 +334,8 @@ fn test_no_capability_components() {
     let none_caps = CapabilitySet::none();
 
     assert!(
-        none_caps.description().contains("No system access") || none_caps.description().contains("pure computation"),
+        none_caps.description().contains("No system access")
+            || none_caps.description().contains("pure computation"),
         "None capability should be clearly marked"
     );
 

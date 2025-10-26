@@ -51,7 +51,7 @@ impl ComponentFooterView for ConstantNodeFooterView {
                     // Label for the field
                     ui.label(
                         egui::RichText::new(format!("{}:", output.name))
-                            .color(egui::Color32::from_rgb(180, 180, 180))
+                            .color(egui::Color32::from_rgb(180, 180, 180)),
                     );
 
                     // Use multiline for strings, checkboxes for bools, single-line for numbers, multiline for lists
@@ -62,7 +62,7 @@ impl ComponentFooterView for ConstantNodeFooterView {
                             let response = ui.add(
                                 egui::TextEdit::multiline(&mut text_value)
                                     .desired_rows(5)
-                                    .desired_width(ui.available_width())
+                                    .desired_width(ui.available_width()),
                             );
 
                             if response.changed() {
@@ -84,7 +84,7 @@ impl ComponentFooterView for ConstantNodeFooterView {
                             ui.label(
                                 egui::RichText::new("List values (one per line):")
                                     .color(egui::Color32::from_rgb(150, 150, 150))
-                                    .size(11.0)
+                                    .size(11.0),
                             );
 
                             // Create a unique ID for this text editor based on node ID and output name
@@ -111,7 +111,7 @@ impl ComponentFooterView for ConstantNodeFooterView {
                             let response = ui.add(
                                 egui::TextEdit::multiline(&mut text_value)
                                     .desired_rows(8)
-                                    .desired_width(ui.available_width())
+                                    .desired_width(ui.available_width()),
                             );
 
                             // Store the current editing state
@@ -149,15 +149,21 @@ impl ComponentFooterView for ConstantNodeFooterView {
                                     let parsed_items: Vec<NodeValue> = match list_type {
                                         "u32" => non_empty_lines
                                             .iter()
-                                            .filter_map(|line| line.parse::<u32>().ok().map(NodeValue::U32))
+                                            .filter_map(|line| {
+                                                line.parse::<u32>().ok().map(NodeValue::U32)
+                                            })
                                             .collect(),
                                         "f32" => non_empty_lines
                                             .iter()
-                                            .filter_map(|line| line.parse::<f32>().ok().map(NodeValue::F32))
+                                            .filter_map(|line| {
+                                                line.parse::<f32>().ok().map(NodeValue::F32)
+                                            })
                                             .collect(),
                                         "i32" => non_empty_lines
                                             .iter()
-                                            .filter_map(|line| line.parse::<i32>().ok().map(NodeValue::I32))
+                                            .filter_map(|line| {
+                                                line.parse::<i32>().ok().map(NodeValue::I32)
+                                            })
                                             .collect(),
                                         _ => non_empty_lines
                                             .iter()

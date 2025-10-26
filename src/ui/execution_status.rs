@@ -11,12 +11,12 @@ use crate::graph::node::ContinuousExecutionState;
 /// Get the color for a given execution state
 pub fn state_color(state: &ContinuousExecutionState) -> Color32 {
     match state {
-        ContinuousExecutionState::Idle => Color32::from_rgb(128, 128, 128),    // Gray
-        ContinuousExecutionState::Starting => Color32::from_rgb(255, 200, 0),  // Yellow
-        ContinuousExecutionState::Running => Color32::from_rgb(0, 200, 0),     // Green
-        ContinuousExecutionState::Stopping => Color32::from_rgb(255, 140, 0),  // Orange
+        ContinuousExecutionState::Idle => Color32::from_rgb(128, 128, 128), // Gray
+        ContinuousExecutionState::Starting => Color32::from_rgb(255, 200, 0), // Yellow
+        ContinuousExecutionState::Running => Color32::from_rgb(0, 200, 0),  // Green
+        ContinuousExecutionState::Stopping => Color32::from_rgb(255, 140, 0), // Orange
         ContinuousExecutionState::Stopped => Color32::from_rgb(128, 128, 128), // Gray
-        ContinuousExecutionState::Error => Color32::from_rgb(220, 0, 0),       // Red
+        ContinuousExecutionState::Error => Color32::from_rgb(220, 0, 0),    // Red
     }
 }
 

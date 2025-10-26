@@ -99,10 +99,7 @@ fn test_nested_property_three_levels() {
 
 #[test]
 fn test_deep_nesting_four_levels() {
-    let result = parse(
-        r#"{"a": {"b": {"c": {"d": "deep"}}}}"#,
-        "a.b.c.d",
-    );
+    let result = parse(r#"{"a": {"b": {"c": {"d": "deep"}}}}"#, "a.b.c.d");
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), JsonValue::String("deep".to_string()));
 }

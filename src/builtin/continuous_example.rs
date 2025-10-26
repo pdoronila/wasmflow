@@ -11,7 +11,10 @@ use std::collections::HashMap;
 pub struct ContinuousTimerExecutor;
 
 impl NodeExecutor for ContinuousTimerExecutor {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    fn execute(
+        &self,
+        inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
         let mut outputs = HashMap::new();
 
         // Get interval from input (default to 100ms)
@@ -35,7 +38,10 @@ impl NodeExecutor for ContinuousTimerExecutor {
 pub struct ContinuousCombinerExecutor;
 
 impl NodeExecutor for ContinuousCombinerExecutor {
-    fn execute(&self, inputs: &HashMap<String, NodeValue>) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    fn execute(
+        &self,
+        inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
         let mut outputs = HashMap::new();
 
         // Get input values (with defaults)
@@ -75,12 +81,25 @@ pub fn register_continuous_example(registry: &mut crate::graph::node::ComponentR
     let timer_spec = ComponentSpec::new_builtin(
         "builtin:continuous:timer".to_string(),
         "Continuous Timer".to_string(),
-        "A timer that continuously increments a counter. Example of continuous execution.".to_string(),
+        "A timer that continuously increments a counter. Example of continuous execution."
+            .to_string(),
         Some("Builtin".to_string()),
     )
-    .with_input("interval".to_string(), DataType::U32, "Interval in milliseconds (default: 100)".to_string())
-    .with_output("counter".to_string(), DataType::U32, "Number of iterations".to_string())
-    .with_output("elapsed_seconds".to_string(), DataType::F32, "Elapsed time in seconds".to_string());
+    .with_input(
+        "interval".to_string(),
+        DataType::U32,
+        "Interval in milliseconds (default: 100)".to_string(),
+    )
+    .with_output(
+        "counter".to_string(),
+        DataType::U32,
+        "Number of iterations".to_string(),
+    )
+    .with_output(
+        "elapsed_seconds".to_string(),
+        DataType::F32,
+        "Elapsed time in seconds".to_string(),
+    );
 
     registry.register_builtin(timer_spec);
 
@@ -88,16 +107,40 @@ pub fn register_continuous_example(registry: &mut crate::graph::node::ComponentR
     let combiner_spec = ComponentSpec::new_builtin(
         "builtin:continuous:combiner".to_string(),
         "Continuous Combiner".to_string(),
-        "Combines two string inputs continuously. Demonstrates reactive input processing.".to_string(),
+        "Combines two string inputs continuously. Demonstrates reactive input processing."
+            .to_string(),
         Some("Builtin".to_string()),
     )
-    .with_input("input_a".to_string(), DataType::String, "First input string".to_string())
-    .with_input("input_b".to_string(), DataType::String, "Second input string".to_string())
-    .with_input("separator".to_string(), DataType::String, "Separator between inputs (default: space)".to_string())
-    .with_output("combined".to_string(), DataType::String, "Combined result".to_string())
-    .with_output("length_a".to_string(), DataType::U32, "Length of input_a".to_string())
-    .with_output("length_b".to_string(), DataType::U32, "Length of input_b".to_string());
+    .with_input(
+        "input_a".to_string(),
+        DataType::String,
+        "First input string".to_string(),
+    )
+    .with_input(
+        "input_b".to_string(),
+        DataType::String,
+        "Second input string".to_string(),
+    )
+    .with_input(
+        "separator".to_string(),
+        DataType::String,
+        "Separator between inputs (default: space)".to_string(),
+    )
+    .with_output(
+        "combined".to_string(),
+        DataType::String,
+        "Combined result".to_string(),
+    )
+    .with_output(
+        "length_a".to_string(),
+        DataType::U32,
+        "Length of input_a".to_string(),
+    )
+    .with_output(
+        "length_b".to_string(),
+        DataType::U32,
+        "Length of input_b".to_string(),
+    );
 
     registry.register_builtin(combiner_spec);
 }
-

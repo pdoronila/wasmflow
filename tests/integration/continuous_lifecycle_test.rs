@@ -1,10 +1,10 @@
 // T053: Integration tests for continuous execution lifecycle
 
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use wasmflow::graph::{NodeGraph, NodeValue};
 use wasmflow::graph::node::ContinuousExecutionState;
+use wasmflow::graph::{NodeGraph, NodeValue};
 use wasmflow::runtime::continuous::{ContinuousExecutionManager, ExecutionResult};
 use wasmflow::runtime::wasm_host::ComponentManager;
 
@@ -80,15 +80,26 @@ fn test_complete_lifecycle_start_run_stop() {
     let mut received_stopped = false;
     for _ in 0..20 {
         if let Ok(result) = result_rx.recv_timeout(Duration::from_millis(200)) {
-            if let ExecutionResult::Stopped { node_id: id, iterations, .. } = result {
+            if let ExecutionResult::Stopped {
+                node_id: id,
+                iterations,
+                ..
+            } = result
+            {
                 assert_eq!(id, node_id);
-                assert!(iterations > 0, "Should have completed at least one iteration");
+                assert!(
+                    iterations > 0,
+                    "Should have completed at least one iteration"
+                );
                 received_stopped = true;
                 break;
             }
         }
     }
-    assert!(received_stopped, "Did not receive Stopped message within timeout");
+    assert!(
+        received_stopped,
+        "Did not receive Stopped message within timeout"
+    );
 }
 
 #[test]
@@ -124,7 +135,9 @@ fn test_multiple_iterations() {
     drop(graph_lock);
 
     // Start the node
-    manager.start_node(node_id, graph, component_manager, result_tx).unwrap();
+    manager
+        .start_node(node_id, graph, component_manager, result_tx)
+        .unwrap();
 
     // Wait for Started
     let _ = result_rx.recv_timeout(Duration::from_secs(1));
@@ -145,7 +158,11 @@ fn test_multiple_iterations() {
     // Stop the node
     manager.stop_node(node_id).unwrap();
 
-    assert!(iteration_count >= 5, "Expected at least 5 iterations, got {}", iteration_count);
+    assert!(
+        iteration_count >= 5,
+        "Expected at least 5 iterations, got {}",
+        iteration_count
+    );
 }
 
 #[test]
@@ -181,7 +198,9 @@ fn test_restart_after_stop() {
 
     // First cycle: start and stop
     let (tx1, rx1) = channel();
-    manager.start_node(node_id, graph.clone(), component_manager.clone(), tx1).unwrap();
+    manager
+        .start_node(node_id, graph.clone(), component_manager.clone(), tx1)
+        .unwrap();
 
     // Wait for at least one message
     let _ = rx1.recv_timeout(Duration::from_millis(500));
@@ -195,11 +214,17 @@ fn test_restart_after_stop() {
     let (tx2, rx2) = channel();
     let restart_result = manager.start_node(node_id, graph, component_manager, tx2);
 
-    assert!(restart_result.is_ok(), "Should be able to restart after stopping");
+    assert!(
+        restart_result.is_ok(),
+        "Should be able to restart after stopping"
+    );
 
     // Verify it's running
     let started = rx2.recv_timeout(Duration::from_secs(1));
-    assert!(started.is_ok(), "Did not receive Started message on restart");
+    assert!(
+        started.is_ok(),
+        "Did not receive Started message on restart"
+    );
 
     // Cleanup
     manager.stop_node(node_id).unwrap();
@@ -238,7 +263,9 @@ fn test_graceful_shutdown_timing() {
     drop(graph_lock);
 
     // Start the node
-    manager.start_node(node_id, graph, component_manager, result_tx).unwrap();
+    manager
+        .start_node(node_id, graph, component_manager, result_tx)
+        .unwrap();
 
     // Wait for Started
     let _ = result_rx.recv_timeout(Duration::from_secs(1));
@@ -253,7 +280,11 @@ fn test_graceful_shutdown_timing() {
             if let ExecutionResult::Stopped { .. } = result {
                 let stop_duration = stop_start.elapsed();
                 // Should stop within 2 seconds (as per spec)
-                assert!(stop_duration.as_secs() < 3, "Shutdown took too long: {:?}", stop_duration);
+                assert!(
+                    stop_duration.as_secs() < 3,
+                    "Shutdown took too long: {:?}",
+                    stop_duration
+                );
                 return;
             }
         }

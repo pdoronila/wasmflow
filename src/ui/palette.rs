@@ -94,7 +94,11 @@ impl Palette {
                 } else {
                     let count = self.get_filtered_components(registry).len();
                     ui.separator();
-                    ui.label(format!("Found {} component{}", count, if count == 1 { "" } else { "s" }));
+                    ui.label(format!(
+                        "Found {} component{}",
+                        count,
+                        if count == 1 { "" } else { "s" }
+                    ));
                 }
             });
 
@@ -103,7 +107,12 @@ impl Palette {
 
     /// Render categorized component list (when no search filter)
     /// T024: Separate user-defined components into their own category
-    fn render_categorized(&mut self, ui: &mut egui::Ui, registry: &ComponentRegistry, theme: &crate::ui::theme::Theme) -> Option<PaletteAction> {
+    fn render_categorized(
+        &mut self,
+        ui: &mut egui::Ui,
+        registry: &ComponentRegistry,
+        theme: &crate::ui::theme::Theme,
+    ) -> Option<PaletteAction> {
         let mut action = None;
 
         // Separate builtin and user-defined components
@@ -156,18 +165,29 @@ impl Palette {
     }
 
     /// Render filtered component list (when searching)
-    fn render_filtered(&mut self, ui: &mut egui::Ui, registry: &ComponentRegistry, theme: &crate::ui::theme::Theme) -> Option<PaletteAction> {
+    fn render_filtered(
+        &mut self,
+        ui: &mut egui::Ui,
+        registry: &ComponentRegistry,
+        theme: &crate::ui::theme::Theme,
+    ) -> Option<PaletteAction> {
         let mut action = None;
 
         // Clone the filtered specs to avoid borrow checker issues
-        let filtered: Vec<ComponentSpec> = self.get_filtered_components(registry)
-            .into_iter().cloned()
+        let filtered: Vec<ComponentSpec> = self
+            .get_filtered_components(registry)
+            .into_iter()
+            .cloned()
             .collect();
 
         // Update selected index if out of bounds
         if let Some(idx) = self.selected_index {
             if idx >= filtered.len() {
-                self.selected_index = if filtered.is_empty() { None } else { Some(filtered.len() - 1) };
+                self.selected_index = if filtered.is_empty() {
+                    None
+                } else {
+                    Some(filtered.len() - 1)
+                };
             }
         }
 
@@ -176,21 +196,20 @@ impl Palette {
 
             // Choose color based on component type
             let bg_color = match &spec.component_type {
-                crate::graph::node::ComponentType::Builtin => theme.palette_colors.builtin_component,
-                crate::graph::node::ComponentType::UserDefined(_) | crate::graph::node::ComponentType::Composed { .. } => theme.palette_colors.user_defined_component,
+                crate::graph::node::ComponentType::Builtin => {
+                    theme.palette_colors.builtin_component
+                }
+                crate::graph::node::ComponentType::UserDefined(_)
+                | crate::graph::node::ComponentType::Composed { .. } => {
+                    theme.palette_colors.user_defined_component
+                }
             };
 
             // Highlight selected item
             let button = if is_selected {
-                ui.add(
-                    egui::Button::new(egui::RichText::new(&spec.name).strong())
-                        .fill(bg_color)
-                )
+                ui.add(egui::Button::new(egui::RichText::new(&spec.name).strong()).fill(bg_color))
             } else {
-                ui.add(
-                    egui::Button::new(&spec.name)
-                        .fill(bg_color)
-                )
+                ui.add(egui::Button::new(&spec.name).fill(bg_color))
             };
 
             // Scroll to selected item if needed
@@ -229,17 +248,22 @@ impl Palette {
     }
 
     /// Render a component button with tooltip
-    fn render_component_button(&self, ui: &mut egui::Ui, spec: &ComponentSpec, theme: &crate::ui::theme::Theme) -> Option<PaletteAction> {
+    fn render_component_button(
+        &self,
+        ui: &mut egui::Ui,
+        spec: &ComponentSpec,
+        theme: &crate::ui::theme::Theme,
+    ) -> Option<PaletteAction> {
         // Choose color based on component type
         let bg_color = match &spec.component_type {
             crate::graph::node::ComponentType::Builtin => theme.palette_colors.builtin_component,
-            crate::graph::node::ComponentType::UserDefined(_) | crate::graph::node::ComponentType::Composed { .. } => theme.palette_colors.user_defined_component,
+            crate::graph::node::ComponentType::UserDefined(_)
+            | crate::graph::node::ComponentType::Composed { .. } => {
+                theme.palette_colors.user_defined_component
+            }
         };
 
-        let button = ui.add(
-            egui::Button::new(&spec.name)
-                .fill(bg_color)
-        );
+        let button = ui.add(egui::Button::new(&spec.name).fill(bg_color));
 
         if button.clicked() {
             return Some(PaletteAction::AddComponent {
@@ -267,7 +291,10 @@ impl Palette {
 
     /// Get filtered components based on search query
     /// Uses fuzzy matching on name, category, and description
-    fn get_filtered_components<'a>(&self, registry: &'a ComponentRegistry) -> Vec<&'a ComponentSpec> {
+    fn get_filtered_components<'a>(
+        &self,
+        registry: &'a ComponentRegistry,
+    ) -> Vec<&'a ComponentSpec> {
         if self.search_filter.is_empty() {
             return registry.list_all();
         }

@@ -13,7 +13,10 @@ fn main() {
         if i > 0 {
             large_json.push(',');
         }
-        large_json.push_str(&format!(r#"{{"id":{},"name":"item_{}","value":"data_{}"}}"#, i, i, i));
+        large_json.push_str(&format!(
+            r#"{{"id":{},"name":"item_{}","value":"data_{}"}}"#,
+            i, i, i
+        ));
     }
     large_json.push_str(r#"],"metadata":{"count":1000}}"#);
 
