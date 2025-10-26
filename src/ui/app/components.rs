@@ -3,8 +3,9 @@
 //! This module handles loading WASM components and managing the component registry.
 
 use super::WasmFlowApp;
-use crate::graph::ComponentRegistry;
-use crate::runtime::{ComponentCache, ComponentManager};
+use crate::graph::node::ComponentRegistry;
+use crate::runtime::wasm_host::ComponentManager;
+use crate::runtime::ComponentCache;
 use crate::ui::ComponentLoadProgress;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

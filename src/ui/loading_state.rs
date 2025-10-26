@@ -3,6 +3,7 @@
 //! This module provides types and utilities for tracking the progress of
 //! asynchronous component loading during application startup.
 
+use crate::graph::node::ComponentRegistry;
 use std::sync::{Arc, Mutex};
 
 /// Application loading state
@@ -18,7 +19,7 @@ pub enum LoadingState {
         /// Shared progress tracker
         progress: Arc<Mutex<ComponentLoadProgress>>,
         /// Registry being populated by background thread
-        registry: Arc<Mutex<crate::graph::ComponentRegistry>>,
+        registry: Arc<Mutex<ComponentRegistry>>,
     },
 
     /// Loading completed successfully
@@ -182,7 +183,7 @@ mod tests {
     #[test]
     fn test_loading_state_loading() {
         let progress = Arc::new(Mutex::new(ComponentLoadProgress::new()));
-        let registry = Arc::new(Mutex::new(crate::graph::ComponentRegistry::new()));
+        let registry = Arc::new(Mutex::new(ComponentRegistry::new()));
         let state = LoadingState::Loading {
             progress: progress.clone(),
             registry,

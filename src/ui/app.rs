@@ -160,7 +160,7 @@ impl WasmFlowApp {
         // Create channel for downstream execution results
         let (downstream_result_tx, downstream_result_rx) = channel();
 
-        let mut app = Self {
+        let app = Self {
             graph,
             registry,
             engine,
