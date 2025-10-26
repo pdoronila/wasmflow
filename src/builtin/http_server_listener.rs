@@ -90,32 +90,26 @@ impl NodeExecutor for HttpServerListenerExecutor {
             };
 
         // Lock state
-        let mut state = self.state.lock().map_err(|e| ComponentError {
-            message: format!("Failed to lock server state: {}", e),
-            component_name: "http-server-listener".to_string(),
-            details: None,
-        })?;
+        let mut state = self.state.lock().map_err(|e|
+            ComponentError::ExecutionError(format!("Failed to lock server state: {}", e))
+        )?;
 
         // Initialize listener if needed (or if config changed)
         if state.listener.is_none() || state.host != host || state.port != port {
             let addr = format!("{}:{}", host, port);
-            let listener = TcpListener::bind(&addr).map_err(|e| ComponentError {
-                message: format!("Failed to bind to {}: {}", addr, e),
-                component_name: "http-server-listener".to_string(),
-                details: Some(format!(
-                    "Check if port {} is available and not in use",
-                    port
-                )),
-            })?;
+            let listener = TcpListener::bind(&addr).map_err(|e|
+                ComponentError::ExecutionError(format!(
+                    "Failed to bind to {}: {}. Check if port {} is available and not in use",
+                    addr, e, port
+                ))
+            )?;
 
             // Set non-blocking mode so we can check for stop signals
             listener
                 .set_nonblocking(true)
-                .map_err(|e| ComponentError {
-                    message: format!("Failed to set non-blocking mode: {}", e),
-                    component_name: "http-server-listener".to_string(),
-                    details: None,
-                })?;
+                .map_err(|e|
+                    ComponentError::ExecutionError(format!("Failed to set non-blocking mode: {}", e))
+                )?;
 
             state.listener = Some(listener);
             state.host = host.clone();

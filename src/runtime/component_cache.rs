@@ -123,7 +123,7 @@ impl ComponentCache {
         }
 
         // Validate cache against current WASM file
-        if !self.is_cache_valid(wasm_path, &cache_path)? {
+        if !self.is_cache_valid(wasm_path)? {
             log::info!("Cache invalid (checksum mismatch): {}", component_name);
             return Ok(None);
         }
@@ -348,12 +348,11 @@ impl ComponentCache {
     /// # Arguments
     ///
     /// * `wasm_path` - Path to the WASM component file
-    /// * `cache_path` - Path to the cache JSON file
     ///
     /// # Returns
     ///
     /// Returns true if cache is valid (checksums match), false otherwise
-    fn is_cache_valid(&self, wasm_path: &Path, cache_path: &Path) -> Result<bool> {
+    fn is_cache_valid(&self, wasm_path: &Path) -> Result<bool> {
         let component_name = self.get_component_name(wasm_path)?;
         let md5_path = self.cache_dir.join(format!("{}.md5", component_name));
 
