@@ -288,8 +288,16 @@ impl WasmFlowApp {
                     // Drop the lock before taking ownership
                     drop(p);
 
-                    // Get the loaded registry
-                    let loaded_registry = registry.clone();
+                    // Merge loaded components into main registry
+                    // Lock the registry and copy components out
+                    {
+                        let loaded_reg = registry.lock().unwrap();
+                        for spec in loaded_reg.list_all() {
+                            if let Err(e) = self.registry.register_component(spec.clone()) {
+                                log::warn!("Failed to merge component {}: {}", spec.id, e);
+                            }
+                        }
+                    }
 
                     // Transition to completed state
                     self.loading_state = crate::ui::LoadingState::Completed {
@@ -299,21 +307,6 @@ impl WasmFlowApp {
 
                     // Clear splash screen
                     self.splash_screen = None;
-
-                    // Merge loaded components into main registry
-                    if let Ok(loaded_reg) = Arc::try_unwrap(loaded_registry) {
-                        let loaded_reg = loaded_reg.into_inner().unwrap();
-
-                        // Get all loaded components
-                        for spec in loaded_reg.list_all() {
-                            if let Err(e) = self.registry.register_component(spec.clone()) {
-                                log::warn!("Failed to merge component {}: {}", spec.id, e);
-                            }
-                        }
-                    } else {
-                        // Registry is still held by background thread (shouldn't happen)
-                        log::warn!("Cannot merge registry - still held by background thread");
-                    }
 
                     // Update status message
                     if errors.is_empty() {
