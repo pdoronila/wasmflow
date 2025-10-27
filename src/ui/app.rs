@@ -834,11 +834,17 @@ impl WasmFlowApp {
         }
 
         // Process pending rename request
+        // Only open dialog if it's not already open (to avoid resetting it every frame)
         if let Some(node_id) = self.canvas.pending_rename.take() {
-            if let Some(node) = self.graph.nodes.get(&node_id) {
-                // Open rename dialog with current name
-                self.composite_name_dialog.open_for_rename(node.display_name.clone());
-                // Store node ID for later use when rename is confirmed
+            if !self.composite_name_dialog.is_open() {
+                if let Some(node) = self.graph.nodes.get(&node_id) {
+                    // Open rename dialog with current name
+                    self.composite_name_dialog.open_for_rename(node.display_name.clone());
+                    // Store node ID for later use when rename is confirmed
+                    self.canvas.pending_rename = Some(node_id);
+                }
+            } else {
+                // Dialog is already open, put the node_id back
                 self.canvas.pending_rename = Some(node_id);
             }
         }
