@@ -39,6 +39,11 @@ pub enum Command {
         old_value: NodeValue,
         new_value: NodeValue,
     },
+    /// Clone selected nodes with their internal connections
+    CloneNodes {
+        cloned_nodes: Vec<GraphNode>,
+        cloned_connections: Vec<Connection>,
+    },
 }
 
 impl Command {
@@ -114,6 +119,25 @@ impl Command {
                     Err("Node not found".to_string())
                 }
             }
+            Command::CloneNodes {
+                cloned_nodes,
+                cloned_connections,
+            } => {
+                // Add cloned nodes
+                for node in cloned_nodes {
+                    graph.add_node(node.clone());
+                }
+                // Add cloned connections
+                for conn in cloned_connections {
+                    let _ = graph.add_connection(
+                        conn.from_node,
+                        conn.from_port,
+                        conn.to_node,
+                        conn.to_port,
+                    );
+                }
+                Ok(())
+            }
         }
     }
 
@@ -186,6 +210,20 @@ impl Command {
                 } else {
                     Err("Node not found".to_string())
                 }
+            }
+            Command::CloneNodes {
+                cloned_nodes,
+                cloned_connections,
+            } => {
+                // Remove cloned connections first
+                for conn in cloned_connections {
+                    let _ = graph.remove_connection(conn.id);
+                }
+                // Remove cloned nodes
+                for node in cloned_nodes {
+                    let _ = graph.remove_node(node.id);
+                }
+                Ok(())
             }
         }
     }

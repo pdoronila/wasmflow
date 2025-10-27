@@ -46,6 +46,53 @@ Rust 1.75+ (stable channel with wasm32-wasip2 target): Follow standard conventio
 - **Visual Feedback**: Use state colors (green pulsing for running, red for error, gray for idle) and iteration counters
 - **Example Nodes**: See `src/builtin/continuous_example.rs` for timer and combiner examples
 
+## Clone Selection Guidelines (011-clone-selection)
+
+**Location**: `src/ui/app/duplication.rs`
+
+Users can duplicate selected nodes using the Clone button or Ctrl+D keyboard shortcut.
+
+### Implementation Details
+
+- **Offset**: Clones are placed at `(+50px, +50px)` from original position
+- **Naming**: Appends " (Clone)" to display name
+- **Connections**: Only internal connections (both nodes selected) are cloned
+- **External connections**: NOT cloned (ambiguous behavior)
+- **Selection**: Cloned nodes are selected, originals deselected
+- **Undo/Redo**: Supported via `Command::CloneNodes`
+
+### Constants
+
+```rust
+const CLONE_OFFSET: egui::Vec2 = egui::Vec2::new(50.0, 50.0);
+const CLONE_NAME_SUFFIX: &str = " (Clone)";
+```
+
+### Keyboard Shortcut
+
+- **Ctrl+D**: Clone selected nodes (available in both Normal and Selection modes)
+
+### Special Node Handling
+
+- **WASM Creator nodes**: `creator_data` is cloned (code preserved)
+- **Composite nodes**: `composition_data` is cloned (binary blob preserved)
+- **Continuous nodes**: `continuous_config` is cloned, but `runtime_state` is reset (not running)
+- **Constant nodes**: Port values are cloned
+
+### Command Pattern
+
+The clone operation uses the `Command::CloneNodes` variant for undo/redo support:
+
+```rust
+Command::CloneNodes {
+    cloned_nodes: Vec<GraphNode>,
+    cloned_connections: Vec<Connection>,
+}
+```
+
+**Execute**: Adds cloned nodes and connections to graph
+**Undo**: Removes cloned nodes and connections from graph
+
 ## Recent Changes
 - 010-wasm-components-core: Added Rust 1.75+ (stable channel with wasm32-wasip2 target) + wit-bindgen 0.30, serde (for list/data serialization), standard library (no external crates for core operations)
 - 009-reorginize-components-currently: Added Rust 1.75+ (stable channel with wasm32-wasip2 target)
