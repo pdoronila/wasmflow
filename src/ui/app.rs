@@ -3,6 +3,7 @@
 // Sub-modules for organized application logic
 mod components;
 mod composition;
+mod duplication;
 mod execution;
 mod permissions;
 mod state;
@@ -577,6 +578,25 @@ impl WasmFlowApp {
                     }
                 });
 
+                // Clone button - enabled when 1+ nodes are selected AND viewing main canvas
+                let can_clone = selected_count >= 1 && self.view_stack.is_main_canvas();
+                ui.add_enabled_ui(can_clone, |ui| {
+                    let clone_button = ui.button("📋 Clone");
+                    if clone_button.clicked() {
+                        self.handle_clone_action();
+                    }
+                    if !self.view_stack.is_main_canvas() {
+                        clone_button.on_hover_text("Return to main canvas to clone nodes");
+                    } else if selected_count == 0 {
+                        clone_button.on_hover_text("Select at least 1 node to clone");
+                    } else {
+                        clone_button.on_hover_text(format!(
+                            "Clone {} selected node(s) (Ctrl+D)",
+                            selected_count
+                        ));
+                    }
+                });
+
                 ui.separator();
 
                 // Show dirty indicator
@@ -988,6 +1008,12 @@ impl eframe::App for WasmFlowApp {
         } else if ctx.input(|i| i.key_pressed(egui::Key::O) && i.modifiers.command) {
             // Ctrl+O -> Open
             self.load_graph();
+        } else if ctx.input(|i| i.key_pressed(egui::Key::D) && i.modifiers.command) {
+            // Ctrl+D -> Clone selected nodes
+            let selected_count = self.graph.nodes.values().filter(|n| n.selected).count();
+            if selected_count >= 1 && self.view_stack.is_main_canvas() {
+                self.handle_clone_action();
+            }
         }
 
         // Handle double-space for spotlight search (only when no dialog is open)
