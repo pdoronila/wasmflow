@@ -124,8 +124,19 @@ impl HostState {
                 builder.inherit_network();
             }
             CapabilitySet::Full => {
-                // Full access - inherit everything
+                // Full access - inherit everything and preopen root filesystem
                 builder.inherit_stdio().inherit_env().inherit_network();
+
+                // Preopen root directory for unrestricted file access
+                use wasmtime_wasi::{DirPerms, FilePerms};
+                builder.preopened_dir(
+                    "/",
+                    "/",
+                    DirPerms::all(),
+                    FilePerms::all(),
+                )?;
+
+                log::warn!("Full unrestricted access granted - all capabilities enabled including filesystem root");
             }
         }
 
