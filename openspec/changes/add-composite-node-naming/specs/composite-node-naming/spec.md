@@ -12,7 +12,7 @@ Provides user control over composite node names through creation-time dialogs an
 
 ## ADDED Requirements
 
-### R-CNM-001: Name Entry at Composite Creation
+### Requirement: Name Entry at Composite Creation
 
 **Priority**: High
 **Category**: User Interaction
@@ -60,7 +60,7 @@ When the user initiates a composition operation (selecting 2+ nodes and clicking
 
 ---
 
-### R-CNM-002: Name Validation at Creation
+### Requirement: Name Validation at Creation
 
 **Priority**: High
 **Category**: Data Validation
@@ -103,7 +103,7 @@ The system SHALL validate composite node names before allowing creation.
 
 ---
 
-### R-CNM-003: Rename via Context Menu
+### Requirement: Rename via Context Menu
 
 **Priority**: High
 **Category**: User Interaction
@@ -156,7 +156,7 @@ Users SHALL be able to rename existing composite nodes through a right-click con
 
 ---
 
-### R-CNM-004: Undo/Redo Support
+### Requirement: Undo/Redo Support
 
 **Priority**: High
 **Category**: Command System
@@ -195,7 +195,7 @@ Rename operations SHALL be reversible through the undo/redo system.
 
 ---
 
-### R-CNM-005: Name Propagation
+### Requirement: Name Propagation
 
 **Priority**: Medium
 **Category**: Data Consistency
