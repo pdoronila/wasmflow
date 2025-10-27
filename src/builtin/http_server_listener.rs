@@ -9,8 +9,8 @@ use crate::graph::node::{ComponentSpec, DataType, NodeValue};
 use crate::runtime::engine::NodeExecutor;
 use crate::ComponentError;
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Read};
-use std::net::TcpListener;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -39,6 +39,8 @@ struct ServerState {
     host: String,
     /// Configured port
     port: u16,
+    /// Current active connection waiting for response (only one at a time)
+    active_connection: Option<(u32, TcpStream)>,
 }
 
 impl HttpServerListenerExecutor {
@@ -50,6 +52,7 @@ impl HttpServerListenerExecutor {
                 is_running: false,
                 host: "127.0.0.1".to_string(),
                 port: 8080,
+                active_connection: None,
             })),
         }
     }
@@ -94,7 +97,8 @@ impl NodeExecutor for HttpServerListenerExecutor {
         })?;
 
         // Initialize listener if needed (or if config changed)
-        if state.listener.is_none() || state.host != host || state.port != port {
+        if state.listener.is_none() {
+            // First time initialization
             let addr = format!("{}:{}", host, port);
             let listener = TcpListener::bind(&addr).map_err(|e| {
                 ComponentError::ExecutionError(format!(
@@ -115,55 +119,115 @@ impl NodeExecutor for HttpServerListenerExecutor {
             state.connection_count = 0;
 
             log::info!("HTTP server listening on {}:{}", host, port);
+        } else if state.host != host || state.port != port {
+            // Config changed - warn but don't try to rebind (would fail with "address in use")
+            log::warn!(
+                "HTTP server config changed ({}:{} -> {}:{}), but cannot rebind while running. \
+                 Stop the node and restart to apply new settings.",
+                state.host, state.port, host, port
+            );
+            // Continue with existing listener
         }
 
-        // Try to accept a connection (non-blocking)
-        if let Some(ref listener) = state.listener {
-            match listener.accept() {
-                Ok((mut stream, addr)) => {
-                    state.connection_count += 1;
-                    let connection_id = state.connection_count;
-
-                    // Drop the state lock before reading from stream
-                    drop(state);
-
-                    log::info!("Accepted connection {} from {}", connection_id, addr);
-
-                    // Set read timeout
-                    stream
-                        .set_read_timeout(Some(Duration::from_millis(timeout_ms)))
-                        .ok();
-
-                    // Read HTTP request
-                    match read_http_request(&mut stream, max_request_size) {
-                        Ok(request) => {
-                            outputs.insert("raw_request".to_string(), NodeValue::String(request));
-                            outputs.insert(
-                                "client_addr".to_string(),
-                                NodeValue::String(addr.to_string()),
-                            );
-                            outputs
-                                .insert("connection_id".to_string(), NodeValue::U32(connection_id));
-                            outputs.insert(
-                                "status".to_string(),
-                                NodeValue::String("ready".to_string()),
-                            );
-
-                            log::debug!(
-                                "Read HTTP request from connection {} ({})",
-                                connection_id,
-                                addr
-                            );
-                        }
-                        Err(e) => {
-                            log::warn!("Failed to read request from {}: {}", addr, e);
-                            outputs.insert(
-                                "status".to_string(),
-                                NodeValue::String(format!("error: {}", e)),
-                            );
+        // Check if there's a response to send back
+        if let Some(NodeValue::String(response)) = inputs.get("response") {
+            // Send response to the active connection (if any)
+            if let Some((conn_id, mut stream)) = state.active_connection.take() {
+                // Write the response to the TcpStream
+                match stream.write_all(response.as_bytes()) {
+                    Ok(_) => {
+                        match stream.flush() {
+                            Ok(_) => {
+                                log::info!("Sent HTTP response to connection {}", conn_id);
+                                outputs.insert(
+                                    "response_status".to_string(),
+                                    NodeValue::String(format!("sent to connection {}", conn_id)),
+                                );
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to flush response to connection {}: {}", conn_id, e);
+                                outputs.insert(
+                                    "response_status".to_string(),
+                                    NodeValue::String(format!("flush error: {}", e)),
+                                );
+                            }
                         }
                     }
+                    Err(e) => {
+                        log::warn!("Failed to write response to connection {}: {}", conn_id, e);
+                        outputs.insert(
+                            "response_status".to_string(),
+                            NodeValue::String(format!("write error: {}", e)),
+                        );
+                    }
                 }
+                // TcpStream is automatically closed when dropped
+                // Connection is cleared, ready for next one
+            } else {
+                log::debug!("Response received but no active connection to send it to");
+                // This is normal when there's no request yet
+            }
+        }
+
+        // Try to accept a connection (non-blocking) - only if no active connection
+        if let Some(ref listener) = state.listener {
+            // Only accept new connection if we don't have an active one waiting for response
+            if state.active_connection.is_none() {
+                match listener.accept() {
+                    Ok((mut stream, addr)) => {
+                        state.connection_count += 1;
+                        let connection_id = state.connection_count;
+
+                        // Drop the state lock before reading from stream
+                        drop(state);
+
+                        log::info!("Accepted connection {} from {}", connection_id, addr);
+
+                        // Set read timeout
+                        stream
+                            .set_read_timeout(Some(Duration::from_millis(timeout_ms)))
+                            .ok();
+
+                        // Read HTTP request
+                        match read_http_request(&mut stream, max_request_size) {
+                            Ok(request) => {
+                                outputs.insert("raw_request".to_string(), NodeValue::String(request));
+                                outputs.insert(
+                                    "client_addr".to_string(),
+                                    NodeValue::String(addr.to_string()),
+                                );
+                                outputs
+                                    .insert("connection_id".to_string(), NodeValue::U32(connection_id));
+                                outputs.insert(
+                                    "status".to_string(),
+                                    NodeValue::String("ready".to_string()),
+                                );
+
+                                log::debug!(
+                                    "Read HTTP request from connection {} ({})",
+                                    connection_id,
+                                    addr
+                                );
+
+                                // Store the TcpStream as the active connection for response writing
+                                if let Ok(mut state) = self.state.lock() {
+                                    state.active_connection = Some((connection_id, stream));
+                                    log::debug!("Stored connection {} as active connection", connection_id);
+                                } else {
+                                    log::warn!("Failed to lock state to store connection {}", connection_id);
+                                    // Stream will be dropped (connection closed)
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to read request from {}: {}", addr, e);
+                                outputs.insert(
+                                    "status".to_string(),
+                                    NodeValue::String(format!("error: {}", e)),
+                                );
+                                // Stream will be dropped (connection closed)
+                            }
+                        }
+                    }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     // No connection available, return waiting status
                     outputs.insert(
@@ -178,6 +242,13 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         NodeValue::String(format!("error: {}", e)),
                     );
                 }
+                }
+            } else {
+                // Already have an active connection, waiting for response
+                outputs.insert(
+                    "status".to_string(),
+                    NodeValue::String("connection_active".to_string()),
+                );
             }
         } else {
             outputs.insert(
@@ -277,11 +348,11 @@ fn extract_content_length(request: &str) -> Option<usize> {
 /// Register the HTTP server listener node in the component registry
 pub fn register_http_server_listener(registry: &mut crate::graph::node::ComponentRegistry) {
     let spec = ComponentSpec::new_builtin(
-        "builtin:http:server-listener".to_string(),
+        "builtin:continuous:http-server-listener".to_string(),
         "HTTP Server Listener".to_string(),
-        "Listens for incoming HTTP connections and outputs raw HTTP requests. \
-         Runs continuously, accepting one connection per execution cycle. \
-         Use with http-request-parser to process requests."
+        "Listens for incoming HTTP connections, outputs raw HTTP requests, and sends responses back. \
+         Runs continuously, accepting connections and handling responses. \
+         Stores connections until a response is sent via the response input ports."
             .to_string(),
         Some("HTTP".to_string()),
     )
@@ -305,6 +376,12 @@ pub fn register_http_server_listener(registry: &mut crate::graph::node::Componen
         DataType::U32,
         "Connection read timeout in milliseconds (default: 5000 = 5s)".to_string(),
     )
+    .with_input(
+        "response".to_string(),
+        DataType::String,
+        "HTTP response to send back (complete response including headers and body). \
+         Automatically sent to the current active connection.".to_string(),
+    )
     .with_output(
         "raw_request".to_string(),
         DataType::String,
@@ -324,6 +401,11 @@ pub fn register_http_server_listener(registry: &mut crate::graph::node::Componen
         "status".to_string(),
         DataType::String,
         "Server status: 'waiting', 'ready', 'error: ...', or 'not_initialized'".to_string(),
+    )
+    .with_output(
+        "response_status".to_string(),
+        DataType::String,
+        "Response sending status: 'sent to connection X', 'write error: ...', or 'connection X not found'".to_string(),
     );
 
     registry.register_builtin(spec);

@@ -301,6 +301,65 @@ impl ContinuousExecutionManager {
                                 );
                                 Ok(outputs)
                             }
+                            Some("builtin:continuous:http-server-listener") => {
+                                // HTTP Server Listener: execute listener to accept connections
+                                // IMPORTANT: Use a static executor so the TcpListener persists across iterations
+                                use once_cell::sync::Lazy;
+                                use std::collections::HashMap as StdHashMap;
+                                use std::sync::Arc;
+                                use uuid::Uuid;
+                                use crate::builtin::HttpServerListenerExecutor;
+                                use crate::runtime::engine::NodeExecutor;
+
+                                static HTTP_EXECUTORS: Lazy<Arc<std::sync::Mutex<StdHashMap<Uuid, HttpServerListenerExecutor>>>> =
+                                    Lazy::new(|| Arc::new(std::sync::Mutex::new(StdHashMap::new())));
+
+                                if let Ok(graph_lock) = graph.lock() {
+                                    let mut inputs = HashMap::new();
+
+                                    // First, resolve connections to get values from other nodes (for response, connection_id)
+                                    for connection in graph_lock.connections.iter() {
+                                        if connection.to_node == node_id {
+                                            // Get the source node's output value
+                                            if let Some(source_node) = graph_lock.nodes.get(&connection.from_node) {
+                                                if let Some(source_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
+                                                    if let Some(value) = &source_port.current_value {
+                                                        // Map to target input port name
+                                                        if let Some(target_node) = graph_lock.nodes.get(&node_id) {
+                                                            if let Some(target_port) = target_node.inputs.iter().find(|p| p.id == connection.to_port) {
+                                                                inputs.insert(target_port.name.clone(), value.clone());
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Second, get node's direct input port values for unconnected inputs (for constants like host, port)
+                                    if let Some(node) = graph_lock.nodes.get(&node_id) {
+                                        for input in &node.inputs {
+                                            if !inputs.contains_key(&input.name) {
+                                                if let Some(value) = &input.current_value {
+                                                    inputs.insert(input.name.clone(), value.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    drop(graph_lock); // Release lock before execution
+
+                                    // Get or create persistent executor for this node
+                                    let mut executors = HTTP_EXECUTORS.lock().unwrap();
+                                    let executor = executors
+                                        .entry(node_id)
+                                        .or_insert_with(|| HttpServerListenerExecutor::new());
+
+                                    executor.execute(&inputs).map_err(|e| e.to_string())
+                                } else {
+                                    Err("Failed to lock graph".to_string())
+                                }
+                            }
                             Some("builtin:continuous:combiner") => {
                                 // T050: Combiner node: fetch inputs from connected nodes and execute
                                 if let Ok(graph_lock) = graph.lock() {

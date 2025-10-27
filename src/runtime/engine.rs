@@ -770,7 +770,7 @@ pub fn register_builtin_executors(engine: &mut ExecutionEngine) {
 
     // Register HTTP server listener executor
     engine.register_executor(
-        "builtin:http:server-listener".to_string(),
+        "builtin:continuous:http-server-listener".to_string(),
         Box::new(crate::builtin::HttpServerListenerExecutor::new()),
     );
 }

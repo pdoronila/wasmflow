@@ -1002,6 +1002,23 @@ let result = value * 2.0;
             if let Some(input_b) = node.get_input_mut("input_b") {
                 input_b.current_value = Some(NodeValue::String("World".to_string()));
             }
+        }
+
+        // Initialize continuous_config for HTTP server listener
+        if self.id == "builtin:continuous:http-server-listener" {
+            node.continuous_config = Some(ContinuousNodeConfig {
+                supports_continuous: true,
+                enabled: true,
+                runtime_state: ContinuousRuntimeState::default(),
+            });
+
+            // Set default port and host values
+            if let Some(port_input) = node.get_input_mut("port") {
+                port_input.current_value = Some(NodeValue::U32(8080));
+            }
+            if let Some(host_input) = node.get_input_mut("host") {
+                host_input.current_value = Some(NodeValue::String("127.0.0.1".to_string()));
+            }
             if let Some(separator) = node.get_input_mut("separator") {
                 separator.current_value = Some(NodeValue::String(" ".to_string()));
             }
