@@ -44,6 +44,12 @@ pub enum Command {
         cloned_nodes: Vec<GraphNode>,
         cloned_connections: Vec<Connection>,
     },
+    /// Rename a composite node
+    RenameNode {
+        node_id: Uuid,
+        old_name: String,
+        new_name: String,
+    },
 }
 
 impl Command {
@@ -138,6 +144,23 @@ impl Command {
                 }
                 Ok(())
             }
+            Command::RenameNode {
+                node_id,
+                old_name: _,
+                new_name,
+            } => {
+                if let Some(node) = graph.nodes.get_mut(node_id) {
+                    // Update display_name
+                    node.display_name = new_name.clone();
+                    // Update composition_data.name if this is a composite node
+                    if let Some(ref mut comp_data) = node.composition_data {
+                        comp_data.name = new_name.clone();
+                    }
+                    Ok(())
+                } else {
+                    Err("Node not found".to_string())
+                }
+            }
         }
     }
 
@@ -224,6 +247,23 @@ impl Command {
                     let _ = graph.remove_node(node.id);
                 }
                 Ok(())
+            }
+            Command::RenameNode {
+                node_id,
+                old_name,
+                new_name: _,
+            } => {
+                if let Some(node) = graph.nodes.get_mut(node_id) {
+                    // Restore display_name
+                    node.display_name = old_name.clone();
+                    // Restore composition_data.name if this is a composite node
+                    if let Some(ref mut comp_data) = node.composition_data {
+                        comp_data.name = old_name.clone();
+                    }
+                    Ok(())
+                } else {
+                    Err("Node not found".to_string())
+                }
             }
         }
     }

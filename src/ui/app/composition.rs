@@ -59,6 +59,16 @@ impl WasmFlowApp {
             }
         }
 
+        // After validation passes, show naming dialog before continuing
+        if !self.composite_name_dialog.is_open() {
+            // Store selected nodes for later use
+            self.pending_composition_nodes = Some(selected_nodes.clone());
+            // Open dialog with default name
+            self.composite_name_dialog.open_for_creation("Composite Node".to_string());
+            log::debug!("Opened composite naming dialog");
+            return;
+        }
+
         // T029: Collect component paths for all selected nodes
         let mut component_paths: Vec<std::path::PathBuf> = Vec::new();
         let mut component_names: Vec<String> = Vec::new();
@@ -452,5 +462,167 @@ impl WasmFlowApp {
                 self.composition_error = None;
             }
         }
+    }
+
+    /// Continue composition with user-provided name
+    pub(super) fn handle_composite_name_confirmed(&mut self, name: String) {
+        // Get the stored selected nodes
+        let Some(selected_nodes) = self.pending_composition_nodes.take() else {
+            log::error!("No pending composition nodes found");
+            return;
+        };
+
+        log::info!("Continuing composition with name: {}", name);
+
+        // T029: Collect component paths for all selected nodes
+        let mut component_paths: Vec<std::path::PathBuf> = Vec::new();
+        let mut component_names: Vec<String> = Vec::new();
+
+        for node_id in &selected_nodes {
+            if let Some(node) = self.graph.nodes.get(node_id) {
+                if let Some(path) = self.get_component_path(node) {
+                    component_paths.push(path);
+                    component_names.push(node.display_name.clone());
+                } else {
+                    // T033: Cannot compose builtin nodes (no WASM path)
+                    self.composition_error = Some(format!(
+                        "Cannot compose builtin node '{}'. Only user-defined WASM components can be composed.",
+                        node.display_name
+                    ));
+                    log::warn!(
+                        "Composition failed: builtin node '{}' in selection",
+                        node.display_name
+                    );
+                    return;
+                }
+            }
+        }
+
+        // T033: Need at least 2 component paths
+        if component_paths.len() < 2 {
+            self.composition_error = Some("Need at least 2 WASM components to compose".to_string());
+            return;
+        }
+
+        log::debug!("Collected {} component paths", component_paths.len());
+
+        // T022-T025: Perform composition using ComponentComposer
+        // Socket is the first component, plugs are the rest
+        let socket = &component_paths[0];
+        let plugs: Vec<&std::path::Path> =
+            component_paths[1..].iter().map(|p| p.as_path()).collect();
+
+        log::info!(
+            "Composing: socket={}, plugs={}",
+            socket.display(),
+            plugs.len()
+        );
+
+        let composed_binary = match self.composer.compose(socket, &plugs) {
+            Ok(bytes) => {
+                log::info!("Composition successful: {} bytes", bytes.len());
+                bytes
+            }
+            Err(e) => {
+                // T032: Show composition error dialog
+                self.composition_error = Some(format!("Composition failed: {}", e));
+                log::error!("Composition failed: {}", e);
+                return;
+            }
+        };
+
+        // T027: Create CompositionData with internal structure
+        let internal_nodes: std::collections::BTreeMap<Uuid, crate::graph::node::GraphNode> =
+            selected_nodes
+                .iter()
+                .filter_map(|id| self.graph.nodes.get(id).map(|n| (*id, n.clone())))
+                .collect();
+
+        let internal_edges: Vec<crate::graph::connection::Connection> = self
+            .graph
+            .connections
+            .iter()
+            .filter(|conn| {
+                selected_nodes.contains(&conn.from_node) && selected_nodes.contains(&conn.to_node)
+            })
+            .cloned()
+            .collect();
+
+        // T035: Aggregate boundary ports for the composite node
+        let (composite_inputs, composite_outputs, input_mappings, output_mappings) =
+            self.aggregate_boundary_ports(&selected_nodes);
+
+        // Use the user-provided name
+        let mut composition_data = crate::graph::node::CompositionData::new(
+            name.clone(),
+            socket.clone(),
+            component_paths[1..].to_vec(),
+            internal_nodes,
+            internal_edges,
+            component_names,
+            composed_binary.clone(),
+        );
+
+        // Update composition data with port mappings
+        composition_data.exposed_inputs = input_mappings;
+        composition_data.exposed_outputs = output_mappings;
+
+        // Calculate center position of selected nodes
+        let center_pos = if !selected_nodes.is_empty() {
+            let sum_x: f32 = selected_nodes
+                .iter()
+                .filter_map(|id| self.graph.nodes.get(id))
+                .map(|n| n.position.x)
+                .sum();
+            let sum_y: f32 = selected_nodes
+                .iter()
+                .filter_map(|id| self.graph.nodes.get(id))
+                .map(|n| n.position.y)
+                .sum();
+            let count = selected_nodes.len() as f32;
+            egui::pos2(sum_x / count, sum_y / count)
+        } else {
+            egui::pos2(200.0, 200.0)
+        };
+
+        // T034: Create new composite node with user-provided name
+        let mut composite_node = crate::graph::node::GraphNode::new(
+            "composite:generated".to_string(),
+            name.clone(),
+            center_pos,
+        );
+
+        // Assign boundary ports to the composite node
+        composite_node.inputs = composite_inputs;
+        composite_node.outputs = composite_outputs;
+        composite_node.composition_data = Some(composition_data);
+
+        // Add the composite node to the graph
+        let composite_id = composite_node.id;
+        let _ = self.graph.add_node(composite_node);
+
+        // Remove selected nodes
+        for node_id in &selected_nodes {
+            let _ = self.graph.remove_node(*node_id);
+        }
+
+        // Clear selection
+        self.canvas.selection.clear_selection();
+
+        // Mark dirty and update status
+        self.dirty = true;
+        self.status_message = format!(
+            "Created composite node '{}' from {} nodes",
+            name,
+            selected_nodes.len()
+        );
+        log::info!(
+            "Composition complete: created composite node '{}' ({})",
+            name,
+            composite_id
+        );
+
+        // Sync canvas
+        self.canvas.mark_dirty();
     }
 }
