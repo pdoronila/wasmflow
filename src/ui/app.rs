@@ -10,8 +10,8 @@ mod state;
 
 use super::canvas::NodeCanvas;
 use super::dialogs::{
-    AboutDialog, GraphMetadataDialog, PermissionDialog, PermissionsViewDialog,
-    UnsavedChangesAction, UnsavedChangesDialog,
+    AboutDialog, CompositeNameDialog, GraphMetadataDialog, PermissionDialog,
+    PermissionsViewDialog, UnsavedChangesAction, UnsavedChangesDialog,
 };
 use super::palette::{Palette, PaletteAction};
 use super::spotlight::{SpotlightAction, SpotlightSearch};
@@ -69,6 +69,8 @@ pub struct WasmFlowApp {
     palette: Palette,
     /// T092: Graph metadata editor dialog
     metadata_dialog: GraphMetadataDialog,
+    /// Composite node naming dialog
+    composite_name_dialog: CompositeNameDialog,
     /// Spotlight search for quick node creation
     spotlight: SpotlightSearch,
     /// Last space key press time for double-space detection
@@ -91,6 +93,8 @@ pub struct WasmFlowApp {
     composer: crate::runtime::wac_integration::ComponentComposer,
     /// T032: Error dialog for composition failures
     composition_error: Option<String>,
+    /// Pending composition node IDs (awaiting user to name composite)
+    pending_composition_nodes: Option<Vec<Uuid>>,
     /// T037: View stack for drill-down navigation
     view_stack: crate::graph::drill_down::ViewStack,
     /// T011: Component loading state
@@ -182,6 +186,7 @@ impl WasmFlowApp {
             about_dialog: AboutDialog::new(),
             palette: Palette::new(),
             metadata_dialog: GraphMetadataDialog::new(),
+            composite_name_dialog: CompositeNameDialog::new(),
             spotlight: SpotlightSearch::new(),
             last_space_time: None,
             theme: Theme::dark(),
@@ -193,6 +198,7 @@ impl WasmFlowApp {
             downstream_result_tx,
             composer: crate::runtime::wac_integration::ComponentComposer::new(), // T028
             composition_error: None,                                             // T032
+            pending_composition_nodes: None,
             view_stack: crate::graph::drill_down::ViewStack::new(),              // T037
             loading_state: crate::ui::LoadingState::NotStarted,                  // T011
             splash_screen: None,                                                 // T011
@@ -827,6 +833,22 @@ impl WasmFlowApp {
             self.handle_drill_down(composite_node_id);
         }
 
+        // Process pending rename request
+        // Only open dialog if it's not already open (to avoid resetting it every frame)
+        if let Some(node_id) = self.canvas.pending_rename.take() {
+            if !self.composite_name_dialog.is_open() {
+                if let Some(node) = self.graph.nodes.get(&node_id) {
+                    // Open rename dialog with current name
+                    self.composite_name_dialog.open_for_rename(node.display_name.clone());
+                    // Store node ID for later use when rename is confirmed
+                    self.canvas.pending_rename = Some(node_id);
+                }
+            } else {
+                // Dialog is already open, put the node_id back
+                self.canvas.pending_rename = Some(node_id);
+            }
+        }
+
         // Handle pending continuous node start requests
         let pending_starts: Vec<Uuid> = self.canvas.pending_continuous_start.drain(..).collect();
         if !pending_starts.is_empty() {
@@ -978,6 +1000,45 @@ impl eframe::App for WasmFlowApp {
 
         // T092: Handle graph metadata dialog
         self.handle_metadata_dialog(ctx);
+
+        // Handle composite naming dialog
+        if let Some(action) = self.composite_name_dialog.show(ctx) {
+            match action {
+                super::dialogs::CompositeNameAction::Confirmed(name) => {
+                    log::info!("User confirmed composite name: {}", name);
+
+                    // Check if this is a rename or creation
+                    if let Some(node_id) = self.canvas.pending_rename.take() {
+                        // This is a rename operation
+                        if let Some(node) = self.graph.nodes.get(&node_id) {
+                            let old_name = node.display_name.clone();
+                            // Create and execute rename command
+                            let cmd = crate::graph::command::Command::RenameNode {
+                                node_id,
+                                old_name,
+                                new_name: name.clone(),
+                            };
+                            if let Err(e) = self.history.execute(cmd, &mut self.graph) {
+                                log::error!("Failed to rename node: {}", e);
+                                self.error_message = Some(format!("Failed to rename: {}", e));
+                            } else {
+                                self.status_message = format!("Renamed node to '{}'", name);
+                                self.dirty = true;
+                                self.canvas.mark_dirty(); // Sync canvas
+                            }
+                        }
+                    } else {
+                        // This is a creation operation
+                        self.handle_composite_name_confirmed(name);
+                    }
+                }
+                super::dialogs::CompositeNameAction::Cancelled => {
+                    log::info!("User cancelled composite naming");
+                    self.pending_composition_nodes = None;
+                    self.canvas.pending_rename = None;
+                }
+            }
+        }
 
         // T100: Show about dialog
         self.about_dialog.show(ctx);

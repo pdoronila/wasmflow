@@ -112,6 +112,74 @@ Command::CloneNodes {
 **Execute**: Adds cloned nodes and connections to graph
 **Undo**: Removes cloned nodes and connections from graph
 
+## Composite Node Naming Guidelines
+
+**Location**: `src/ui/dialogs.rs`, `src/ui/app/composition.rs`, `src/graph/command.rs`
+
+Users can name composite nodes at creation time and rename them afterward via context menu.
+
+### Name Entry at Creation
+
+When composing multiple nodes into a composite:
+1. After validation passes, a modal dialog appears
+2. Default name is "Composite Node"
+3. User can accept or modify the name
+4. Empty names are rejected with inline validation
+5. Any non-empty string is accepted (Unicode, special characters allowed)
+6. Cancel aborts the composition operation
+
+### Rename via Context Menu
+
+To rename an existing composite node:
+1. Right-click on the composite node
+2. Select "✏ Rename" from the context menu (appears only for composite nodes)
+3. Dialog opens pre-filled with current name
+4. Modify the name and click "Rename"
+5. Same validation as creation (non-empty strings only)
+
+### Undo/Redo Support
+
+Rename operations are fully reversible:
+- **Command**: `Command::RenameNode { node_id, old_name, new_name }`
+- **Execute**: Updates `display_name` and `composition_data.name`
+- **Undo**: Restores both fields to `old_name`
+- **Redo**: Re-applies `new_name`
+- Accessible via Ctrl+Z (undo) and Ctrl+Y (redo)
+
+### Name Propagation
+
+Composite node names appear consistently across the UI:
+- **Canvas**: Node title shows `display_name`
+- **Drill-down breadcrumb**: Shows custom name (not "Composite Node")
+- **Status messages**: "Viewing internal structure of 'Custom Name'"
+- **Port mappings**: External ports use composite name (e.g., "Data Processor.input")
+- **Serialization**: Both `display_name` and `composition_data.name` persist in graph JSON
+
+### Data Model
+
+Two fields must be kept in sync during rename:
+- `GraphNode.display_name`: String - shown in UI
+- `CompositionData.name`: String - stored in composition metadata
+
+### Implementation Details
+
+**Dialog**: `CompositeNameDialog` in `src/ui/dialogs.rs`
+- Mode enum: `Create` or `Rename`
+- Validation: trims whitespace, rejects empty strings
+- Keyboard support: Enter to confirm, Escape to cancel
+
+**Composition workflow**: `src/ui/app/composition.rs`
+- `handle_compose_action()`: Opens naming dialog after validation
+- `handle_composite_name_confirmed()`: Continues composition with provided name
+
+**Context menu**: `src/ui/canvas/viewer.rs`
+- "Rename" button appears only for composite nodes (`node.is_composite`)
+- Sets `pending_rename` field for app to handle
+
+**Command system**: `src/graph/command.rs`
+- `RenameNode` variant with `node_id`, `old_name`, `new_name`
+- Updates both `display_name` and `composition_data.name` in execute/undo
+
 ## Recent Changes
 - 010-wasm-components-core: Added Rust 1.75+ (stable channel with wasm32-wasip2 target) + wit-bindgen 0.30, serde (for list/data serialization), standard library (no external crates for core operations)
 - 009-reorginize-components-currently: Added Rust 1.75+ (stable channel with wasm32-wasip2 target)

@@ -976,3 +976,181 @@ impl Default for GraphMetadataDialog {
         Self::new()
     }
 }
+
+/// Dialog mode for CompositeNameDialog
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DialogMode {
+    /// Creating a new composite node
+    Create,
+    /// Renaming an existing composite node
+    Rename,
+}
+
+/// Action result from the CompositeNameDialog
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompositeNameAction {
+    /// User confirmed with the entered name
+    Confirmed(String),
+    /// User cancelled the operation
+    Cancelled,
+}
+
+/// Dialog for naming/renaming composite nodes
+pub struct CompositeNameDialog {
+    /// Whether the dialog is open
+    is_open: bool,
+    /// Editable name
+    name: String,
+    /// Dialog mode (Create or Rename)
+    mode: DialogMode,
+    /// Validation error message
+    validation_error: Option<String>,
+    /// The result of the dialog (if any)
+    result: Option<CompositeNameAction>,
+}
+
+impl CompositeNameDialog {
+    /// Create a new composite name dialog
+    pub fn new() -> Self {
+        Self {
+            is_open: false,
+            name: String::new(),
+            mode: DialogMode::Create,
+            validation_error: None,
+            result: None,
+        }
+    }
+
+    /// Open the dialog for creating a new composite
+    pub fn open_for_creation(&mut self, default_name: String) {
+        self.is_open = true;
+        self.name = default_name;
+        self.mode = DialogMode::Create;
+        self.validation_error = None;
+        self.result = None;
+    }
+
+    /// Open the dialog for renaming an existing composite
+    pub fn open_for_rename(&mut self, current_name: String) {
+        self.is_open = true;
+        self.name = current_name;
+        self.mode = DialogMode::Rename;
+        self.validation_error = None;
+        self.result = None;
+    }
+
+    /// Check if the dialog is open
+    #[allow(dead_code)]
+    pub fn is_open(&self) -> bool {
+        self.is_open
+    }
+
+    /// Get the result of the dialog
+    #[allow(dead_code)]
+    pub fn result(&self) -> Option<CompositeNameAction> {
+        self.result.clone()
+    }
+
+    /// Reset the dialog
+    #[allow(dead_code)]
+    pub fn reset(&mut self) {
+        self.is_open = false;
+        self.name.clear();
+        self.validation_error = None;
+        self.result = None;
+    }
+
+    /// Show the dialog and return the user's choice
+    pub fn show(&mut self, ctx: &egui::Context) -> Option<CompositeNameAction> {
+        if !self.is_open {
+            return None;
+        }
+
+        let mut result = None;
+
+        let title = match self.mode {
+            DialogMode::Create => "Name Your Composite",
+            DialogMode::Rename => "Rename Composite Node",
+        };
+
+        let button_label = match self.mode {
+            DialogMode::Create => "Create",
+            DialogMode::Rename => "Rename",
+        };
+
+        egui::Window::new(title)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .default_width(400.0)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    ui.add_space(10.0);
+
+                    // Name input field
+                    ui.label("Name:");
+                    let text_edit = ui.text_edit_singleline(&mut self.name);
+
+                    // Handle Enter key to confirm
+                    if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        let trimmed = self.name.trim();
+                        if trimmed.is_empty() {
+                            self.validation_error = Some("Name cannot be empty".to_string());
+                        } else {
+                            result = Some(CompositeNameAction::Confirmed(trimmed.to_string()));
+                            self.is_open = false;
+                        }
+                    }
+
+                    // Handle Escape key to cancel
+                    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        result = Some(CompositeNameAction::Cancelled);
+                        self.is_open = false;
+                    }
+
+                    ui.add_space(5.0);
+
+                    // Show validation error if present
+                    if let Some(ref error) = self.validation_error {
+                        ui.colored_label(egui::Color32::from_rgb(255, 100, 100), error);
+                        ui.add_space(5.0);
+                    }
+
+                    ui.add_space(10.0);
+
+                    // Action buttons
+                    ui.horizontal(|ui| {
+                        ui.add_space(80.0);
+
+                        if ui.button(button_label).clicked() {
+                            let trimmed = self.name.trim();
+                            if trimmed.is_empty() {
+                                self.validation_error = Some("Name cannot be empty".to_string());
+                            } else {
+                                result = Some(CompositeNameAction::Confirmed(trimmed.to_string()));
+                                self.is_open = false;
+                                self.validation_error = None;
+                            }
+                        }
+
+                        if ui.button("Cancel").clicked() {
+                            result = Some(CompositeNameAction::Cancelled);
+                            self.is_open = false;
+                            self.validation_error = None;
+                        }
+                    });
+
+                    ui.add_space(10.0);
+                });
+            });
+
+        self.result = result.clone();
+        result
+    }
+}
+
+impl Default for CompositeNameDialog {
+    fn default() -> Self {
+        Self::new()
+    }
+}

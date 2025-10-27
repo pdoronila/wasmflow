@@ -39,6 +39,8 @@ pub struct NodeCanvas {
     pub pending_continuous_stop: Vec<Uuid>,
     /// T038: Composite node pending drill-down (to be handled by app)
     pub pending_drill_down: Option<Uuid>,
+    /// Composite node pending rename (to be handled by app)
+    pub pending_rename: Option<Uuid>,
     /// T085: Dirty flag to track if graph needs re-sync
     needs_sync: bool,
     /// T085: Cached graph node count for detecting changes
@@ -67,6 +69,7 @@ impl NodeCanvas {
             pending_continuous_start: Vec::new(),
             pending_continuous_stop: Vec::new(),
             pending_drill_down: None, // T038: No pending drill-down initially
+            pending_rename: None,     // No pending rename initially
             needs_sync: true,         // T085: Initially dirty
             cached_node_count: 0,
             cached_connection_count: 0,
@@ -353,6 +356,7 @@ impl NodeCanvas {
                 pending_continuous_start: &mut self.pending_continuous_start,
                 pending_continuous_stop: &mut self.pending_continuous_stop,
                 pending_drill_down: &mut self.pending_drill_down, // T040
+                pending_rename: &mut self.pending_rename,
                 snarl_to_uuid: &self.snarl_to_uuid,
             };
 

@@ -23,6 +23,7 @@ pub(super) struct CanvasViewer<'a> {
     pub pending_continuous_start: &'a mut Vec<Uuid>,
     pub pending_continuous_stop: &'a mut Vec<Uuid>,
     pub pending_drill_down: &'a mut Option<Uuid>, // T040: Drill-down requests
+    pub pending_rename: &'a mut Option<Uuid>,     // Rename requests
     pub snarl_to_uuid: &'a HashMap<NodeId, Uuid>,
 }
 
@@ -571,6 +572,14 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
                 if ui.button("🔍 Drill Down").clicked() {
                     if let Some(&uuid) = self.snarl_to_uuid.get(&node) {
                         *self.pending_drill_down = Some(uuid);
+                    }
+                    ui.close();
+                }
+
+                // Show "Rename" option for composite nodes
+                if ui.button("✏ Rename").clicked() {
+                    if let Some(&uuid) = self.snarl_to_uuid.get(&node) {
+                        *self.pending_rename = Some(uuid);
                     }
                     ui.close();
                 }
