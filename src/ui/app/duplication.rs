@@ -90,7 +90,7 @@ impl WasmFlowApp {
         }
 
         // Mark graph as dirty
-        self.graph_dirty = true;
+        self.dirty = true;
 
         // Status message
         self.status_message = format!(
