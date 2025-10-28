@@ -324,12 +324,22 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         "status".to_string(),
                         NodeValue::String("waiting".to_string()),
                     );
+                    // Output empty string so downstream nodes have a value
+                    outputs.insert(
+                        "raw_request".to_string(),
+                        NodeValue::String(String::new()),
+                    );
                 }
                 Err(e) => {
                     log::error!("Failed to accept connection: {}", e);
                     outputs.insert(
                         "status".to_string(),
                         NodeValue::String(format!("error: {}", e)),
+                    );
+                    // Output empty string so downstream nodes have a value
+                    outputs.insert(
+                        "raw_request".to_string(),
+                        NodeValue::String(String::new()),
                     );
                 }
                 }
@@ -339,11 +349,21 @@ impl NodeExecutor for HttpServerListenerExecutor {
                     "status".to_string(),
                     NodeValue::String("connection_active".to_string()),
                 );
+                // Output empty string so downstream nodes have a value
+                outputs.insert(
+                    "raw_request".to_string(),
+                    NodeValue::String(String::new()),
+                );
             }
         } else {
             outputs.insert(
                 "status".to_string(),
                 NodeValue::String("not_initialized".to_string()),
+            );
+            // Output empty string so downstream nodes have a value
+            outputs.insert(
+                "raw_request".to_string(),
+                NodeValue::String(String::new()),
             );
         }
 

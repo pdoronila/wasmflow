@@ -101,6 +101,17 @@ impl ExecutionGuest for Component {
             }
         };
 
+        // Handle empty request (waiting for data) - return empty values
+        if request_text.trim().is_empty() {
+            return Ok(vec![
+                ("method".to_string(), Value::StringVal(String::new())),
+                ("path".to_string(), Value::StringVal(String::new())),
+                ("version".to_string(), Value::StringVal(String::new())),
+                ("headers".to_string(), Value::StringVal("{}".to_string())),
+                ("body".to_string(), Value::StringVal(String::new())),
+            ]);
+        }
+
         // Parse the HTTP request
         let (method, path, version, headers_json, body) = parse_http_request(request_text)
             .map_err(|e| ExecutionError {
