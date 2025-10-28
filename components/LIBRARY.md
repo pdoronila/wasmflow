@@ -1,7 +1,7 @@
 # WasmFlow Core Component Library - Developer Guide
 
 **Version**: 1.1.0
-**Total Components**: 43
+**Total Components**: 49
 **Categories**: 5 (Text, Logic, Math, Collections, Data)
 **Target**: wasm32-wasip2
 **WIT Spec**: wasmflow:node@1.1.0
@@ -13,7 +13,7 @@ The WasmFlow Core Component Library is a comprehensive collection of pre-built W
 **Key Features**:
 - **Pure WASM Components**: Compiled to wasm32-wasip2 target for cross-platform execution
 - **Type-Safe Interfaces**: WIT (WebAssembly Interface Types) for clear contracts
-- **Comprehensive Testing**: 148+ unit tests across all components
+- **Comprehensive Testing**: 160+ unit tests across all components
 - **Optimized Binaries**: 60KB-1MB per component with LTO and strip optimizations
 - **Minimal Dependencies**: Standard library only (except json-stringify and regex components)
 
@@ -24,7 +24,7 @@ The WasmFlow Core Component Library is a comprehensive collection of pre-built W
 | Category | Count | Location | Description |
 |----------|-------|----------|-------------|
 | **Text** | 9 | `core/` + `text/` | String operations + regex pattern matching |
-| **Logic** | 7 | `core/` | Comparison and boolean operations |
+| **Logic** | 13 | `core/` | Comparison, boolean operations, and control flow routing |
 | **Math** | 9 | `math/` | Mathematical functions (power, sqrt, trig, etc.) |
 | **Collections** | 13 | `collections/` | List operations (filter, count, reject with regex support) |
 | **Data** | 5 | `data/` | Type conversion, formatting, and JSONL batch processing |
@@ -72,9 +72,11 @@ cd components && just clean-all
 
 **Integration Test**: `tests/component_tests/string_processing.json`
 
-### 2. Logic & Validation (7 components)
+### 2. Logic & Validation (13 components)
 
 **Location**: `components/core/`
+
+#### Boolean & Comparison Operations (7 components)
 
 | Component | Inputs | Outputs | Description |
 |-----------|--------|---------|-------------|
@@ -86,7 +88,20 @@ cd components && just clean-all
 | **is-null** | value?: any | result: bool | Null check |
 | **is-empty** | value: any | result: bool | Empty string/list check |
 
-**Integration Test**: `tests/component_tests/data_validation.json`
+#### Control Flow & Routing (6 components)
+
+| Component | Inputs | Outputs | Description |
+|-----------|--------|---------|-------------|
+| **select** | condition: bool, true-value: any, false-value: any | result: any | Ternary operator (condition ? true : false) |
+| **if-then-else** | condition: bool, then-value: any, else-value: any | then-output?: any, else-output?: any | Route different values to then/else outputs |
+| **conditional-pass** | condition: bool, value: any | result?: any | Pass value if condition true, else block |
+| **type-check** | value: any, expected-type: string | is-valid: bool, actual-type: string | Runtime type validation |
+| **switch-string** | value: string, case1-4: string, output1-4: any, default: any | result: any | Route based on string matching |
+| **switch-number** | value: numeric, case1-4: f32, output1-4: any, default: any | result: any | Route based on number matching |
+
+**Integration Tests**:
+- `tests/component_tests/data_validation.json` (boolean & comparison)
+- `tests/component_tests/control_flow.json` (control flow & routing)
 
 ### 3. Mathematical Operations (9 components)
 
@@ -270,12 +285,13 @@ Integration tests validate components working together:
 |----------|------------|-------------|----------|
 | Text (basic) | 7 | 21+ | Typical, edge, error cases |
 | Text (regex) | 2 | 14 | Pattern matching, multi-pattern |
-| Logic | 7 | 21+ | All operators, type mismatches |
+| Logic (boolean) | 7 | 21+ | All operators, type mismatches |
+| Logic (control flow) | 6 | 39+ | Routing, filtering, type validation, switching |
 | Math | 9 | 27+ | Valid ops, NaN, infinity |
 | Collections (basic) | 7 | 21+ | Empty, bounds, not found |
 | Collections (regex) | 6 | 30 | Filter, count, reject patterns |
 | Data | 5 | 14 | All Value variants, errors, JSONL |
-| **Total** | **43** | **148+** | Comprehensive |
+| **Total** | **49** | **187+** | Comprehensive |
 
 ## Component Structure
 
@@ -657,6 +673,7 @@ Each component should document:
 **Core Library (Phases 3-7)**:
 - `specs/010-wasm-components-core/PHASE3_STRING_COMPONENTS.md` - Text processing (Phase 3)
 - `specs/010-wasm-components-core/PHASE4_LOGIC_COMPONENTS.md` - Logic & validation (Phase 4)
+- `components/core/PHASE4B_CONTROL_FLOW_COMPONENTS.md` - Control flow routing (Phase 4B)
 - `specs/010-wasm-components-core/PHASE5_MATH_COMPONENTS.md` - Math operations (Phase 5)
 - `specs/010-wasm-components-core/PHASE6_LIST_COMPONENTS.md` - List manipulation (Phase 6)
 - `specs/010-wasm-components-core/PHASE7_DATA_COMPONENTS.md` - Data transformation (Phase 7)
