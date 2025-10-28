@@ -233,6 +233,12 @@ impl NodeExecutor for HttpServerListenerExecutor {
                                     "response_status".to_string(),
                                     NodeValue::String(format!("sent to connection {}", conn_id)),
                                 );
+                                // Clear raw_request so we don't keep propagating old requests
+                                // This signals that the request has been fully processed
+                                outputs.insert(
+                                    "raw_request".to_string(),
+                                    NodeValue::String(String::new()),
+                                );
                             }
                             Err(e) => {
                                 log::warn!("Failed to flush response to connection {}: {}", conn_id, e);
@@ -324,11 +330,8 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         "status".to_string(),
                         NodeValue::String("waiting".to_string()),
                     );
-                    // Output empty string so downstream nodes have a value
-                    outputs.insert(
-                        "raw_request".to_string(),
-                        NodeValue::String(String::new()),
-                    );
+                    // Don't output raw_request - keep the previous value on the port
+                    // This prevents overwriting the actual request with empty data
                 }
                 Err(e) => {
                     log::error!("Failed to accept connection: {}", e);
@@ -336,11 +339,7 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         "status".to_string(),
                         NodeValue::String(format!("error: {}", e)),
                     );
-                    // Output empty string so downstream nodes have a value
-                    outputs.insert(
-                        "raw_request".to_string(),
-                        NodeValue::String(String::new()),
-                    );
+                    // Don't output raw_request - keep the previous value on the port
                 }
                 }
             } else {
@@ -349,22 +348,16 @@ impl NodeExecutor for HttpServerListenerExecutor {
                     "status".to_string(),
                     NodeValue::String("connection_active".to_string()),
                 );
-                // Output empty string so downstream nodes have a value
-                outputs.insert(
-                    "raw_request".to_string(),
-                    NodeValue::String(String::new()),
-                );
+                // Don't output raw_request - keep the previous value on the port
+                // This keeps the request data available for the parser
             }
         } else {
             outputs.insert(
                 "status".to_string(),
                 NodeValue::String("not_initialized".to_string()),
             );
-            // Output empty string so downstream nodes have a value
-            outputs.insert(
-                "raw_request".to_string(),
-                NodeValue::String(String::new()),
-            );
+            // Don't output raw_request - port will have no value initially
+            // First request will populate it, and it will persist
         }
 
         Ok(outputs)

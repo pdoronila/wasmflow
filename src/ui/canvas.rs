@@ -104,8 +104,11 @@ impl NodeCanvas {
         );
 
         // CRITICAL: Save any user-made connections from snarl to graph BEFORE rebuilding
-        // Otherwise connections get lost when snarl is rebuilt
-        self.sync_to_graph(graph);
+        // But ONLY if snarl has been initialized (has nodes)
+        // Otherwise we'll delete all connections when loading from file!
+        if !self.snarl_to_uuid.is_empty() {
+            self.sync_to_graph(graph);
+        }
 
         // Clear existing state
         self.snarl = Snarl::new();
