@@ -56,6 +56,37 @@ impl HttpServerListenerExecutor {
             })),
         }
     }
+
+    /// Explicitly shutdown the HTTP server listener and release the port
+    pub fn shutdown(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            // Close any active connection
+            if let Some((conn_id, _stream)) = state.active_connection.take() {
+                log::debug!("Closing active connection {} during shutdown", conn_id);
+            }
+
+            // Drop the TcpListener to release the port
+            if let Some(listener) = state.listener.take() {
+                log::info!(
+                    "Closing TcpListener on {}:{}",
+                    state.host,
+                    state.port
+                );
+                drop(listener); // Explicitly drop to close socket
+                log::info!(
+                    "TcpListener dropped, port {}:{} should now be released",
+                    state.host,
+                    state.port
+                );
+            } else {
+                log::debug!("No listener to close (was already None)");
+            }
+
+            state.is_running = false;
+        } else {
+            log::error!("Failed to lock state during shutdown");
+        }
+    }
 }
 
 impl NodeExecutor for HttpServerListenerExecutor {
@@ -98,19 +129,78 @@ impl NodeExecutor for HttpServerListenerExecutor {
 
         // Initialize listener if needed (or if config changed)
         if state.listener.is_none() {
-            // First time initialization
+            // First time initialization with SO_REUSEADDR
             let addr = format!("{}:{}", host, port);
-            let listener = TcpListener::bind(&addr).map_err(|e| {
+            log::debug!("Attempting to bind TcpListener to {} with SO_REUSEADDR", addr);
+
+            // Parse address
+            let socket_addr: std::net::SocketAddr = addr.parse().map_err(|e| {
+                ComponentError::ExecutionError(format!("Invalid address {}: {}", addr, e))
+            })?;
+
+            // Create socket with SO_REUSEADDR to allow immediate port reuse
+            let socket = socket2::Socket::new(
+                if socket_addr.is_ipv4() {
+                    socket2::Domain::IPV4
+                } else {
+                    socket2::Domain::IPV6
+                },
+                socket2::Type::STREAM,
+                None,
+            )
+            .map_err(|e| {
+                ComponentError::ExecutionError(format!("Failed to create socket: {}", e))
+            })?;
+
+            // Set SO_REUSEADDR to allow binding even if port is in TIME_WAIT state
+            socket.set_reuse_address(true).map_err(|e| {
+                ComponentError::ExecutionError(format!("Failed to set SO_REUSEADDR: {}", e))
+            })?;
+
+            // On macOS, try to set SO_REUSEPORT for better port reuse behavior
+            // This is a best-effort attempt - if it fails, we continue anyway
+            #[cfg(target_os = "macos")]
+            {
+                use std::os::fd::AsRawFd;
+                let fd = socket.as_raw_fd();
+                let optval: libc::c_int = 1;
+                let ret = unsafe {
+                    libc::setsockopt(
+                        fd,
+                        libc::SOL_SOCKET,
+                        libc::SO_REUSEPORT,
+                        &optval as *const _ as *const libc::c_void,
+                        std::mem::size_of_val(&optval) as libc::socklen_t,
+                    )
+                };
+                if ret != 0 {
+                    log::warn!("Failed to set SO_REUSEPORT: {}", std::io::Error::last_os_error());
+                } else {
+                    log::debug!("Successfully set SO_REUSEPORT on socket");
+                }
+            }
+
+            // Set non-blocking mode so we can check for stop signals
+            socket.set_nonblocking(true).map_err(|e| {
+                ComponentError::ExecutionError(format!("Failed to set non-blocking mode: {}", e))
+            })?;
+
+            // Bind the socket
+            socket.bind(&socket_addr.into()).map_err(|e| {
+                log::error!("Failed to bind to {}: {}", addr, e);
                 ComponentError::ExecutionError(format!(
                     "Failed to bind to {}: {}. Check if port {} is available and not in use",
                     addr, e, port
                 ))
             })?;
 
-            // Set non-blocking mode so we can check for stop signals
-            listener.set_nonblocking(true).map_err(|e| {
-                ComponentError::ExecutionError(format!("Failed to set non-blocking mode: {}", e))
+            // Start listening
+            socket.listen(128).map_err(|e| {
+                ComponentError::ExecutionError(format!("Failed to listen: {}", e))
             })?;
+
+            // Convert to std::net::TcpListener
+            let listener: TcpListener = socket.into();
 
             state.listener = Some(listener);
             state.host = host.clone();

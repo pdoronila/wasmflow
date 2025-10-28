@@ -384,6 +384,46 @@ impl NodeGraph {
             .collect()
     }
 
+    /// Check which required inputs are missing values for a node
+    /// Returns a vector of (port_name, source_node_name) tuples for missing inputs
+    pub fn get_missing_inputs(&self, node_id: Uuid) -> Vec<(String, String)> {
+        let mut missing = Vec::new();
+
+        // Get all incoming connections to this node
+        let incoming = self.incoming_connections(node_id);
+
+        for connection in incoming {
+            // Get the source node and port
+            if let Some(source_node) = self.nodes.get(&connection.from_node) {
+                // Find the source output port
+                if let Some(source_port) = source_node
+                    .outputs
+                    .iter()
+                    .find(|p| p.id == connection.from_port)
+                {
+                    // Check if the port has a value
+                    if source_port.current_value.is_none() {
+                        // Find the target port name for reporting
+                        if let Some(target_node) = self.nodes.get(&node_id) {
+                            if let Some(target_port) = target_node
+                                .inputs
+                                .iter()
+                                .find(|p| p.id == connection.to_port)
+                            {
+                                missing.push((
+                                    target_port.name.clone(),
+                                    source_node.display_name.clone(),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        missing
+    }
+
     /// T074: Grant capability to a node
     pub fn grant_capability(&mut self, grant: CapabilityGrant) {
         self.capability_grants.insert(grant.node_id, grant);

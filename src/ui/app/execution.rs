@@ -414,6 +414,29 @@ impl WasmFlowApp {
                 }
             }
 
+            // Check if all required inputs are available before executing
+            let missing_inputs = self.graph.get_missing_inputs(downstream_node_id);
+            if !missing_inputs.is_empty() {
+                // Don't execute if required inputs are missing
+                let node_name = self
+                    .graph
+                    .nodes
+                    .get(&downstream_node_id)
+                    .map(|n| n.display_name.as_str())
+                    .unwrap_or("unknown");
+
+                log::debug!(
+                    "Skipping execution of downstream node '{}' - missing inputs: {}",
+                    node_name,
+                    missing_inputs
+                        .iter()
+                        .map(|(port, source)| format!("'{}' from '{}'", port, source))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                continue;
+            }
+
             // Execute the downstream node in a background thread
             let graph_clone = self.graph.clone();
             let component_manager = self.engine.component_manager();

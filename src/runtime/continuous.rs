@@ -16,6 +16,15 @@ use crate::graph::{NodeGraph, NodeValue};
 use crate::runtime::wasm_host::ComponentManager;
 use crate::ContinuousNodeError;
 
+// Static cache for HTTP server listener executors
+// This allows the TcpListener to persist across execution iterations
+use once_cell::sync::Lazy;
+use std::collections::HashMap as StdHashMap;
+use crate::builtin::HttpServerListenerExecutor;
+
+static HTTP_EXECUTORS: Lazy<Arc<Mutex<StdHashMap<Uuid, HttpServerListenerExecutor>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(StdHashMap::new())));
+
 // Helper function to safely read interval from graph
 fn read_interval_from_graph(graph: &Arc<Mutex<NodeGraph>>, node_id: Uuid) -> u64 {
     if let Ok(graph_lock) = graph.lock() {
@@ -128,6 +137,58 @@ impl ContinuousExecutionManager {
             });
         }
 
+        // IMPORTANT: Clean up stale HTTP executors from cache before starting
+        // This handles cases where:
+        // 1. The app crashed or the previous stop didn't complete properly
+        // 2. Nodes were deleted but their executors remained in the cache
+        // 3. Any orphaned executors from nodes that no longer exist
+        if let Ok(mut executors) = HTTP_EXECUTORS.lock() {
+            log::debug!("Checking for stale HTTP executors before starting node {}. Current cache size: {}", node_id, executors.len());
+
+            // First, clean up the specific executor for this node if it exists
+            if let Some(executor) = executors.get(&node_id) {
+                log::warn!(
+                    "Found stale HTTP server listener executor for node {} - cleaning up before start",
+                    node_id
+                );
+                executor.shutdown();
+                thread::sleep(Duration::from_millis(50)); // Give OS time to release port
+            }
+            executors.remove(&node_id);
+
+            // Second, clean up any orphaned executors (executors whose nodes are not running)
+            // This handles the case where nodes were deleted but executors remained in cache
+            let active_node_ids: std::collections::HashSet<Uuid> =
+                self.active_tasks.keys().copied().collect();
+
+            log::debug!("Active node count: {}. Checking {} cached executors for orphans", active_node_ids.len(), executors.len());
+
+            let mut orphaned_ids = Vec::new();
+            for executor_node_id in executors.keys() {
+                if *executor_node_id != node_id && !active_node_ids.contains(executor_node_id) {
+                    orphaned_ids.push(*executor_node_id);
+                }
+            }
+
+            if !orphaned_ids.is_empty() {
+                log::warn!("Found {} orphaned HTTP server listener executors", orphaned_ids.len());
+            }
+
+            for orphaned_id in orphaned_ids {
+                log::warn!(
+                    "Found orphaned HTTP server listener executor for non-active node {} - cleaning up",
+                    orphaned_id
+                );
+                if let Some(executor) = executors.get(&orphaned_id) {
+                    executor.shutdown();
+                    thread::sleep(Duration::from_millis(50)); // Give OS time to release port
+                }
+                executors.remove(&orphaned_id);
+            }
+
+            log::debug!("Executor cache size after cleanup: {}", executors.len());
+        }
+
         let cancellation_token = CancellationToken::new();
         let token_clone = cancellation_token.clone();
 
@@ -169,6 +230,27 @@ impl ContinuousExecutionManager {
                 while start.elapsed() < timeout {
                     if handle.is_finished() {
                         let _ = handle.join();
+
+                        // Cleanup: Explicitly shutdown and remove HTTP executor from cache
+                        // This ensures the TcpListener is properly closed and the port is released
+                        if let Ok(mut executors) = HTTP_EXECUTORS.lock() {
+                            if let Some(executor) = executors.get(&node_id) {
+                                log::debug!("Shutting down HTTP server listener executor for node {}", node_id);
+                                executor.shutdown();
+                                // Give the OS a moment to fully release the port (especially on macOS)
+                                drop(executors); // Release lock before sleeping
+                                thread::sleep(Duration::from_millis(50));
+                                // Re-acquire lock to remove from cache
+                                if let Ok(mut executors) = HTTP_EXECUTORS.lock() {
+                                    if let Some(_) = executors.remove(&node_id) {
+                                        log::info!("Removed HTTP server listener executor for node {} from cache", node_id);
+                                    }
+                                }
+                            } else if let Some(_) = executors.remove(&node_id) {
+                                log::info!("Removed HTTP server listener executor for node {} from cache (no shutdown needed)", node_id);
+                            }
+                        }
+
                         // T062: Log successful graceful shutdown
                         log::info!(
                             "Continuous node {} stopped gracefully in {:?}",
@@ -186,6 +268,25 @@ impl ContinuousExecutionManager {
                     node_id
                 );
                 // Thread will be dropped, which terminates it
+
+                // Cleanup even if forced termination
+                if let Ok(mut executors) = HTTP_EXECUTORS.lock() {
+                    if let Some(executor) = executors.get(&node_id) {
+                        log::debug!("Shutting down HTTP server listener executor for node {} (forced)", node_id);
+                        executor.shutdown();
+                        // Give the OS a moment to fully release the port (especially on macOS)
+                        drop(executors); // Release lock before sleeping
+                        thread::sleep(Duration::from_millis(50));
+                        // Re-acquire lock to remove from cache
+                        if let Ok(mut executors) = HTTP_EXECUTORS.lock() {
+                            if let Some(_) = executors.remove(&node_id) {
+                                log::info!("Removed HTTP server listener executor for node {} from cache (forced)", node_id);
+                            }
+                        }
+                    } else if let Some(_) = executors.remove(&node_id) {
+                        log::info!("Removed HTTP server listener executor for node {} from cache (forced, no shutdown needed)", node_id);
+                    }
+                }
             }
 
             Ok(())
@@ -208,6 +309,21 @@ impl ContinuousExecutionManager {
         for (node_id, task) in self.active_tasks.drain() {
             task.cancellation_token.cancel();
             log::info!("Cancelled continuous node {}", node_id);
+        }
+
+        // Cleanup all HTTP server listener executors
+        // This ensures all TcpListeners are properly closed and ports are released
+        if let Ok(mut executors) = HTTP_EXECUTORS.lock() {
+            let count = executors.len();
+            // Explicitly shutdown each executor before clearing
+            for (node_id, executor) in executors.iter() {
+                log::debug!("Shutting down HTTP server listener executor for node {} (app shutdown)", node_id);
+                executor.shutdown();
+            }
+            executors.clear();
+            if count > 0 {
+                log::info!("Shutdown and removed {} HTTP server listener executors", count);
+            }
         }
     }
 
@@ -303,16 +419,8 @@ impl ContinuousExecutionManager {
                             }
                             Some("builtin:continuous:http-server-listener") => {
                                 // HTTP Server Listener: execute listener to accept connections
-                                // IMPORTANT: Use a static executor so the TcpListener persists across iterations
-                                use once_cell::sync::Lazy;
-                                use std::collections::HashMap as StdHashMap;
-                                use std::sync::Arc;
-                                use uuid::Uuid;
-                                use crate::builtin::HttpServerListenerExecutor;
+                                // IMPORTANT: Use the module-level static executor so the TcpListener persists across iterations
                                 use crate::runtime::engine::NodeExecutor;
-
-                                static HTTP_EXECUTORS: Lazy<Arc<std::sync::Mutex<StdHashMap<Uuid, HttpServerListenerExecutor>>>> =
-                                    Lazy::new(|| Arc::new(std::sync::Mutex::new(StdHashMap::new())));
 
                                 if let Ok(graph_lock) = graph.lock() {
                                     let mut inputs = HashMap::new();
@@ -351,9 +459,19 @@ impl ContinuousExecutionManager {
 
                                     // Get or create persistent executor for this node
                                     let mut executors = HTTP_EXECUTORS.lock().unwrap();
+                                    let is_new = !executors.contains_key(&node_id);
                                     let executor = executors
                                         .entry(node_id)
-                                        .or_insert_with(|| HttpServerListenerExecutor::new());
+                                        .or_insert_with(|| {
+                                            log::info!("Creating new HTTP server listener executor for node {}", node_id);
+                                            HttpServerListenerExecutor::new()
+                                        });
+
+                                    if is_new {
+                                        log::debug!("First execution iteration for HTTP server listener node {}", node_id);
+                                    } else {
+                                        log::trace!("Reusing existing HTTP server listener executor for node {}", node_id);
+                                    }
 
                                     executor.execute(&inputs).map_err(|e| e.to_string())
                                 } else {

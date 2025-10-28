@@ -789,6 +789,17 @@ impl WasmFlowApp {
             // Process pending node deletions through command history
             if !self.canvas.pending_deletions.is_empty() {
                 for node_id in self.canvas.pending_deletions.drain(..) {
+                    // IMPORTANT: Stop continuous node before deleting it
+                    // This ensures the HTTP executor is properly cleaned up
+                    if let Some(node) = self.graph.nodes.get(&node_id) {
+                        if node.continuous_config.is_some() {
+                            log::info!("Stopping continuous node {} before deletion", node_id);
+                            if let Err(e) = self.continuous_manager.stop_node(node_id) {
+                                log::warn!("Failed to stop continuous node before deletion: {}", e);
+                            }
+                        }
+                    }
+
                     // Create RemoveNode command
                     let cmd = crate::graph::command::Command::RemoveNode {
                         node_id,
