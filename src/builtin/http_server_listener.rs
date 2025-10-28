@@ -41,6 +41,8 @@ struct ServerState {
     port: u16,
     /// Current active connection waiting for response (only one at a time)
     active_connection: Option<(u32, TcpStream)>,
+    /// Last received request (persists until next request arrives)
+    last_request: String,
 }
 
 impl HttpServerListenerExecutor {
@@ -53,6 +55,7 @@ impl HttpServerListenerExecutor {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
                 active_connection: None,
+                last_request: String::new(), // Start with empty string
             })),
         }
     }
@@ -126,6 +129,9 @@ impl NodeExecutor for HttpServerListenerExecutor {
         let mut state = self.state.lock().map_err(|e| {
             ComponentError::ExecutionError(format!("Failed to lock server state: {}", e))
         })?;
+
+        // Clone last_request early so we can use it later (after state may be dropped)
+        let mut last_request_value = state.last_request.clone();
 
         // Initialize listener if needed (or if config changed)
         if state.listener.is_none() {
@@ -233,12 +239,7 @@ impl NodeExecutor for HttpServerListenerExecutor {
                                     "response_status".to_string(),
                                     NodeValue::String(format!("sent to connection {}", conn_id)),
                                 );
-                                // Clear raw_request so we don't keep propagating old requests
-                                // This signals that the request has been fully processed
-                                outputs.insert(
-                                    "raw_request".to_string(),
-                                    NodeValue::String(String::new()),
-                                );
+                                // Don't clear last_request - it persists until next request
                             }
                             Err(e) => {
                                 log::warn!("Failed to flush response to connection {}: {}", conn_id, e);
@@ -287,7 +288,6 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         // Read HTTP request
                         match read_http_request(&mut stream, max_request_size) {
                             Ok(request) => {
-                                outputs.insert("raw_request".to_string(), NodeValue::String(request));
                                 outputs.insert(
                                     "client_addr".to_string(),
                                     NodeValue::String(addr.to_string()),
@@ -306,8 +306,11 @@ impl NodeExecutor for HttpServerListenerExecutor {
                                 );
 
                                 // Store the TcpStream as the active connection for response writing
+                                // and update last_request
                                 if let Ok(mut state) = self.state.lock() {
                                     state.active_connection = Some((connection_id, stream));
+                                    state.last_request = request.clone(); // Store for persistence
+                                    last_request_value = request; // Also update our local copy
                                     log::debug!("Stored connection {} as active connection", connection_id);
                                 } else {
                                     log::warn!("Failed to lock state to store connection {}", connection_id);
@@ -330,8 +333,7 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         "status".to_string(),
                         NodeValue::String("waiting".to_string()),
                     );
-                    // Don't output raw_request - keep the previous value on the port
-                    // This prevents overwriting the actual request with empty data
+                    // Don't modify last_request - it persists from previous request
                 }
                 Err(e) => {
                     log::error!("Failed to accept connection: {}", e);
@@ -339,7 +341,7 @@ impl NodeExecutor for HttpServerListenerExecutor {
                         "status".to_string(),
                         NodeValue::String(format!("error: {}", e)),
                     );
-                    // Don't output raw_request - keep the previous value on the port
+                    // Don't modify last_request
                 }
                 }
             } else {
@@ -348,17 +350,23 @@ impl NodeExecutor for HttpServerListenerExecutor {
                     "status".to_string(),
                     NodeValue::String("connection_active".to_string()),
                 );
-                // Don't output raw_request - keep the previous value on the port
-                // This keeps the request data available for the parser
+                // Don't modify last_request - keeps showing current request
             }
         } else {
             outputs.insert(
                 "status".to_string(),
                 NodeValue::String("not_initialized".to_string()),
             );
-            // Don't output raw_request - port will have no value initially
-            // First request will populate it, and it will persist
+            // Don't modify last_request
         }
+
+        // ALWAYS output the last_request (even if empty string initially)
+        // This ensures downstream nodes always have a value and don't error
+        // Use the local copy we made at the start (or updated when new request arrived)
+        outputs.insert(
+            "raw_request".to_string(),
+            NodeValue::String(last_request_value),
+        );
 
         Ok(outputs)
     }
