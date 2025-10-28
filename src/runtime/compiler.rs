@@ -77,7 +77,11 @@ impl ComponentCompiler {
     }
 
     /// Compile a component with progress updates
-    pub fn compile_with_progress<F>(&self, config: CompilationConfig, mut progress_callback: F) -> Result<CompilationResult, String>
+    pub fn compile_with_progress<F>(
+        &self,
+        config: CompilationConfig,
+        mut progress_callback: F,
+    ) -> Result<CompilationResult, String>
     where
         F: FnMut(CompilationResult),
     {
@@ -98,9 +102,12 @@ impl ComponentCompiler {
 
         // Dispatch to language-specific compiler with progress
         let result = match config.language {
-            Language::Rust => {
-                self.invoke_cargo_with_progress(&workspace, &config.component_name, config.timeout, &mut progress_callback)?
-            }
+            Language::Rust => self.invoke_cargo_with_progress(
+                &workspace,
+                &config.component_name,
+                config.timeout,
+                &mut progress_callback,
+            )?,
             Language::Python => {
                 self.invoke_componentize_py(&workspace, &config.component_name, config.timeout)?
             }
@@ -423,7 +430,7 @@ impl ComponentCompiler {
     where
         F: FnMut(CompilationResult),
     {
-        use std::io::{BufRead, BufReader};
+        use std::io::BufReader;
 
         // T079: Check if cargo-component is available with helpful error message
         let mut child = Command::new("cargo")
@@ -522,10 +529,7 @@ impl ComponentCompiler {
                     compiled_crates += 1;
 
                     // Extract package name for progress message
-                    let package_name = line
-                        .split_whitespace()
-                        .nth(1)
-                        .unwrap_or("dependency");
+                    let package_name = line.split_whitespace().nth(1).unwrap_or("dependency");
 
                     // Calculate progress (estimate total based on what we've seen)
                     if total_crates == 0 {
@@ -537,10 +541,19 @@ impl ComponentCompiler {
 
                     let percentage = 0.2 + (0.7 * (compiled_crates as f32 / total_crates as f32));
 
-                    log::info!("Compilation progress: {} ({}/{}), {}%", package_name, compiled_crates, total_crates, (percentage * 100.0) as u32);
+                    log::info!(
+                        "Compilation progress: {} ({}/{}), {}%",
+                        package_name,
+                        compiled_crates,
+                        total_crates,
+                        (percentage * 100.0) as u32
+                    );
 
                     progress_callback(CompilationResult::Progress {
-                        message: format!("Compiling {} ({}/{})", package_name, compiled_crates, total_crates),
+                        message: format!(
+                            "Compiling {} ({}/{})",
+                            package_name, compiled_crates, total_crates
+                        ),
                         percentage: Some(percentage),
                     });
                 }

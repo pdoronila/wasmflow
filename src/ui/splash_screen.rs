@@ -6,7 +6,6 @@
 use crate::ui::ComponentLoadProgress;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 /// Splash screen for displaying component loading progress
 ///
