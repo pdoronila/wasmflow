@@ -86,7 +86,7 @@ impl NodeCanvas {
     }
 
     /// Synchronize canvas with graph data
-    pub fn sync_with_graph(&mut self, graph: &NodeGraph) {
+    pub fn sync_with_graph(&mut self, graph: &mut NodeGraph) {
         // T085: Only sync if needed or if structural changes detected
         let node_count_changed = graph.nodes.len() != self.cached_node_count;
         let connection_count_changed = graph.connections.len() != self.cached_connection_count;
@@ -102,6 +102,10 @@ impl NodeCanvas {
             graph.connections.len(),
             self.needs_sync
         );
+
+        // CRITICAL: Save any user-made connections from snarl to graph BEFORE rebuilding
+        // Otherwise connections get lost when snarl is rebuilt
+        self.sync_to_graph(graph);
 
         // Clear existing state
         self.snarl = Snarl::new();
@@ -505,7 +509,30 @@ impl NodeCanvas {
         for (from_node, from_port, to_node, to_port) in &snarl_connections {
             if !graph_connections.contains(&(*from_node, *from_port, *to_node, *to_port)) {
                 // Try to add connection to graph
-                let _ = graph.add_connection(*from_node, *from_port, *to_node, *to_port);
+                match graph.add_connection(*from_node, *from_port, *to_node, *to_port) {
+                    Ok(conn_id) => {
+                        log::debug!("Added connection {} to graph", conn_id);
+                    }
+                    Err(e) => {
+                        // Log why connection failed
+                        if let Some(from_node_obj) = graph.nodes.get(from_node) {
+                            if let Some(to_node_obj) = graph.nodes.get(to_node) {
+                                if let Some(from_port_obj) = from_node_obj.outputs.iter().find(|p| p.id == *from_port) {
+                                    if let Some(to_port_obj) = to_node_obj.inputs.iter().find(|p| p.id == *to_port) {
+                                        log::warn!(
+                                            "❌ Failed to add connection: {} [{}] -> {} [{}]: {}",
+                                            from_node_obj.display_name,
+                                            from_port_obj.data_type.name(),
+                                            to_node_obj.display_name,
+                                            to_port_obj.data_type.name(),
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
