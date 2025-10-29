@@ -29,6 +29,7 @@ use crate::runtime::engine::{register_builtin_executors, ExecutionEngine};
 use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver};
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 /// Main WasmFlow application
@@ -81,6 +82,9 @@ pub struct WasmFlowApp {
     execution_state: Option<IncrementalExecutionState>,
     /// Continuous execution manager for long-running nodes
     continuous_manager: ContinuousExecutionManager,
+    /// Shared graph reference used by continuous execution threads
+    /// Kept in sync with `graph` so continuous threads see updates
+    continuous_graph_ref: Option<Arc<Mutex<NodeGraph>>>,
     /// Channel for receiving continuous execution results
     continuous_result_rx: Receiver<ExecutionResult>,
     /// Channel for sending continuous execution results
@@ -192,6 +196,7 @@ impl WasmFlowApp {
             theme: Theme::dark(),
             execution_state: None,
             continuous_manager: ContinuousExecutionManager::new(),
+            continuous_graph_ref: None,
             continuous_result_rx,
             continuous_result_tx,
             downstream_result_rx,
@@ -863,8 +868,14 @@ impl WasmFlowApp {
         // Handle pending continuous node start requests
         let pending_starts: Vec<Uuid> = self.canvas.pending_continuous_start.drain(..).collect();
         if !pending_starts.is_empty() {
-            // T044: Pass Arc<Mutex<NodeGraph>> so continuous nodes can read updated input values
-            let graph_arc = std::sync::Arc::new(std::sync::Mutex::new(self.graph.clone()));
+            // T044: Create or reuse shared graph reference for continuous execution
+            // CRITICAL: We store this Arc so we can update it when downstream nodes complete
+            // This ensures continuous threads see the latest output values from the processing chain
+            if self.continuous_graph_ref.is_none() {
+                self.continuous_graph_ref = Some(std::sync::Arc::new(std::sync::Mutex::new(self.graph.clone())));
+            }
+            let graph_arc = self.continuous_graph_ref.as_ref().unwrap().clone();
+
             let component_manager = self.engine.component_manager();
             let result_tx = self.continuous_result_tx.clone();
 

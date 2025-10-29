@@ -497,6 +497,24 @@ impl NodeCanvas {
                         to_node.inputs.get(in_pin_id.input),
                     ) {
                         snarl_connections.insert((from_uuid, from_port.id, to_uuid, to_port.id));
+                    } else {
+                        // Port index lookup failed!
+                        log::warn!(
+                            "⚠️ Connection port lookup failed: snarl wire from node {} output {} to node {} input {} - from_port: {}, to_port: {}",
+                            out_pin_id.node.0,
+                            out_pin_id.output,
+                            in_pin_id.node.0,
+                            in_pin_id.input,
+                            from_node.outputs.get(out_pin_id.output).is_some(),
+                            to_node.inputs.get(in_pin_id.input).is_some()
+                        );
+                        log::warn!(
+                            "  From node '{}' has {} outputs, To node '{}' has {} inputs",
+                            from_node.display_name,
+                            from_node.outputs.len(),
+                            to_node.display_name,
+                            to_node.inputs.len()
+                        );
                     }
                 }
             }
@@ -555,6 +573,26 @@ impl NodeCanvas {
             .collect();
 
         for conn_id in connections_to_remove {
+            // Log which connection is being removed
+            if let Some(conn) = graph.connections.iter().find(|c| c.id == conn_id) {
+                if let (Some(from_node), Some(to_node)) = (
+                    graph.nodes.get(&conn.from_node),
+                    graph.nodes.get(&conn.to_node),
+                ) {
+                    if let (Some(from_port), Some(to_port)) = (
+                        from_node.outputs.iter().find(|p| p.id == conn.from_port),
+                        to_node.inputs.iter().find(|p| p.id == conn.to_port),
+                    ) {
+                        log::warn!(
+                            "🗑️ Removing connection: {} [{}] -> {} [{}] (not found in snarl)",
+                            from_node.display_name,
+                            from_port.name,
+                            to_node.display_name,
+                            to_port.name
+                        );
+                    }
+                }
+            }
             let _ = graph.remove_connection(conn_id);
         }
     }

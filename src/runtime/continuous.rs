@@ -422,61 +422,82 @@ impl ContinuousExecutionManager {
                                 // IMPORTANT: Use the module-level static executor so the TcpListener persists across iterations
                                 use crate::runtime::engine::NodeExecutor;
 
-                                if let Ok(graph_lock) = graph.lock() {
-                                    let mut inputs = HashMap::new();
+                                // Helper function to resolve inputs from graph (we'll call this twice)
+                                let resolve_inputs = || -> HashMap<String, NodeValue> {
+                                    if let Ok(graph_lock) = graph.lock() {
+                                        let mut inputs = HashMap::new();
 
-                                    // First, resolve connections to get values from other nodes (for response, connection_id)
-                                    for connection in graph_lock.connections.iter() {
-                                        if connection.to_node == node_id {
-                                            // Get the source node's output value
-                                            if let Some(source_node) = graph_lock.nodes.get(&connection.from_node) {
-                                                if let Some(source_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
-                                                    if let Some(value) = &source_port.current_value {
-                                                        // Map to target input port name
-                                                        if let Some(target_node) = graph_lock.nodes.get(&node_id) {
-                                                            if let Some(target_port) = target_node.inputs.iter().find(|p| p.id == connection.to_port) {
-                                                                inputs.insert(target_port.name.clone(), value.clone());
+                                        log::debug!("🔍 Resolving inputs for HTTP Listener (iteration {})", iterations);
+
+                                        // First, resolve connections to get values from other nodes (for response, connection_id)
+                                        for connection in graph_lock.connections.iter() {
+                                            if connection.to_node == node_id {
+                                                // Get the source node's output value
+                                                if let Some(source_node) = graph_lock.nodes.get(&connection.from_node) {
+                                                    log::debug!("  Found connection FROM: {}", source_node.display_name);
+                                                    if let Some(source_port) = source_node.outputs.iter().find(|p| p.id == connection.from_port) {
+                                                        log::debug!("    Source port '{}' has value: {:?}", source_port.name, source_port.current_value.is_some());
+                                                        if let Some(value) = &source_port.current_value {
+                                                            // Map to target input port name
+                                                            if let Some(target_node) = graph_lock.nodes.get(&node_id) {
+                                                                if let Some(target_port) = target_node.inputs.iter().find(|p| p.id == connection.to_port) {
+                                                                    log::debug!("    Mapping to target port '{}': {:?}", target_port.name, value);
+                                                                    inputs.insert(target_port.name.clone(), value.clone());
+                                                                }
                                                             }
+                                                        } else {
+                                                            log::debug!("    Source port '{}' has NO value!", source_port.name);
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    // Second, get node's direct input port values for unconnected inputs (for constants like host, port)
-                                    if let Some(node) = graph_lock.nodes.get(&node_id) {
-                                        for input in &node.inputs {
-                                            if !inputs.contains_key(&input.name) {
-                                                if let Some(value) = &input.current_value {
-                                                    inputs.insert(input.name.clone(), value.clone());
+                                        // Second, get node's direct input port values for unconnected inputs (for constants like host, port)
+                                        if let Some(node) = graph_lock.nodes.get(&node_id) {
+                                            for input in &node.inputs {
+                                                if !inputs.contains_key(&input.name) {
+                                                    if let Some(value) = &input.current_value {
+                                                        inputs.insert(input.name.clone(), value.clone());
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    drop(graph_lock); // Release lock before execution
-
-                                    // Get or create persistent executor for this node
-                                    let mut executors = HTTP_EXECUTORS.lock().unwrap();
-                                    let is_new = !executors.contains_key(&node_id);
-                                    let executor = executors
-                                        .entry(node_id)
-                                        .or_insert_with(|| {
-                                            log::info!("Creating new HTTP server listener executor for node {}", node_id);
-                                            HttpServerListenerExecutor::new()
-                                        });
-
-                                    if is_new {
-                                        log::debug!("First execution iteration for HTTP server listener node {}", node_id);
+                                        inputs
                                     } else {
-                                        log::trace!("Reusing existing HTTP server listener executor for node {}", node_id);
+                                        HashMap::new()
                                     }
+                                };
 
-                                    executor.execute(&inputs).map_err(|e| e.to_string())
+                                // Resolve inputs with FRESH values right before execution
+                                // This ensures we get the latest response value from the processing chain
+                                let inputs = resolve_inputs();
+
+                                // Debug logging for response input
+                                if let Some(response) = inputs.get("response") {
+                                    log::debug!("HTTP Listener iteration {}: response input = {:?}", iterations, response);
                                 } else {
-                                    Err("Failed to lock graph".to_string())
+                                    log::debug!("HTTP Listener iteration {}: NO response input", iterations);
                                 }
+
+                                // Get or create persistent executor for this node
+                                let mut executors = HTTP_EXECUTORS.lock().unwrap();
+                                let is_new = !executors.contains_key(&node_id);
+                                let executor = executors
+                                    .entry(node_id)
+                                    .or_insert_with(|| {
+                                        log::info!("Creating new HTTP server listener executor for node {}", node_id);
+                                        HttpServerListenerExecutor::new()
+                                    });
+
+                                if is_new {
+                                    log::debug!("First execution iteration for HTTP server listener node {}", node_id);
+                                } else {
+                                    log::trace!("Reusing existing HTTP server listener executor for node {}", node_id);
+                                }
+
+                                executor.execute(&inputs).map_err(|e| e.to_string())
                             }
                             Some("builtin:continuous:combiner") => {
                                 // T050: Combiner node: fetch inputs from connected nodes and execute

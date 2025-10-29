@@ -443,6 +443,11 @@ impl WasmFlowApp {
             let node_id_for_thread = downstream_node_id;
             let tx = result_tx.clone();
 
+            let node_name_for_log = self.graph.nodes.get(&downstream_node_id)
+                .map(|n| n.display_name.clone())
+                .unwrap_or_else(|| "unknown".to_string());
+            log::debug!("🚀 Spawning execution thread for downstream node '{}'", node_name_for_log);
+
             thread::spawn(move || {
                 // Create execution engine in background thread
                 let mut engine = ExecutionEngine::new();
@@ -465,14 +470,39 @@ impl WasmFlowApp {
         loop {
             match self.downstream_result_rx.try_recv() {
                 Ok((node_id, result)) => {
+                    let node_name = self.graph.nodes.get(&node_id)
+                        .map(|n| n.display_name.clone())
+                        .unwrap_or_else(|| "unknown".to_string());
+
                     match result {
                         Ok(outputs) => {
-                            // Apply outputs to the node's output ports
+                            log::debug!("✅ Downstream node '{}' completed with {} outputs", node_name, outputs.len());
+
+                            // Apply outputs to the node's output ports IN THE UI GRAPH
                             if let Some(node) = self.graph.nodes.get_mut(&node_id) {
-                                for (port_name, value) in outputs {
+                                for (port_name, value) in &outputs {
+                                    log::debug!("   Setting output port '{}' = {:?}", port_name, value);
                                     if let Some(port) = node.get_output_mut(&port_name) {
-                                        port.current_value = Some(value);
+                                        port.current_value = Some(value.clone());
                                     }
+                                }
+                            }
+
+                            // CRITICAL BUG FIX: Also update the continuous execution thread's graph copy
+                            // The continuous thread has Arc<Mutex<NodeGraph>> stored in continuous_graph_ref
+                            // We must update it so the continuous thread sees these new output values
+                            if let Some(ref continuous_graph_arc) = self.continuous_graph_ref {
+                                if let Ok(mut continuous_graph) = continuous_graph_arc.lock() {
+                                    if let Some(node) = continuous_graph.nodes.get_mut(&node_id) {
+                                        for (port_name, value) in &outputs {
+                                            if let Some(port) = node.get_output_mut(&port_name) {
+                                                port.current_value = Some(value.clone());
+                                                log::debug!("   Synced to continuous graph: '{}' = {:?}", port_name, value);
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    log::warn!("Failed to lock continuous graph for node {} update", node_id);
                                 }
                             }
 
@@ -483,7 +513,7 @@ impl WasmFlowApp {
                             self.canvas.mark_dirty();
                         }
                         Err(e) => {
-                            log::error!("Downstream node {} execution failed: {}", node_id, e);
+                            log::error!("❌ Downstream node '{}' execution failed: {}", node_name, e);
                         }
                     }
                 }

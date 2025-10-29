@@ -198,8 +198,15 @@ impl NodeGraph {
         let connection_id = connection.id;
         self.connections.push(connection);
 
-        // Check for cycles
-        if self.has_cycle()? {
+        // Check for cycles, but allow feedback loops for continuous nodes
+        // Continuous nodes manage their own execution and can have inputs that feed back from their outputs
+        let target_is_continuous = self
+            .nodes
+            .get(&to_node)
+            .map(|n| n.continuous_config.is_some())
+            .unwrap_or(false);
+
+        if !target_is_continuous && self.has_cycle()? {
             // Remove the connection we just added
             self.connections.pop();
             return Err(GraphError::CycleDetected(vec![from_node, to_node]));
@@ -246,17 +253,33 @@ impl NodeGraph {
 
     /// Build a petgraph DiGraph for analysis
     fn build_digraph(&self) -> DiGraph<Uuid, ()> {
+        self.build_digraph_filtered(false)
+    }
+
+    /// Build a petgraph DiGraph for analysis, optionally excluding continuous nodes
+    fn build_digraph_filtered(&self, exclude_continuous: bool) -> DiGraph<Uuid, ()> {
         let mut graph = DiGraph::new();
         let mut node_indices: HashMap<Uuid, NodeIndex> = HashMap::new();
 
-        // Add nodes
-        for node_id in self.nodes.keys() {
+        // Add nodes (optionally exclude continuous nodes)
+        for (node_id, node) in &self.nodes {
+            if exclude_continuous && node.continuous_config.is_some() {
+                // Skip continuous nodes - they don't participate in topological execution
+                continue;
+            }
             let index = graph.add_node(*node_id);
             node_indices.insert(*node_id, index);
         }
 
-        // Add edges
+        // Add edges (skip edges to continuous nodes if excluding them)
         for connection in &self.connections {
+            // Skip connections to nodes that were excluded
+            if !node_indices.contains_key(&connection.from_node)
+                || !node_indices.contains_key(&connection.to_node)
+            {
+                continue;
+            }
+
             if let (Some(&from_idx), Some(&to_idx)) = (
                 node_indices.get(&connection.from_node),
                 node_indices.get(&connection.to_node),
@@ -281,9 +304,11 @@ impl NodeGraph {
             return Ok(cached.clone());
         }
 
-        let graph = self.build_digraph();
+        // Build graph excluding continuous nodes (they manage their own execution)
+        // This allows feedback loops to continuous nodes without creating cycles
+        let graph = self.build_digraph_filtered(true);
 
-        // Check for cycles
+        // Check for cycles (only among non-continuous nodes)
         if algo::is_cyclic_directed(&graph) {
             return Err(GraphError::CycleDetected(
                 self.nodes.keys().copied().collect(),
