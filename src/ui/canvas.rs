@@ -43,6 +43,9 @@ pub struct NodeCanvas {
     pub pending_rename: Option<Uuid>,
     /// T085: Dirty flag to track if graph needs re-sync
     needs_sync: bool,
+    /// Flag to indicate we're switching to a completely different graph (drill-down/back)
+    /// When true, skip syncing old connections to the new graph
+    switching_graphs: bool,
     /// T085: Cached graph node count for detecting changes
     cached_node_count: usize,
     /// T085: Cached connection count for detecting changes
@@ -71,6 +74,7 @@ impl NodeCanvas {
             pending_drill_down: None, // T038: No pending drill-down initially
             pending_rename: None,     // No pending rename initially
             needs_sync: true,         // T085: Initially dirty
+            switching_graphs: true,   // Initially switching (no snarl state yet)
             cached_node_count: 0,
             cached_connection_count: 0,
             selection: SelectionState::new(), // T008: Initialize selection state
@@ -85,6 +89,13 @@ impl NodeCanvas {
         self.needs_sync = true;
     }
 
+    /// Mark canvas as switching to a different graph (drill-down/back navigation)
+    /// This prevents syncing connections from the old graph to the new graph
+    pub fn mark_switching_graphs(&mut self) {
+        self.needs_sync = true;
+        self.switching_graphs = true;
+    }
+
     /// Synchronize canvas with graph data
     pub fn sync_with_graph(&mut self, graph: &mut NodeGraph) {
         // T085: Only sync if needed or if structural changes detected
@@ -97,16 +108,19 @@ impl NodeCanvas {
         }
 
         log::debug!(
-            "Syncing canvas with graph (nodes: {}, connections: {}, forced: {})",
+            "Syncing canvas with graph (nodes: {}, connections: {}, forced: {}, switching: {})",
             graph.nodes.len(),
             graph.connections.len(),
-            self.needs_sync
+            self.needs_sync,
+            self.switching_graphs
         );
 
         // CRITICAL: Save any user-made connections from snarl to graph BEFORE rebuilding
-        // But ONLY if snarl has been initialized (has nodes)
-        // Otherwise we'll delete all connections when loading from file!
-        if !self.snarl_to_uuid.is_empty() {
+        // But ONLY if:
+        // 1. Snarl has been initialized (has nodes), AND
+        // 2. We're NOT switching to a completely different graph (drill-down/back)
+        // Otherwise we'll delete all connections when loading from file or switching views!
+        if !self.snarl_to_uuid.is_empty() && !self.switching_graphs {
             self.sync_to_graph(graph);
         }
 
@@ -161,6 +175,7 @@ impl NodeCanvas {
         self.cached_node_count = graph.nodes.len();
         self.cached_connection_count = graph.connections.len();
         self.needs_sync = false;
+        self.switching_graphs = false; // Reset switching flag after sync complete
     }
 
     /// Create snarl node data from graph node

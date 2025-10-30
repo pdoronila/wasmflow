@@ -368,15 +368,16 @@ impl WasmFlowApp {
         self.error_message = None;
         self.status_message = format!("Viewing internal structure of '{}'", node.display_name);
 
-        // Mark canvas as needing sync
-        self.canvas.mark_dirty();
+        // Mark canvas as switching to a different graph (prevents syncing old connections)
+        self.canvas.mark_switching_graphs();
     }
 
     /// T041: Navigate back from drill-down view
     pub(super) fn handle_back_navigation(&mut self) {
         if self.view_stack.go_back() {
             self.status_message = "Returned to parent view".to_string();
-            self.canvas.mark_dirty();
+            // Mark canvas as switching to a different graph (prevents syncing old connections)
+            self.canvas.mark_switching_graphs();
         }
     }
 
