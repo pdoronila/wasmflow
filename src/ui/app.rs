@@ -825,10 +825,59 @@ impl WasmFlowApp {
                     }
                 }
             }
+
+            // Process pending connection deletions through command history
+            if !self.canvas.pending_connection_deletions.is_empty() {
+                log::info!("Processing {} pending connection deletions", self.canvas.pending_connection_deletions.len());
+                // Collect full connection data for undo
+                let connections_to_delete: Vec<crate::graph::connection::Connection> = self
+                    .canvas
+                    .pending_connection_deletions
+                    .iter()
+                    .filter_map(|conn_id| {
+                        self.graph.connections.iter().find(|c| &c.id == conn_id).cloned()
+                    })
+                    .collect();
+
+                log::info!("Found {} connections to delete", connections_to_delete.len());
+                self.canvas.pending_connection_deletions.clear();
+
+                if !connections_to_delete.is_empty() {
+                    // Clear selection for deleted connections
+                    for conn in &connections_to_delete {
+                        self.canvas.selected_connections.remove(&conn.id);
+                    }
+
+                    // Create RemoveConnections command
+                    let cmd = crate::graph::command::Command::RemoveConnections {
+                        connections: connections_to_delete.clone(),
+                    };
+
+                    if let Err(e) = self.history.execute(cmd, &mut self.graph) {
+                        self.error_message = Some(format!("Failed to delete connections: {}", e));
+                    } else {
+                        let count = connections_to_delete.len();
+                        self.status_message = if count == 1 {
+                            "Connection deleted".to_string()
+                        } else {
+                            format!("{} connections deleted", count)
+                        };
+                        self.error_message = None;
+                        self.dirty = true;
+                        self.canvas.mark_dirty();
+                    }
+                }
+            }
         } else {
             // In drill-down mode - discard any modification attempts
             if !self.canvas.pending_deletions.is_empty() {
                 self.canvas.pending_deletions.clear();
+                self.status_message =
+                    "Drill-down view is read-only. Return to main canvas to make changes."
+                        .to_string();
+            }
+            if !self.canvas.pending_connection_deletions.is_empty() {
+                self.canvas.pending_connection_deletions.clear();
                 self.status_message =
                     "Drill-down view is read-only. Return to main canvas to make changes."
                         .to_string();
@@ -1096,6 +1145,16 @@ impl eframe::App for WasmFlowApp {
             let selected_count = self.graph.nodes.values().filter(|n| n.selected).count();
             if selected_count >= 1 && self.view_stack.is_main_canvas() {
                 self.handle_clone_action();
+            }
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)) {
+            // Delete/Backspace -> Delete selected connections
+            if !self.canvas.selected_connections.is_empty() && self.view_stack.is_main_canvas() {
+                log::info!("Delete key pressed with {} selected connections", self.canvas.selected_connections.len());
+                // Add all selected connections to pending deletions
+                for conn_id in &self.canvas.selected_connections {
+                    self.canvas.pending_connection_deletions.push(*conn_id);
+                }
+                log::info!("Added {} connections to pending deletions", self.canvas.pending_connection_deletions.len());
             }
         }
 

@@ -32,6 +32,8 @@ pub enum Command {
     },
     /// Remove a connection
     RemoveConnection { connection: Connection },
+    /// Remove multiple connections
+    RemoveConnections { connections: Vec<Connection> },
     /// Change a node's constant value
     ChangeConstantValue {
         node_id: Uuid,
@@ -108,6 +110,18 @@ impl Command {
                 .remove_connection(connection.id)
                 .map(|_| ())
                 .map_err(|e| e.to_string()),
+            Command::RemoveConnections { connections } => {
+                log::info!("RemoveConnections execute: {} connections to delete", connections.len());
+                // Remove all connections
+                for conn in connections.iter() {
+                    log::info!("  Removing connection {}", conn.id);
+                    match graph.remove_connection(conn.id) {
+                        Ok(_) => log::info!("    Successfully removed"),
+                        Err(e) => log::error!("    Failed to remove: {}", e),
+                    }
+                }
+                Ok(())
+            }
             Command::ChangeConstantValue {
                 node_id,
                 port_index,
@@ -217,6 +231,18 @@ impl Command {
                 )
                 .map(|_| ())
                 .map_err(|e| e.to_string()),
+            Command::RemoveConnections { connections } => {
+                // Restore all connections
+                for conn in connections {
+                    let _ = graph.add_connection(
+                        conn.from_node,
+                        conn.from_port,
+                        conn.to_node,
+                        conn.to_port,
+                    );
+                }
+                Ok(())
+            }
             Command::ChangeConstantValue {
                 node_id,
                 port_index,

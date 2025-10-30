@@ -31,6 +31,8 @@ pub struct NodeCanvas {
     uuid_to_snarl: HashMap<Uuid, NodeId>,
     /// Nodes pending deletion (to be handled by app with undo/redo)
     pub pending_deletions: Vec<Uuid>,
+    /// Connections pending deletion (to be handled by app with undo/redo)
+    pub pending_connection_deletions: Vec<Uuid>,
     /// T078: Node pending permission view (to be handled by app)
     pub pending_permission_view: Option<Uuid>,
     /// Continuous nodes pending start
@@ -58,6 +60,8 @@ pub struct NodeCanvas {
     viewport_scale: f32,
     /// Cached viewport offset for coordinate transformation
     viewport_offset: egui::Vec2,
+    /// Selected connections for deletion
+    pub selected_connections: std::collections::HashSet<Uuid>,
 }
 
 impl NodeCanvas {
@@ -68,6 +72,7 @@ impl NodeCanvas {
             snarl_to_uuid: HashMap::new(),
             uuid_to_snarl: HashMap::new(),
             pending_deletions: Vec::new(),
+            pending_connection_deletions: Vec::new(),
             pending_permission_view: None,
             pending_continuous_start: Vec::new(),
             pending_continuous_stop: Vec::new(),
@@ -81,6 +86,7 @@ impl NodeCanvas {
             canvas_mode: CanvasMode::Normal,  // Start in normal mode
             viewport_scale: 1.0,              // Default scale
             viewport_offset: egui::Vec2::ZERO, // Default offset
+            selected_connections: std::collections::HashSet::new(), // No connections selected initially
         }
     }
 
@@ -435,6 +441,60 @@ impl NodeCanvas {
                 }
             });
 
+        // Draw X over input ports that have selected connections
+        let conn_layer_id = ui.id().with("connection_delete_icons");
+        egui::Area::new(conn_layer_id)
+            .fixed_pos(egui::pos2(0.0, 0.0))
+            .interactable(false)
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                let painter = ui.ctx().debug_painter();
+
+                // For each selected connection, draw X over its target input port
+                for conn_id in &self.selected_connections {
+                    if let Some(conn) = graph.connections.iter().find(|c| &c.id == conn_id) {
+                        if let Some(to_node) = graph.nodes.get(&conn.to_node) {
+                            if let Some(&to_snarl_id) = self.uuid_to_snarl.get(&conn.to_node) {
+                                if let Some(to_info) = self.snarl.get_node_info(to_snarl_id) {
+                                    // Find the input port index
+                                    if let Some(to_port_idx) = to_node.inputs.iter().position(|p| p.id == conn.to_port) {
+                                        // Estimate port position (left side of node)
+                                        let port_spacing = 20.0;
+                                        let port_offset_y = 40.0 + (to_port_idx as f32 * port_spacing);
+                                        let port_pos = egui::pos2(to_info.pos.x, to_info.pos.y + port_offset_y);
+
+                                        // Draw red circle background
+                                        let icon_radius = 8.0;
+                                        painter.add(egui::Shape::circle_filled(
+                                            port_pos,
+                                            icon_radius,
+                                            Color32::from_rgb(200, 50, 50),
+                                        ));
+
+                                        // Draw white X
+                                        let x_offset = icon_radius * 0.5;
+                                        painter.add(egui::Shape::line_segment(
+                                            [
+                                                egui::pos2(port_pos.x - x_offset, port_pos.y - x_offset),
+                                                egui::pos2(port_pos.x + x_offset, port_pos.y + x_offset),
+                                            ],
+                                            egui::Stroke::new(2.0, Color32::WHITE),
+                                        ));
+                                        painter.add(egui::Shape::line_segment(
+                                            [
+                                                egui::pos2(port_pos.x - x_offset, port_pos.y + x_offset),
+                                                egui::pos2(port_pos.x + x_offset, port_pos.y - x_offset),
+                                            ],
+                                            egui::Stroke::new(2.0, Color32::WHITE),
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
         // T009-T011: Handle mouse events for selection
         // Only process selection in Selection mode
         if self.canvas_mode == CanvasMode::Selection {
@@ -478,6 +538,76 @@ impl NodeCanvas {
             });
         }
 
+        // Handle connection selection by clicking input ports (works in both Normal and Selection modes)
+        ui.ctx().input(|i| {
+            if let Some(pos) = i.pointer.interact_pos() {
+                if i.pointer.primary_clicked() {
+                    // Check if an input port with a connection was clicked
+                    let mut found_connection = None;
+
+                    for (node_id, node) in &graph.nodes {
+                        if let Some(&snarl_id) = self.uuid_to_snarl.get(node_id) {
+                            if let Some(node_info) = self.snarl.get_node_info(snarl_id) {
+                                // Check each input port
+                                for (port_idx, port) in node.inputs.iter().enumerate() {
+                                    // Estimate port position (left side of node)
+                                    let port_spacing = 20.0;
+                                    let port_offset_y = 40.0 + (port_idx as f32 * port_spacing);
+                                    let port_pos = egui::pos2(node_info.pos.x, node_info.pos.y + port_offset_y);
+
+                                    // Check if click is near this port (within 8px radius)
+                                    let distance = ((pos.x - port_pos.x).powi(2) + (pos.y - port_pos.y).powi(2)).sqrt();
+                                    if distance <= 8.0 {
+                                        // Found a click on this input port
+                                        // Check if it has a connection
+                                        if let Some(conn) = graph.connections.iter().find(|c| c.to_port == port.id) {
+                                            found_connection = Some(conn.id);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if found_connection.is_some() {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if let Some(conn_id) = found_connection {
+                        log::info!("Input port with connection {} clicked", conn_id);
+
+                        if self.selected_connections.contains(&conn_id) {
+                            // Already selected - clicking again deletes it
+                            log::info!("Connection already selected, deleting it");
+                            self.pending_connection_deletions.push(conn_id);
+                            self.selected_connections.remove(&conn_id);
+                        } else {
+                            // Not selected - select it
+                            let is_shift = i.modifiers.shift;
+                            let is_ctrl = i.modifiers.command || i.modifiers.ctrl;
+
+                            if is_shift || is_ctrl {
+                                // Multi-select: add to selection
+                                self.selected_connections.insert(conn_id);
+                            } else {
+                                // Single-select: clear others and select this one
+                                self.selected_connections.clear();
+                                self.selected_connections.insert(conn_id);
+                            }
+                            log::info!("Selected connection, now {} selected", self.selected_connections.len());
+                        }
+                    } else {
+                        // Didn't click on a port with a connection - clear selection
+                        if !self.selected_connections.is_empty() {
+                            log::info!("Clearing connection selection");
+                            self.selected_connections.clear();
+                        }
+                    }
+                }
+            }
+        });
+
         // Sync changes back to graph (positions, connections)
         self.sync_to_graph(graph);
     }
@@ -491,6 +621,13 @@ impl NodeCanvas {
                     graph_node.position = node_info.pos;
                 }
             }
+        }
+
+        // Don't sync connections if canvas is dirty (about to do full resync)
+        // This prevents snarl from adding back connections that were just deleted
+        if self.needs_sync {
+            log::debug!("Skipping connection sync - canvas is dirty and will resync");
+            return;
         }
 
         // Sync connections from snarl to graph
@@ -645,6 +782,7 @@ impl NodeCanvas {
             self.viewport_offset,
         )
     }
+
 }
 
 impl Default for NodeCanvas {
