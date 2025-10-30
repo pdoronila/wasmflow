@@ -7,6 +7,7 @@
 use crate::graph::node::{ComponentRegistry, ComponentSpec};
 use crate::runtime::wasm_host::ComponentManager;
 use eframe::egui;
+use std::collections::{HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 
 /// Action returned by the spotlight search
@@ -31,6 +32,8 @@ pub struct SpotlightSearch {
     scroll_to_selected: bool,
     /// Request focus on the search input
     request_focus: bool,
+    /// Last 3 components used (most recent first)
+    recent_components: VecDeque<String>,
 }
 
 impl SpotlightSearch {
@@ -42,6 +45,7 @@ impl SpotlightSearch {
             selected_index: None,
             scroll_to_selected: false,
             request_focus: false,
+            recent_components: VecDeque::new(),
         }
     }
 
@@ -66,6 +70,21 @@ impl SpotlightSearch {
     /// Check if the dialog is visible
     pub fn is_visible(&self) -> bool {
         self.visible
+    }
+
+    /// Record that a component was used
+    /// Keeps track of the last 3 unique components
+    pub fn record_component_usage(&mut self, component_id: String) {
+        // Remove the component if it already exists (to move it to front)
+        self.recent_components.retain(|id| id != &component_id);
+
+        // Add to front
+        self.recent_components.push_front(component_id);
+
+        // Keep only the last 3
+        while self.recent_components.len() > 3 {
+            self.recent_components.pop_back();
+        }
     }
 
     /// Show the spotlight search dialog
@@ -134,16 +153,17 @@ impl SpotlightSearch {
                     }
 
                     if handle_navigation {
-                        // Get filtered list to calculate bounds
-                        let filtered = self.get_filtered_components(registry, component_manager);
+                        // Get combined list to calculate bounds
+                        let (recent, filtered) = self.get_recent_and_filtered_components(registry, component_manager);
+                        let total_count = recent.len() + filtered.len();
 
                         if nav_down {
                             if let Some(idx) = self.selected_index {
-                                if idx + 1 < filtered.len() {
+                                if idx + 1 < total_count {
                                     self.selected_index = Some(idx + 1);
                                     self.scroll_to_selected = true;
                                 }
-                            } else if !filtered.is_empty() {
+                            } else if total_count > 0 {
                                 self.selected_index = Some(0);
                                 self.scroll_to_selected = true;
                             }
@@ -153,7 +173,7 @@ impl SpotlightSearch {
                                     self.selected_index = Some(idx - 1);
                                     self.scroll_to_selected = true;
                                 }
-                            } else if !filtered.is_empty() {
+                            } else if total_count > 0 {
                                 self.selected_index = Some(0);
                                 self.scroll_to_selected = true;
                             }
@@ -163,9 +183,11 @@ impl SpotlightSearch {
                     if handle_enter {
                         // Add the selected component at mouse position
                         if let Some(idx) = self.selected_index {
-                            let filtered = self.get_filtered_components(registry, component_manager);
-                            if let Some(spec) = filtered.get(idx) {
+                            let (recent, filtered) = self.get_recent_and_filtered_components(registry, component_manager);
+                            let all_components: Vec<_> = recent.iter().chain(filtered.iter()).collect();
+                            if let Some(spec) = all_components.get(idx) {
                                 let position = mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
+                                self.record_component_usage(spec.id.clone());
                                 action = Some(SpotlightAction::AddComponent {
                                     spec: (*spec).clone(),
                                     position,
@@ -191,15 +213,16 @@ impl SpotlightSearch {
                     ui.add_space(8.0);
 
                     // Results list
-                    let filtered = self.get_filtered_components(registry, component_manager);
+                    let (recent, filtered) = self.get_recent_and_filtered_components(registry, component_manager);
+                    let total_count = recent.len() + filtered.len();
 
                     // Update selected index if out of bounds
                     if let Some(idx) = self.selected_index {
-                        if idx >= filtered.len() {
-                            self.selected_index = if filtered.is_empty() {
+                        if idx >= total_count {
+                            self.selected_index = if total_count == 0 {
                                 None
                             } else {
-                                Some(filtered.len() - 1)
+                                Some(total_count - 1)
                             };
                         }
                     }
@@ -209,15 +232,103 @@ impl SpotlightSearch {
                         .max_height(400.0)
                         .id_salt("spotlight_results")
                         .show(ui, |ui| {
-                            if filtered.is_empty() {
+                            if total_count == 0 {
                                 ui.vertical_centered(|ui| {
                                     ui.add_space(30.0);
                                     ui.label("No components found");
                                     ui.add_space(30.0);
                                 });
                             } else {
-                                for (idx, spec) in filtered.iter().enumerate() {
-                                    let is_selected = self.selected_index == Some(idx);
+                                let mut current_idx = 0;
+
+                                // Show recent components first
+                                if !recent.is_empty() {
+                                    ui.label(
+                                        egui::RichText::new("Last Used")
+                                            .size(12.0)
+                                            .color(ctx.style().visuals.weak_text_color()),
+                                    );
+                                    ui.add_space(4.0);
+
+                                    for spec in recent.iter() {
+                                        let is_selected = self.selected_index == Some(current_idx);
+
+                                        // Create a selectable row
+                                        let row_response = ui.horizontal(|ui| {
+                                            ui.set_min_width(ui.available_width());
+
+                                            // Background highlight for selected item
+                                            if is_selected {
+                                                let rect = ui.available_rect_before_wrap();
+                                                ui.painter().rect_filled(
+                                                    rect,
+                                                    egui::CornerRadius::same(4),
+                                                    ctx.style().visuals.selection.bg_fill,
+                                                );
+                                            }
+
+                                            ui.vertical(|ui| {
+                                                // Component name (bold)
+                                                let name_text = if is_selected {
+                                                    egui::RichText::new(&spec.name).strong().size(14.0)
+                                                } else {
+                                                    egui::RichText::new(&spec.name).size(14.0)
+                                                };
+                                                ui.label(name_text);
+
+                                                // Category and description
+                                                let category = spec
+                                                    .category
+                                                    .clone()
+                                                    .unwrap_or_else(|| "Other".to_string());
+                                                let meta_text =
+                                                    format!("{} · {}", category, spec.description);
+                                                ui.label(
+                                                    egui::RichText::new(meta_text)
+                                                        .size(11.0)
+                                                        .color(ctx.style().visuals.weak_text_color()),
+                                                );
+                                            });
+                                        });
+
+                                        // Scroll to selected item if needed
+                                        if is_selected && self.scroll_to_selected {
+                                            row_response
+                                                .response
+                                                .scroll_to_me(Some(egui::Align::Center));
+                                            self.scroll_to_selected = false;
+                                        }
+
+                                        // Handle click
+                                        if row_response.response.clicked() {
+                                            let position =
+                                                mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
+                                            self.record_component_usage(spec.id.clone());
+                                            action = Some(SpotlightAction::AddComponent {
+                                                spec: (*spec).clone(),
+                                                position,
+                                            });
+                                            close_dialog = true;
+                                        }
+
+                                        // Hover effect
+                                        if row_response.response.hovered() {
+                                            self.selected_index = Some(current_idx);
+                                        }
+
+                                        ui.add_space(4.0);
+                                        current_idx += 1;
+                                    }
+
+                                    // Separator between recent and search results
+                                    ui.add_space(4.0);
+                                    ui.separator();
+                                    ui.add_space(4.0);
+                                }
+
+                                // Show filtered search results
+                                for spec in filtered.iter() {
+                                    let is_selected = self.selected_index == Some(current_idx);
 
                                     // Create a selectable row
                                     let row_response = ui.horizontal(|ui| {
@@ -269,6 +380,7 @@ impl SpotlightSearch {
                                     if row_response.response.clicked() {
                                         let position =
                                             mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
+                                        self.record_component_usage(spec.id.clone());
                                         action = Some(SpotlightAction::AddComponent {
                                             spec: (*spec).clone(),
                                             position,
@@ -278,10 +390,11 @@ impl SpotlightSearch {
 
                                     // Hover effect
                                     if row_response.response.hovered() {
-                                        self.selected_index = Some(idx);
+                                        self.selected_index = Some(current_idx);
                                     }
 
                                     ui.add_space(4.0);
+                                    current_idx += 1;
                                 }
                             }
                         });
@@ -292,7 +405,7 @@ impl SpotlightSearch {
 
                     // Footer with count and hint
                     ui.horizontal(|ui| {
-                        let count = filtered.len();
+                        let count = total_count;
                         ui.label(
                             egui::RichText::new(format!(
                                 "{} component{}",
@@ -319,6 +432,43 @@ impl SpotlightSearch {
         }
 
         action
+    }
+
+    /// Get recent components and filtered search results
+    /// Returns (recent_components, filtered_results)
+    /// Recent components are excluded from filtered results to avoid duplication
+    fn get_recent_and_filtered_components<'a>(
+        &self,
+        registry: &'a ComponentRegistry,
+        component_manager: &Arc<Mutex<ComponentManager>>,
+    ) -> (Vec<&'a ComponentSpec>, Vec<&'a ComponentSpec>) {
+        // Get recent components that are still available
+        let recent: Vec<&ComponentSpec> = self
+            .recent_components
+            .iter()
+            .filter_map(|id| registry.get_by_id(id))
+            .filter(|spec| {
+                // Check if component is still available (builtin or loaded in ComponentManager)
+                if spec.id.starts_with("builtin:") {
+                    true
+                } else {
+                    let cm = match component_manager.lock() {
+                        Ok(cm) => cm,
+                        Err(_) => return false,
+                    };
+                    cm.has_component(&spec.id)
+                }
+            })
+            .collect();
+
+        // Get filtered results
+        let mut filtered = self.get_filtered_components(registry, component_manager);
+
+        // Remove recent components from filtered results to avoid duplication
+        let recent_ids: HashSet<_> = recent.iter().map(|spec| &spec.id).collect();
+        filtered.retain(|spec| !recent_ids.contains(&spec.id));
+
+        (recent, filtered)
     }
 
     /// Get filtered and sorted components based on search query
