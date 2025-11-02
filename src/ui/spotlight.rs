@@ -189,7 +189,7 @@ impl SpotlightSearch {
                                 let position = mouse_pos.unwrap_or(egui::Pos2::new(400.0, 300.0));
                                 self.record_component_usage(spec.id.clone());
                                 action = Some(SpotlightAction::AddComponent {
-                                    spec: (*spec).clone(),
+                                    spec: (**spec).clone(),
                                     position,
                                 });
                                 close_dialog = true;
