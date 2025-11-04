@@ -131,6 +131,8 @@ pub struct PermissionDialog {
     result: Option<PermissionAction>,
     /// T081: Full access warning checkbox state
     full_access_acknowledged: bool,
+    /// Index of currently selected element for keyboard navigation
+    selected_index: Option<usize>,
 }
 
 impl PermissionDialog {
@@ -143,6 +145,7 @@ impl PermissionDialog {
             requested_capabilities: CapabilitySet::none(),
             result: None,
             full_access_acknowledged: false,
+            selected_index: None,
         }
     }
 
@@ -154,6 +157,7 @@ impl PermissionDialog {
         self.requested_capabilities = capabilities;
         self.result = None;
         self.full_access_acknowledged = false;
+        self.selected_index = Some(0); // Default to first button (Approve)
     }
 
     /// Check if the dialog is open
@@ -177,6 +181,7 @@ impl PermissionDialog {
         self.requested_capabilities = CapabilitySet::none();
         self.result = None;
         self.full_access_acknowledged = false;
+        self.selected_index = None;
     }
 
     /// Show the dialog and return the user's choice
@@ -195,6 +200,122 @@ impl PermissionDialog {
             .default_width(450.0)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
+                    // Determine button visibility
+                    let is_full_access = matches!(self.requested_capabilities, CapabilitySet::Full);
+
+                    // Navigation order:
+                    // 0: Approve button
+                    // 1: Approve as Full Access button (only if !is_full_access)
+                    // 2: Deny button
+                    // 3: Checkbox
+                    let total_elements = if is_full_access { 3 } else { 4 };
+
+                    // Keyboard navigation handling (before UI rendering)
+                    let mut handle_navigation = false;
+                    let mut nav_forward = false;
+                    let mut nav_backward = false;
+                    let mut handle_enter = false;
+                    let mut handle_space = false;
+                    let mut handle_escape = false;
+
+                    ui.input_mut(|i| {
+                        if i.consume_key(egui::Modifiers::NONE, egui::Key::Escape) {
+                            handle_escape = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight)
+                            || i.consume_key(egui::Modifiers::NONE, egui::Key::Tab) {
+                            handle_navigation = true;
+                            nav_forward = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft)
+                            || i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab) {
+                            handle_navigation = true;
+                            nav_backward = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::Enter) {
+                            handle_enter = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::Space) {
+                            handle_space = true;
+                        }
+                    });
+
+                    // Apply navigation
+                    if handle_escape {
+                        result = Some(PermissionAction::Deny);
+                        self.is_open = false;
+                    }
+
+                    if handle_navigation {
+                        if nav_forward {
+                            if let Some(idx) = self.selected_index {
+                                self.selected_index = Some((idx + 1) % total_elements);
+                            } else {
+                                self.selected_index = Some(0);
+                            }
+                        } else if nav_backward {
+                            if let Some(idx) = self.selected_index {
+                                self.selected_index = Some(if idx == 0 {
+                                    total_elements - 1
+                                } else {
+                                    idx - 1
+                                });
+                            } else {
+                                self.selected_index = Some(0);
+                            }
+                        }
+                    }
+
+                    // Handle Enter key - activate selected button
+                    if handle_enter {
+                        if let Some(idx) = self.selected_index {
+                            let can_approve = !is_full_access || self.full_access_acknowledged;
+                            match idx {
+                                0 => {
+                                    // Approve button
+                                    if can_approve {
+                                        result = Some(PermissionAction::Approve);
+                                        self.is_open = false;
+                                    }
+                                }
+                                1 => {
+                                    if is_full_access {
+                                        // Deny button (no Approve as Full button)
+                                        result = Some(PermissionAction::Deny);
+                                        self.is_open = false;
+                                    } else {
+                                        // Approve as Full Access button
+                                        if self.full_access_acknowledged {
+                                            result = Some(PermissionAction::ApproveAsFull);
+                                            self.is_open = false;
+                                        }
+                                    }
+                                }
+                                2 => {
+                                    if is_full_access {
+                                        // Checkbox
+                                        self.full_access_acknowledged = !self.full_access_acknowledged;
+                                    } else {
+                                        // Deny button
+                                        result = Some(PermissionAction::Deny);
+                                        self.is_open = false;
+                                    }
+                                }
+                                3 => {
+                                    // Checkbox (only when !is_full_access)
+                                    self.full_access_acknowledged = !self.full_access_acknowledged;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // Handle Space key - toggle checkbox if selected
+                    if handle_space {
+                        if let Some(idx) = self.selected_index {
+                            let checkbox_idx = if is_full_access { 2 } else { 3 };
+                            if idx == checkbox_idx {
+                                self.full_access_acknowledged = !self.full_access_acknowledged;
+                            }
+                        }
+                    }
+
                     ui.add_space(10.0);
 
                     // Component info header
@@ -222,8 +343,6 @@ impl PermissionDialog {
                     }
 
                     // T081: Special warning for Full access with explicit acknowledgment
-                    let is_full_access = matches!(self.requested_capabilities, CapabilitySet::Full);
-
                     // Show Full Access warning for either:
                     // 1. Components requesting Full access
                     // 2. Users wanting to override with Full access
@@ -262,7 +381,20 @@ impl PermissionDialog {
                         ui.add_space(10.0);
 
                         // Explicit acknowledgment checkbox
+                        let checkbox_idx = if is_full_access { 2 } else { 3 };
+                        let is_checkbox_selected = self.selected_index == Some(checkbox_idx);
+
                         ui.horizontal(|ui| {
+                            // Add visual highlight for selected checkbox
+                            if is_checkbox_selected {
+                                let rect = ui.available_rect_before_wrap();
+                                ui.painter().rect_filled(
+                                    rect,
+                                    egui::CornerRadius::same(4),
+                                    ui.visuals().selection.bg_fill,
+                                );
+                            }
+
                             ui.checkbox(
                                 &mut self.full_access_acknowledged,
                                 "I understand the security risks and trust this component",
@@ -279,8 +411,17 @@ impl PermissionDialog {
                         // Disable Approve button if Full access not acknowledged
                         let can_approve = !is_full_access || self.full_access_acknowledged;
 
+                        // Approve button (index 0)
+                        let is_approve_selected = self.selected_index == Some(0);
                         ui.add_enabled_ui(can_approve, |ui| {
-                            if ui.button("✓ Approve").clicked() {
+                            let button = egui::Button::new("✓ Approve");
+                            let button_response = if is_approve_selected {
+                                ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                            } else {
+                                ui.add(button)
+                            };
+
+                            if button_response.clicked() {
                                 result = Some(PermissionAction::Approve);
                                 self.is_open = false;
                             }
@@ -288,8 +429,17 @@ impl PermissionDialog {
 
                         // Add "Approve as Full" button for advanced users who want unrestricted access
                         if !is_full_access {
+                            // Approve as Full button (index 1)
+                            let is_approve_full_selected = self.selected_index == Some(1);
                             ui.add_enabled_ui(self.full_access_acknowledged, |ui| {
-                                if ui.button("✓ Approve as Full Access").clicked() {
+                                let button = egui::Button::new("✓ Approve as Full Access");
+                                let button_response = if is_approve_full_selected {
+                                    ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                                } else {
+                                    ui.add(button)
+                                };
+
+                                if button_response.clicked() {
                                     result = Some(PermissionAction::ApproveAsFull);
                                     self.is_open = false;
                                 }
@@ -301,7 +451,17 @@ impl PermissionDialog {
                             }
                         }
 
-                        if ui.button("✗ Deny").clicked() {
+                        // Deny button (index 1 if is_full_access, index 2 otherwise)
+                        let deny_idx = if is_full_access { 1 } else { 2 };
+                        let is_deny_selected = self.selected_index == Some(deny_idx);
+                        let button = egui::Button::new("✗ Deny");
+                        let button_response = if is_deny_selected {
+                            ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                        } else {
+                            ui.add(button)
+                        };
+
+                        if button_response.clicked() {
                             result = Some(PermissionAction::Deny);
                             self.is_open = false;
                         }
@@ -417,6 +577,8 @@ pub struct PermissionsViewDialog {
     requested_action: Option<PermissionViewAction>,
     /// Acknowledgment for Full access upgrade
     full_access_acknowledged: bool,
+    /// Index of currently selected element for keyboard navigation
+    selected_index: Option<usize>,
 }
 
 impl PermissionsViewDialog {
@@ -429,6 +591,7 @@ impl PermissionsViewDialog {
             capability_grant: None,
             requested_action: None,
             full_access_acknowledged: false,
+            selected_index: None,
         }
     }
 
@@ -440,6 +603,7 @@ impl PermissionsViewDialog {
         self.capability_grant = grant;
         self.requested_action = None;
         self.full_access_acknowledged = false;
+        self.selected_index = Some(0); // Default to first button
     }
 
     /// Check if the dialog is open
@@ -466,6 +630,7 @@ impl PermissionsViewDialog {
         self.capability_grant = None;
         self.requested_action = None;
         self.full_access_acknowledged = false;
+        self.selected_index = None;
     }
 
     /// Show the dialog
@@ -484,6 +649,142 @@ impl PermissionsViewDialog {
             .default_width(450.0)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
+                    // Determine dialog state and navigation elements
+                    let has_grant = self.capability_grant.is_some();
+                    let is_full_access = if let Some(ref grant) = self.capability_grant {
+                        matches!(grant.capability_set, CapabilitySet::Full)
+                    } else {
+                        false
+                    };
+
+                    // Navigation order:
+                    // With grant, !is_full_access: 0=Upgrade button, 1=Revoke button, 2=Close button, 3=Checkbox
+                    // With grant, is_full_access: 0=Revoke button, 1=Close button
+                    // No grant: 0=Close button
+                    let total_elements = if has_grant {
+                        if is_full_access {
+                            2 // Revoke, Close
+                        } else {
+                            4 // Upgrade, Revoke, Close, Checkbox
+                        }
+                    } else {
+                        1 // Just Close
+                    };
+
+                    // Keyboard navigation handling (before UI rendering)
+                    let mut handle_navigation = false;
+                    let mut nav_forward = false;
+                    let mut nav_backward = false;
+                    let mut handle_enter = false;
+                    let mut handle_space = false;
+                    let mut handle_escape = false;
+
+                    ui.input_mut(|i| {
+                        if i.consume_key(egui::Modifiers::NONE, egui::Key::Escape) {
+                            handle_escape = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight)
+                            || i.consume_key(egui::Modifiers::NONE, egui::Key::Tab) {
+                            handle_navigation = true;
+                            nav_forward = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft)
+                            || i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab) {
+                            handle_navigation = true;
+                            nav_backward = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::Enter) {
+                            handle_enter = true;
+                        } else if i.consume_key(egui::Modifiers::NONE, egui::Key::Space) {
+                            handle_space = true;
+                        }
+                    });
+
+                    // Apply navigation
+                    if handle_escape {
+                        close_dialog = true;
+                    }
+
+                    if handle_navigation {
+                        if nav_forward {
+                            if let Some(idx) = self.selected_index {
+                                self.selected_index = Some((idx + 1) % total_elements);
+                            } else {
+                                self.selected_index = Some(0);
+                            }
+                        } else if nav_backward {
+                            if let Some(idx) = self.selected_index {
+                                self.selected_index = Some(if idx == 0 {
+                                    total_elements - 1
+                                } else {
+                                    idx - 1
+                                });
+                            } else {
+                                self.selected_index = Some(0);
+                            }
+                        }
+                    }
+
+                    // Handle Enter key - activate selected button
+                    if handle_enter {
+                        if let Some(idx) = self.selected_index {
+                            if has_grant {
+                                if is_full_access {
+                                    // Navigation: 0=Revoke, 1=Close
+                                    match idx {
+                                        0 => {
+                                            // Revoke button
+                                            self.requested_action = Some(PermissionViewAction::Revoke);
+                                            close_dialog = true;
+                                        }
+                                        1 => {
+                                            // Close button
+                                            close_dialog = true;
+                                        }
+                                        _ => {}
+                                    }
+                                } else {
+                                    // Navigation: 0=Upgrade, 1=Revoke, 2=Close, 3=Checkbox
+                                    match idx {
+                                        0 => {
+                                            // Upgrade button
+                                            if self.full_access_acknowledged {
+                                                self.requested_action = Some(PermissionViewAction::UpgradeToFull);
+                                                close_dialog = true;
+                                            }
+                                        }
+                                        1 => {
+                                            // Revoke button
+                                            self.requested_action = Some(PermissionViewAction::Revoke);
+                                            close_dialog = true;
+                                        }
+                                        2 => {
+                                            // Close button
+                                            close_dialog = true;
+                                        }
+                                        3 => {
+                                            // Checkbox
+                                            self.full_access_acknowledged = !self.full_access_acknowledged;
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            } else {
+                                // No grant - just close button at index 0
+                                if idx == 0 {
+                                    close_dialog = true;
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle Space key - toggle checkbox if selected
+                    if handle_space {
+                        if let Some(idx) = self.selected_index {
+                            // Checkbox is at index 3 when !is_full_access
+                            if has_grant && !is_full_access && idx == 3 {
+                                self.full_access_acknowledged = !self.full_access_acknowledged;
+                            }
+                        }
+                    }
+
                     ui.add_space(10.0);
 
                     // Node info header
@@ -545,7 +846,18 @@ impl PermissionsViewDialog {
                             ui.add_space(10.0);
 
                             // Explicit acknowledgment checkbox
+                            let is_checkbox_selected = self.selected_index == Some(3);
                             ui.horizontal(|ui| {
+                                // Add visual highlight for selected checkbox
+                                if is_checkbox_selected {
+                                    let rect = ui.available_rect_before_wrap();
+                                    ui.painter().rect_filled(
+                                        rect,
+                                        egui::CornerRadius::same(4),
+                                        ui.visuals().selection.bg_fill,
+                                    );
+                                }
+
                                 ui.checkbox(
                                     &mut self.full_access_acknowledged,
                                     "I understand the security risks and trust this component",
@@ -563,8 +875,17 @@ impl PermissionsViewDialog {
 
                             // Upgrade to Full button (if not already Full)
                             if !is_full_access {
+                                // Upgrade button is at index 0
+                                let is_upgrade_selected = self.selected_index == Some(0);
                                 ui.add_enabled_ui(self.full_access_acknowledged, |ui| {
-                                    if ui.button("🔓 Upgrade to Full Access").clicked() {
+                                    let button = egui::Button::new("🔓 Upgrade to Full Access");
+                                    let button_response = if is_upgrade_selected {
+                                        ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                                    } else {
+                                        ui.add(button)
+                                    };
+
+                                    if button_response.clicked() {
                                         self.requested_action =
                                             Some(PermissionViewAction::UpgradeToFull);
                                         close_dialog = true;
@@ -572,13 +893,32 @@ impl PermissionsViewDialog {
                                 });
                             }
 
-                            // Revoke button
-                            if ui.button("🔒 Revoke Permissions").clicked() {
+                            // Revoke button (index 0 if is_full_access, index 1 otherwise)
+                            let revoke_idx = if is_full_access { 0 } else { 1 };
+                            let is_revoke_selected = self.selected_index == Some(revoke_idx);
+                            let button = egui::Button::new("🔒 Revoke Permissions");
+                            let button_response = if is_revoke_selected {
+                                ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                            } else {
+                                ui.add(button)
+                            };
+
+                            if button_response.clicked() {
                                 self.requested_action = Some(PermissionViewAction::Revoke);
                                 close_dialog = true;
                             }
 
-                            if ui.button("Close").clicked() {
+                            // Close button (index 1 if is_full_access, index 2 otherwise)
+                            let close_idx = if is_full_access { 1 } else { 2 };
+                            let is_close_selected = self.selected_index == Some(close_idx);
+                            let button = egui::Button::new("Close");
+                            let button_response = if is_close_selected {
+                                ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                            } else {
+                                ui.add(button)
+                            };
+
+                            if button_response.clicked() {
                                 close_dialog = true;
                             }
                         });
@@ -594,7 +934,17 @@ impl PermissionsViewDialog {
                         ui.add_space(20.0);
                         ui.horizontal(|ui| {
                             ui.add_space(150.0);
-                            if ui.button("Close").clicked() {
+
+                            // Close button is at index 0 when no grant
+                            let is_close_selected = self.selected_index == Some(0);
+                            let button = egui::Button::new("Close");
+                            let button_response = if is_close_selected {
+                                ui.add(button.stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)))
+                            } else {
+                                ui.add(button)
+                            };
+
+                            if button_response.clicked() {
                                 close_dialog = true;
                             }
                         });
