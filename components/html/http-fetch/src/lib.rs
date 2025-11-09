@@ -8,6 +8,11 @@ wit_bindgen::generate!({
     path: "wit",
     world: "component-with-ui",
     with: {
+        "wasmflow:node/types@1.1.0": generate,
+        "wasmflow:node/host@1.1.0": generate,
+        "wasmflow:node/metadata@1.1.0": generate,
+        "wasmflow:node/execution@1.1.0": generate,
+        "wasmflow:node/ui@1.1.0": generate,
         "wasi:io/error@0.2.0": generate,
         "wasi:io/poll@0.2.0": generate,
         "wasi:io/streams@0.2.0": generate,

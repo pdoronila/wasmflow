@@ -1,6 +1,3 @@
-// WasmFlow Node Interface
-// This defines the contract that all WasmFlow components must implement
-
 package wasmflow:node@1.1.0;
 
 /// Data types supported by WasmFlow
@@ -156,19 +153,4 @@ interface ui {
     /// Returns None if component doesn't provide a custom view
     /// Returns Some(footer-view) with declarative UI elements to render
     get-footer-view: func(outputs: list<tuple<string, value>>) -> option<footer-view>;
-}
-
-/// Main world that components must implement
-world component {
-    import host;
-    export metadata;
-    export execution;
-}
-
-/// Extended world with optional UI support
-world component-with-ui {
-    import host;
-    export metadata;
-    export execution;
-    export ui;
 }

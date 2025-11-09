@@ -1,0 +1,12 @@
+package wasmflow:COMPONENT_NAME@1.0.0;
+
+/// Standard component world
+/// Components must:
+/// - Import host functions (logging, temp dir)
+/// - Export metadata (component info, ports)
+/// - Export execution (execute function)
+world component {
+    import wasmflow:node/host@1.1.0;
+    export wasmflow:node/metadata@1.1.0;
+    export wasmflow:node/execution@1.1.0;
+}

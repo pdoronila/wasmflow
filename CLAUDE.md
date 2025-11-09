@@ -450,11 +450,216 @@ Before building a new component category (math, collections, etc.):
 
 ### Files to Reference
 
-- **Standard template:** `components/.templates/node.wit`
-- **UI template:** `components/.templates/node-with-ui.wit`
-- **Standard example:** `components/adder/` (simple math operation)
-- **UI example:** `components/json-parser/` (formatted output)
-- **Special case:** `components/http-fetch/` (UI + WASI imports)
+- **Standard template:** `components/.templates/component.wit`
+- **UI template:** `components/.templates/component-with-ui.wit`
+- **Standard example:** `components/math/math-adder/` (simple math operation)
+- **UI example:** `components/data/json-parser/` (formatted output)
+- **Special case:** `components/html/http-fetch/` (UI + WASI imports)
+
+## Shared WIT Package Architecture
+
+**Updated**: 2025-11-08 (Shared Package Migration)
+
+**Location**: `/wit/wasmflow-node.wit` (shared package), component-specific files in `components/*/wit/node.wit`
+
+### Overview
+
+All WasmFlow components now use a **shared WIT package** (`wasmflow:node@1.1.0`) instead of duplicating interface definitions. This provides:
+- **Single source of truth** for all component interfaces
+- **86% reduction in WIT code** (~8,200 lines → ~1,171 lines)
+- **Easier maintenance** - update interfaces once, all components benefit
+- **Consistent versioning** across all components
+
+### Architecture
+
+**Shared Package** (`wit/wasmflow-node.wit`):
+- Defines all common interfaces: `types`, `host`, `metadata`, `execution`, `ui`
+- 156 lines, shared across 83+ components
+- Version-controlled as `wasmflow:node@1.1.0`
+
+**Component WIT Files** (`components/*/wit/node.wit`):
+- Minimal (12-15 lines per component, down from ~99 lines)
+- Declares component package (e.g., `package wasmflow:math-adder@1.0.0`)
+- Defines world with imports/exports from shared package
+- Can add custom interfaces for special needs (e.g., WASI imports)
+
+**Dependency Resolution**:
+Components access the shared package through:
+1. **Local deps directory**: `wit/deps/wasmflow-node/node.wit` (copy of shared package)
+2. **Cargo.toml metadata**: `[package.metadata.component.target.dependencies]`
+3. **wit-bindgen configuration**: `with:` mappings in `src/lib.rs`
+
+### Component Structure
+
+**Standard Component** (components/.templates/component.wit):
+```wit
+package wasmflow:COMPONENT_NAME@1.0.0;
+
+world component {
+    import wasmflow:node/host@1.1.0;
+    export wasmflow:node/metadata@1.1.0;
+    export wasmflow:node/execution@1.1.0;
+}
+```
+
+**UI Component** (components/.templates/component-with-ui.wit):
+```wit
+package wasmflow:COMPONENT_NAME@1.0.0;
+
+world component-with-ui {
+    import wasmflow:node/host@1.1.0;
+    export wasmflow:node/metadata@1.1.0;
+    export wasmflow:node/execution@1.1.0;
+    export wasmflow:node/ui@1.1.0;
+}
+```
+
+**Cargo.toml Configuration**:
+```toml
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }
+```
+
+**Rust wit-bindgen Configuration** (src/lib.rs):
+```rust
+wit_bindgen::generate!({
+    path: "./wit",
+    world: "component",  // or "component-with-ui"
+    with: {
+        "wasmflow:node/types@1.1.0": generate,
+        "wasmflow:node/host@1.1.0": generate,
+        "wasmflow:node/metadata@1.1.0": generate,
+        "wasmflow:node/execution@1.1.0": generate,
+        // Add "wasmflow:node/ui@1.1.0": generate, for UI components
+    },
+});
+```
+
+### Creating New Components
+
+1. **Copy appropriate template**:
+   ```bash
+   cp components/.templates/component.wit components/my-component/wit/node.wit
+   # Or component-with-ui.wit for UI components
+   ```
+
+2. **Replace placeholder**:
+   ```bash
+   sed -i 's/COMPONENT_NAME/my-component/g' components/my-component/wit/node.wit
+   ```
+
+3. **Set up dependencies**:
+   ```bash
+   mkdir -p components/my-component/wit/deps/wasmflow-node
+   cp wit/wasmflow-node.wit components/my-component/wit/deps/wasmflow-node/node.wit
+   ```
+
+4. **Add Cargo.toml metadata** (if not already present):
+   ```toml
+   [package.metadata.component.target.dependencies]
+   "wasmflow:node" = { path = "../../../wit" }
+   ```
+
+5. **Configure wit-bindgen** in src/lib.rs with `with:` mappings (see above)
+
+### Special Cases
+
+**Components with Additional Imports** (e.g., http-fetch with WASI):
+```wit
+package wasmflow:http-fetch@1.0.0;
+
+world component-with-ui {
+    import wasmflow:node/host@1.1.0;
+
+    // Additional WASI imports
+    import wasi:http/types@0.2.0;
+    import wasi:http/outgoing-handler@0.2.0;
+    import wasi:io/streams@0.2.0;
+    import wasi:io/poll@0.2.0;
+    import wasi:io/error@0.2.0;
+
+    export wasmflow:node/metadata@1.1.0;
+    export wasmflow:node/execution@1.1.0;
+    export wasmflow:node/ui@1.1.0;
+}
+```
+
+For components with WASI or other external dependencies:
+1. Keep WIT files for external packages in `wit/deps/` (e.g., `wit/deps/wasi-http/`)
+2. Add corresponding `with:` mappings in wit-bindgen configuration
+3. Ensure all imported interfaces are listed
+
+### Migration Notes
+
+**Migration completed**: 2025-11-08
+- **82 components migrated successfully**
+- **1 component already migrated** (math-adder pilot)
+- **1 component with special needs** (http-fetch requires manual WASI setup)
+
+**Migration script**: `migrate-to-shared-wit.sh` (for reference or future components)
+
+### Building Components
+
+**Use `just build` (NOT `cargo component build` - deprecated):**
+
+```bash
+# Build single component
+cd components/math/math-adder
+just build              # Builds to target/wasm32-wasip2/release/
+just install            # Builds and copies to ../../bin/
+just test               # Runs component tests
+
+# Build all components in a category
+cd components/math
+just build              # Builds all math components in parallel
+
+# Build all components (from project root)
+cd components
+just build              # Builds all component categories in parallel
+just build math         # Build specific category
+just build core/string-concat  # Build specific component by path
+```
+
+**Build System Details:**
+- Uses `cargo build --target wasm32-wasip2 --release` (not cargo-component)
+- Parallel builds supported with `threads` parameter: `just build "" 4`
+- Automatically detects component names from directory structure
+- Category-level Justfiles orchestrate builds across multiple components
+- Requires nushell (`nu`) for parallel execution scripts
+
+### Troubleshooting
+
+**Error: "package 'wasmflow:node@1.1.0' not found"**
+- Ensure `wit/deps/wasmflow-node/node.wit` exists and contains shared package
+- Check `Cargo.toml` has `[package.metadata.component.target.dependencies]`
+- Verify path in Cargo.toml points to correct wit/ directory
+
+**Error: "missing `with` mapping for the key 'wasmflow:node/...'\"**
+- Add all required wasmflow:node interfaces to `with:` block in wit-bindgen
+- Standard components need: types, host, metadata, execution
+- UI components also need: ui
+
+**Build succeeds but component doesn't load**
+- Verify world name matches wit-bindgen configuration
+- Check that all exported interfaces are implemented in Rust code
+- Ensure WIT file package name matches component name convention
+
+### Updating Shared Interfaces
+
+To add or modify shared interfaces:
+
+1. **Edit** `wit/wasmflow-node.wit` with new/changed interface
+2. **Update version** if making breaking changes (e.g., 1.1.0 → 1.2.0)
+3. **Propagate to all components**:
+   ```bash
+   find components -path "*/wit/deps/wasmflow-node/node.wit" -exec cp wit/wasmflow-node.wit {} \;
+   ```
+4. **Update component WIT files** to reference new version if changed
+5. **Rebuild affected components**
+
+**Breaking vs Non-Breaking Changes**:
+- **Breaking**: Changing function signatures, removing interfaces, renaming types
+- **Non-breaking**: Adding new optional interfaces, adding new variants, documentation
 
 ## Core Component Library Development Patterns
 

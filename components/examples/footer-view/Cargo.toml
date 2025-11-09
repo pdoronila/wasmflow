@@ -23,3 +23,6 @@ wit-bindgen = { version = "0.33.0", default-features = false, features = ["macro
 opt-level = "s"  # Optimize for size
 lto = true
 strip = true
+
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }

@@ -20,3 +20,6 @@ wit-component = "0.215"
 opt-level = "s"
 lto = true
 strip = true
+
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }

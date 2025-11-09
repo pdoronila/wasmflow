@@ -1,6 +1,12 @@
 wit_bindgen::generate!({
     path: "wit",
     world: "component",
+    with: {
+        "wasmflow:node/types@1.1.0": generate,
+        "wasmflow:node/host@1.1.0": generate,
+        "wasmflow:node/metadata@1.1.0": generate,
+        "wasmflow:node/execution@1.1.0": generate,
+    },
 });
 
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;

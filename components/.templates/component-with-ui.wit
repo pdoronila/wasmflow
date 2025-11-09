@@ -1,0 +1,14 @@
+package wasmflow:COMPONENT_NAME@1.0.0;
+
+/// Component world with custom UI rendering
+/// Components must:
+/// - Import host functions (logging, temp dir)
+/// - Export metadata (component info, ports)
+/// - Export execution (execute function)
+/// - Export ui (custom footer rendering)
+world component-with-ui {
+    import wasmflow:node/host@1.1.0;
+    export wasmflow:node/metadata@1.1.0;
+    export wasmflow:node/execution@1.1.0;
+    export wasmflow:node/ui@1.1.0;
+}

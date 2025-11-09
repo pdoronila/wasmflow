@@ -1,0 +1,17 @@
+package wasmflow:host@1.0.0;
+
+/// Standard component world (from component's perspective, for host to load)
+/// This describes what a component imports and exports
+world component {
+    import wasmflow:node/host@1.1.0;        // Component imports host functions
+    export wasmflow:node/metadata@1.1.0;    // Component exports metadata
+    export wasmflow:node/execution@1.1.0;   // Component exports execution
+}
+
+/// Component with UI world
+world component-with-ui {
+    import wasmflow:node/host@1.1.0;        // Component imports host functions
+    export wasmflow:node/metadata@1.1.0;    // Component exports metadata
+    export wasmflow:node/execution@1.1.0;   // Component exports execution
+    export wasmflow:node/ui@1.1.0;          // Component exports UI
+}

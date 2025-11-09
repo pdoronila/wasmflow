@@ -16,3 +16,6 @@ regex = "1.10"
 opt-level = "s"
 lto = true
 strip = true
+
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }

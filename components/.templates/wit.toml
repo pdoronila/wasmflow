@@ -1,0 +1,9 @@
+# Component WIT Package Manifest
+# Declares dependencies on shared WasmFlow interfaces
+
+[package]
+name = "component-name"  # Replace with your component's package name
+version = "1.0.0"
+
+[dependencies]
+"wasmflow:node" = { path = "../../../wit" }

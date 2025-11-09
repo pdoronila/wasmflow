@@ -1,0 +1,9 @@
+# Math Adder Component - WIT Package Manifest
+# Declares dependencies on shared WasmFlow interfaces
+
+[package]
+name = "math-adder"
+version = "1.0.0"
+
+[dependencies]
+"wasmflow:node" = { path = "../../../wit" }

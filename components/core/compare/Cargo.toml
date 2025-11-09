@@ -16,3 +16,6 @@ strip = true
 
 # Tell cargo this is not part of the workspace
 [workspace]
+
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }

@@ -1,0 +1,3 @@
+[package]
+name = "wasmflow:host"
+version = "1.0.0"

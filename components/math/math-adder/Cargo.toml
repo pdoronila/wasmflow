@@ -11,6 +11,9 @@ crate-type = ["cdylib"]
 [dependencies]
 wit-bindgen = "0.30"
 
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }
+
 [profile.release]
 opt-level = "s"
 lto = true

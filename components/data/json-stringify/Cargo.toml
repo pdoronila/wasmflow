@@ -16,3 +16,6 @@ serde_json = "1.0"
 opt-level = "s"
 lto = true
 strip = true
+
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }
