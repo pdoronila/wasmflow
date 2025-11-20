@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "title": "Graphics Geometry Test",
+    "description": "Test geometry primitive components (sphere, cube, plane)",
+    "category": "Graphics",
+    "created": "2025-11-20"
+  },
+  "nodes": [
+    {
+      "id": "sphere_generator",
+      "component_id": "graphics:primitive-sphere",
+      "display_name": "UV Sphere",
+      "position": { "x": 100.0, "y": 100.0 },
+      "inputs": {
+        "radius": 1.0,
+        "segments": 16,
+        "rings": 8
+      }
+    },
+    {
+      "id": "cube_generator",
+      "component_id": "graphics:primitive-cube",
+      "display_name": "Cube",
+      "position": { "x": 100.0, "y": 300.0 },
+      "inputs": {
+        "size": 2.0
+      }
+    },
+    {
+      "id": "plane_generator",
+      "component_id": "graphics:primitive-plane",
+      "display_name": "Plane",
+      "position": { "x": 100.0, "y": 500.0 },
+      "inputs": {
+        "width": 10.0,
+        "depth": 10.0,
+        "subdivisions": 10
+      }
+    }
+  ],
+  "connections": [],
+  "expected_outputs": {
+    "sphere_generator": {
+      "positions": "list of 136 vec3 values (17 segments * 8 rings)",
+      "normals": "list of 136 vec3 values",
+      "uvs": "list of 136 vec2 tuples",
+      "indices": "list of u32 triangle indices"
+    },
+    "cube_generator": {
+      "positions": "list of 24 vec3 values (4 per face)",
+      "normals": "list of 24 vec3 values",
+      "uvs": "list of 24 vec2 tuples",
+      "indices": "list of 36 u32 indices (12 triangles)"
+    },
+    "plane_generator": {
+      "positions": "list of 121 vec3 values (11x11 grid)",
+      "normals": "list of 121 vec3 values (all pointing +Y)",
+      "uvs": "list of 121 vec2 tuples",
+      "indices": "list of u32 triangle indices"
+    }
+  },
+  "test_assertions": [
+    {
+      "node": "sphere_generator",
+      "assertion": "Sphere positions count matches (segments+1) * (rings+1)",
+      "expected": 136
+    },
+    {
+      "node": "cube_generator",
+      "assertion": "Cube has exactly 24 vertices (4 per face)",
+      "expected": 24
+    },
+    {
+      "node": "plane_generator",
+      "assertion": "Plane has (subdivisions+1)^2 vertices",
+      "expected": 121
+    }
+  ]
+}

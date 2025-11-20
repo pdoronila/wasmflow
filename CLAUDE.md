@@ -1121,4 +1121,207 @@ When adding new components to the library:
 5. **Check existing components**: Similar components provide good templates
 6. **Update Justfiles**: Add to category build/test/install targets
 
+## Graphics Components and GLSL Shader Nodes
+
+**Added**: 2025-11-20 (Phase 1: Core Graphics Nodes)
+
+**Location**: `components/graphics/`, `src/builtin/shader_preview.rs`
+
+Phase 1 provides foundational components for building 3D graphics pipelines with placeholder shader preview.
+
+### Architecture Conventions
+
+**Coordinate System:**
+- Right-handed coordinate system (consistent with OpenGL/GLSL)
+- +Y is up, -Z is forward (camera looks toward -Z)
+- All rotations follow right-hand rule
+
+**Matrix Format:**
+- Column-major order (GLSL/OpenGL compatible)
+- 4×4 matrices represented as 16-element f32 lists
+- Matrix multiplication: `result = A × B` (A applied first, then B)
+
+**Data Representations:**
+- `vec3`: 3-element f32 list [x, y, z]
+- `mat4`: 16-element f32 list (column-major)
+- `color`: 3-element f32 list [r, g, b] (clamped to [0.0, 1.0])
+- `UV coordinates`: (f32, f32) tuple
+
+### Component Categories
+
+**Vector Math** (7 components):
+- `vec3-construct`: Build vector from x, y, z
+- `vec3-add`, `vec3-subtract`: Basic arithmetic
+- `vec3-scale`: Multiply by scalar
+- `vec3-normalize`: Convert to unit length (returns length + normalized vector)
+- `vec3-dot`: Scalar product (projection)
+- `vec3-cross`: Vector product (perpendicular vector)
+
+**Matrix Operations** (2 components):
+- `mat4-construct`: Build from 16 components or 4 column vectors
+- `mat4-multiply`: Standard matrix multiplication for transforms
+
+**Color Utilities** (1 component):
+- `color-rgb`: Create RGB color with automatic clamping
+
+**Geometry Primitives** (3 components):
+- `primitive-sphere`: UV sphere (parametric latitude/longitude)
+- `primitive-cube`: Box with 24 vertices (4 per face for proper normals)
+- `primitive-plane`: Subdivided XZ plane facing +Y
+
+All geometry components output: positions, normals, UVs, indices (triangle list)
+
+**Camera** (1 component):
+- `perspective-camera`: Look-at view matrix + perspective projection
+  - Inputs: position, target, up, fov, aspect_ratio, near, far
+  - Outputs: view_matrix, projection_matrix, camera_position, view_direction
+
+**Render Target** (1 component):
+- `render-target`: Configure render target parameters
+  - Formats: rgba8, rgba16-float, rgba32-float, rgb8, r8
+  - MSAA: 1, 2, 4, or 8 samples
+  - Outputs JSON configuration string
+
+### Built-in Shader Preview Node
+
+**Component ID**: `builtin:graphics:shader-preview`
+
+**Phase 1 Status**: Placeholder mode - displays UI but no actual GPU rendering
+
+**Implementation**:
+- Located at: `src/builtin/shader_preview.rs`
+- Node data: `ShaderPreviewNodeData` in `src/graph/node.rs`
+- Registered in: `src/builtin/mod.rs`, `src/ui/app.rs`
+
+**Node Data Structure**:
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShaderPreviewNodeData {
+    pub preview_size: (u32, u32),      // Display dimensions
+    pub auto_refresh: bool,             // Auto-refresh toggle
+    pub refresh_rate: f32,              // Hz (1-60)
+    pub zoom: f32,                      // Display zoom (0.1-10.0)
+    #[serde(skip)]
+    pub last_texture_size: Option<(u32, u32)>,  // Runtime only
+    #[serde(skip)]
+    pub last_update: Option<std::time::Instant>, // Runtime only
+}
+```
+
+**Footer View Features**:
+- Preview area with placeholder icon and status
+- Size presets: Small (400×300), Medium (600×450), Large (800×600)
+- Zoom slider (0.1× to 10×)
+- Auto-refresh controls (on/off, rate 1-60 Hz)
+- Stats display (last texture size, update time)
+
+**Cloning Behavior**:
+- `shader_preview_data` is cloned along with node
+- Runtime state (`last_texture_size`, `last_update`) is reset to None
+
+### Special Node Cloning
+
+When cloning nodes with `shader_preview_data`:
+```rust
+// In src/ui/app/duplication.rs
+shader_preview_data: original.shader_preview_data.clone(), // Clone shader preview data
+```
+
+Runtime-only fields (marked `#[serde(skip)]`) are automatically reset.
+
+### Integration Testing
+
+Test graphs in `tests/component_tests/`:
+
+**graphics_geometry.json**:
+- Tests primitive generation (sphere, cube, plane)
+- Validates vertex counts and mesh structure
+
+**graphics_camera.json**:
+- Tests camera setup and matrix operations
+- Validates MVP (Model-View-Projection) calculation
+
+**graphics_shader_pipeline.json**:
+- End-to-end pipeline from geometry to preview
+- Demonstrates complete workflow with all component categories
+
+### Build Requirements
+
+**Dependencies**:
+- `glam = "0.25"` - Vector and matrix math (all components)
+- `serde = "1.0"`, `serde_json = "1.0"` - Serialization (render-target)
+- `wit-bindgen = "0.30"` - WASM interface generation
+
+**Binary Sizes**: 100-150 KB per component (with glam)
+
+**Build Commands**:
+```bash
+cd components/graphics
+just build        # Build all graphics components
+just install      # Copy to components/bin/
+```
+
+### Phase Roadmap
+
+**Phase 1: Core Components** (Complete ✓):
+- Vector math operations
+- Matrix operations
+- Geometry primitives
+- Camera system
+- Render target configuration
+- Shader preview placeholder
+
+**Phase 2: GPU Integration** (Future):
+- WebGPU integration for actual rendering
+- Real-time shader preview with texture display
+- GPU buffer management
+- Shader compilation and hot-reload
+
+**Phase 3: Advanced Features** (Future):
+- Lighting and materials
+- Post-processing effects
+- Compute shaders
+- Ray tracing utilities
+
+### Documentation
+
+**Component README**: `components/graphics/README.md`
+- Complete API reference for all 15 components
+- Usage examples and test descriptions
+- Architecture notes and conventions
+
+**Integration Tests**: `tests/component_tests/graphics_*.json`
+- Demonstrates usage patterns
+- Validates component behavior
+
+### Common Patterns
+
+**Vector Construction**:
+```
+vec3-construct(x: 1.0, y: 2.0, z: 3.0) → vec3: [1.0, 2.0, 3.0]
+```
+
+**Matrix Multiplication for MVP**:
+```
+model_matrix → mat4-multiply ← view_matrix
+                     ↓
+                projection_matrix → mvp_matrix
+```
+
+**Geometry Generation**:
+```
+primitive-sphere(radius: 1.0, segments: 16, rings: 8)
+  → positions: [(segments+1)×(rings+1) vertices]
+  → normals: [normalized per vertex]
+  → uvs: [(u, v) per vertex]
+  → indices: [triangle list]
+```
+
+**Camera Setup**:
+```
+camera_position, camera_target, camera_up
+  → perspective-camera(fov: 60, aspect: 16:9, near: 0.1, far: 100)
+  → view_matrix, projection_matrix
+```
+
 <!-- MANUAL ADDITIONS END -->

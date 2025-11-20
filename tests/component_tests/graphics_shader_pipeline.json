@@ -1,0 +1,175 @@
+{
+  "metadata": {
+    "title": "Graphics Shader Pipeline Test (Phase 1)",
+    "description": "Complete graphics pipeline: geometry → camera → render target → shader preview",
+    "category": "Graphics",
+    "created": "2025-11-20",
+    "phase": "Phase 1: Placeholder shader preview (no actual rendering)"
+  },
+  "nodes": [
+    {
+      "id": "sphere_geo",
+      "component_id": "graphics:primitive-sphere",
+      "display_name": "Sphere Geometry",
+      "position": { "x": 100.0, "y": 100.0 },
+      "inputs": {
+        "radius": 1.5,
+        "segments": 32,
+        "rings": 16
+      }
+    },
+    {
+      "id": "camera_pos",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Position",
+      "position": { "x": 100.0, "y": 300.0 },
+      "inputs": {
+        "x": 0.0,
+        "y": 3.0,
+        "z": 8.0
+      }
+    },
+    {
+      "id": "camera_tgt",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Look At",
+      "position": { "x": 100.0, "y": 450.0 },
+      "inputs": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    {
+      "id": "camera_up",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Up Vector",
+      "position": { "x": 100.0, "y": 600.0 },
+      "inputs": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    },
+    {
+      "id": "camera",
+      "component_id": "graphics:perspective-camera",
+      "display_name": "Perspective Camera",
+      "position": { "x": 400.0, "y": 350.0 },
+      "inputs": {
+        "fov": 45.0,
+        "aspect_ratio": 1.777778,
+        "near": 0.1,
+        "far": 100.0
+      }
+    },
+    {
+      "id": "render_target",
+      "component_id": "graphics:render-target",
+      "display_name": "Render Target Config",
+      "position": { "x": 700.0, "y": 200.0 },
+      "inputs": {
+        "width": 1920,
+        "height": 1080,
+        "format": "rgba8",
+        "depth": true,
+        "multisample": 4
+      }
+    },
+    {
+      "id": "base_color",
+      "component_id": "graphics:color-rgb",
+      "display_name": "Material Color",
+      "position": { "x": 100.0, "y": 750.0 },
+      "inputs": {
+        "r": 0.8,
+        "g": 0.3,
+        "b": 0.2
+      }
+    },
+    {
+      "id": "shader_preview",
+      "component_id": "builtin:graphics:shader-preview",
+      "display_name": "Shader Preview (Placeholder)",
+      "position": { "x": 1000.0, "y": 400.0 },
+      "inputs": {
+        "zoom": 1.0
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from_node": "camera_pos",
+      "from_port": "vec3",
+      "to_node": "camera",
+      "to_port": "position"
+    },
+    {
+      "from_node": "camera_tgt",
+      "from_port": "vec3",
+      "to_node": "camera",
+      "to_port": "target"
+    },
+    {
+      "from_node": "camera_up",
+      "from_port": "vec3",
+      "to_node": "camera",
+      "to_port": "up"
+    }
+  ],
+  "expected_outputs": {
+    "sphere_geo": {
+      "positions": "list of vec3 positions (33*17 = 561 vertices)",
+      "normals": "list of vec3 normals",
+      "uvs": "list of (f32, f32) UV coordinates",
+      "indices": "list of u32 triangle indices"
+    },
+    "camera": {
+      "view_matrix": "4x4 look-at matrix",
+      "projection_matrix": "4x4 perspective matrix",
+      "camera_position": "vec3 (0, 3, 8)",
+      "view_direction": "vec3 (normalized)"
+    },
+    "render_target": {
+      "config": "JSON string with render target configuration"
+    },
+    "base_color": {
+      "color": "vec3 (0.8, 0.3, 0.2)"
+    },
+    "shader_preview": {
+      "note": "Phase 1: No outputs, displays placeholder UI in footer"
+    }
+  },
+  "workflow_description": "Complete graphics pipeline:\n1. Generate sphere geometry (positions, normals, UVs, indices)\n2. Set up perspective camera (view and projection matrices)\n3. Configure render target (resolution, format, depth, MSAA)\n4. Define material color\n5. Preview shader output (Phase 1: placeholder UI showing configuration)",
+  "test_assertions": [
+    {
+      "node": "sphere_geo",
+      "assertion": "Sphere has (segments+1) * (rings+1) vertices",
+      "expected": 561
+    },
+    {
+      "node": "camera",
+      "assertion": "Camera outputs include view_matrix, projection_matrix, position, direction",
+      "expected": 4
+    },
+    {
+      "node": "render_target",
+      "assertion": "Render target outputs valid JSON configuration",
+      "expected": "JSON with width, height, format, depth, multisample fields"
+    },
+    {
+      "node": "base_color",
+      "assertion": "Color values are clamped to [0.0, 1.0]",
+      "expected": { "r": 0.8, "g": 0.3, "b": 0.2 }
+    },
+    {
+      "node": "shader_preview",
+      "assertion": "Shader preview displays placeholder UI (Phase 1)",
+      "expected": "No runtime errors, UI shows placeholder message"
+    }
+  ],
+  "phase_notes": {
+    "phase_1": "Shader preview displays placeholder UI with zoom controls and size options. No actual GPU rendering yet.",
+    "phase_2_future": "Will integrate WebGPU for real-time shader rendering and texture display."
+  }
+}

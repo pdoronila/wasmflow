@@ -1,0 +1,133 @@
+{
+  "metadata": {
+    "title": "Graphics Camera and Matrix Test",
+    "description": "Test camera setup and matrix operations",
+    "category": "Graphics",
+    "created": "2025-11-20"
+  },
+  "nodes": [
+    {
+      "id": "camera_position",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Position",
+      "position": { "x": 100.0, "y": 100.0 },
+      "inputs": {
+        "x": 0.0,
+        "y": 5.0,
+        "z": 10.0
+      }
+    },
+    {
+      "id": "camera_target",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Target",
+      "position": { "x": 100.0, "y": 250.0 },
+      "inputs": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    {
+      "id": "camera_up",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Up",
+      "position": { "x": 100.0, "y": 400.0 },
+      "inputs": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    },
+    {
+      "id": "perspective_camera",
+      "component_id": "graphics:perspective-camera",
+      "display_name": "Perspective Camera",
+      "position": { "x": 400.0, "y": 200.0 },
+      "inputs": {
+        "fov": 60.0,
+        "aspect_ratio": 1.777778,
+        "near": 0.1,
+        "far": 100.0
+      }
+    },
+    {
+      "id": "model_matrix",
+      "component_id": "graphics:mat4-construct",
+      "display_name": "Model Matrix",
+      "position": { "x": 100.0, "y": 600.0 },
+      "inputs": {
+        "m00": 1.0, "m01": 0.0, "m02": 0.0, "m03": 0.0,
+        "m10": 0.0, "m11": 1.0, "m12": 0.0, "m13": 0.0,
+        "m20": 0.0, "m21": 0.0, "m22": 1.0, "m23": 0.0,
+        "m30": 2.0, "m31": 0.0, "m32": 0.0, "m33": 1.0
+      }
+    },
+    {
+      "id": "mvp_multiply",
+      "component_id": "graphics:mat4-multiply",
+      "display_name": "Model-View-Projection",
+      "position": { "x": 700.0, "y": 400.0 }
+    }
+  ],
+  "connections": [
+    {
+      "from_node": "camera_position",
+      "from_port": "vec3",
+      "to_node": "perspective_camera",
+      "to_port": "position"
+    },
+    {
+      "from_node": "camera_target",
+      "from_port": "vec3",
+      "to_node": "perspective_camera",
+      "to_port": "target"
+    },
+    {
+      "from_node": "camera_up",
+      "from_port": "vec3",
+      "to_node": "perspective_camera",
+      "to_port": "up"
+    },
+    {
+      "from_node": "perspective_camera",
+      "from_port": "view_matrix",
+      "to_node": "mvp_multiply",
+      "to_port": "a"
+    },
+    {
+      "from_node": "model_matrix",
+      "from_port": "matrix",
+      "to_node": "mvp_multiply",
+      "to_port": "b"
+    }
+  ],
+  "expected_outputs": {
+    "perspective_camera": {
+      "view_matrix": "4x4 matrix (look-at transformation)",
+      "projection_matrix": "4x4 matrix (perspective projection)",
+      "camera_position": "vec3 (0, 5, 10)",
+      "view_direction": "vec3 (normalized direction from position to target)"
+    },
+    "mvp_multiply": {
+      "result": "4x4 matrix (model-view product)"
+    }
+  },
+  "test_assertions": [
+    {
+      "node": "perspective_camera",
+      "assertion": "Camera outputs 4 values (view_matrix, projection_matrix, position, direction)",
+      "expected": 4
+    },
+    {
+      "node": "perspective_camera",
+      "assertion": "Camera position matches input",
+      "expected": { "x": 0.0, "y": 5.0, "z": 10.0 }
+    },
+    {
+      "node": "mvp_multiply",
+      "assertion": "Matrix multiplication produces valid 4x4 matrix",
+      "expected": "16-element array"
+    }
+  ]
+}

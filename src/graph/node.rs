@@ -425,6 +425,44 @@ impl GlslShaderEditorNodeData {
     }
 }
 
+/// Shader Preview node data (serialized with the graph)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShaderPreviewNodeData {
+    /// Preview display size (width, height)
+    pub preview_size: (u32, u32),
+    /// Enable auto-refresh of preview
+    pub auto_refresh: bool,
+    /// Refresh rate in Hz (for auto-refresh)
+    pub refresh_rate: f32,
+    /// Display zoom level (1.0 = 100%)
+    pub zoom: f32,
+    /// Last received texture dimensions (for stats display)
+    #[serde(skip)]
+    pub last_texture_size: Option<(u32, u32)>,
+    /// Last update timestamp (for stats display)
+    #[serde(skip)]
+    pub last_update: Option<std::time::Instant>,
+}
+
+impl ShaderPreviewNodeData {
+    pub fn new() -> Self {
+        Self {
+            preview_size: (400, 300),
+            auto_refresh: false,
+            refresh_rate: 30.0,
+            zoom: 1.0,
+            last_texture_size: None,
+            last_update: None,
+        }
+    }
+}
+
+impl Default for ShaderPreviewNodeData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Node metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeMetadata {
@@ -729,6 +767,10 @@ pub struct GraphNode {
     /// Stores the shader code, type, and validation state
     #[serde(default)]
     pub shader_editor_data: Option<GlslShaderEditorNodeData>,
+    /// Shader Preview data (only present for ShaderPreviewNode type)
+    /// Stores preview settings and state
+    #[serde(default)]
+    pub shader_preview_data: Option<ShaderPreviewNodeData>,
 }
 
 /// T084: Default dirty flag to true for new nodes
@@ -759,6 +801,7 @@ impl GraphNode {
             selected: false,         // T019: New nodes start unselected
             composition_data: None,  // T026: Composition data only present for composite nodes
             shader_editor_data: None, // Shader editor data only present for GlslShaderEditorNode type
+            shader_preview_data: None, // Shader preview data only present for ShaderPreviewNode type
         }
     }
 
