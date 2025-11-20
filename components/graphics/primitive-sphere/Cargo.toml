@@ -1,0 +1,23 @@
+[package]
+name = "primitive-sphere"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.30"
+glam = "0.25"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+
+[package.metadata.component.target.dependencies]
+"wasmflow:node" = { path = "../../../wit" }
