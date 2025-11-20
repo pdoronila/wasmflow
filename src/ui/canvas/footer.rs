@@ -144,6 +144,9 @@ impl DefaultFooterView {
                     DataType::Any => {
                         ui.label("(any - no editor)");
                     }
+                    DataType::Vec2 | DataType::Vec3 | DataType::Vec4 | DataType::Mat4 | DataType::Texture => {
+                        ui.label("(graphics type - needs custom view)");
+                    }
                 }
 
                 ui.add_space(4.0);

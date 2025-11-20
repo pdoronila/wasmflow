@@ -829,6 +829,12 @@ impl CanvasViewer<'_> {
             DataType::List(_) => Color32::from_rgb(255, 200, 100), // Yellow
             DataType::Record(_) => Color32::from_rgb(255, 100, 150), // Pink
             DataType::Any => Color32::WHITE,
+            // Graphics types - shades of teal/turquoise
+            DataType::Vec2 => Color32::from_rgb(80, 200, 200), // Light teal
+            DataType::Vec3 => Color32::from_rgb(60, 180, 180), // Medium teal
+            DataType::Vec4 => Color32::from_rgb(40, 160, 160), // Darker teal
+            DataType::Mat4 => Color32::from_rgb(100, 100, 200), // Blue-violet (for matrices)
+            DataType::Texture => Color32::from_rgb(200, 100, 200), // Magenta (for textures)
         }
     }
 }

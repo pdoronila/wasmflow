@@ -755,6 +755,11 @@ impl ComponentManager {
                 crate::graph::node::DataType::List(Box::new(crate::graph::node::DataType::Any))
             }
             WitDataType::AnyType => crate::graph::node::DataType::Any,
+            WitDataType::Vec2Type => crate::graph::node::DataType::Vec2,
+            WitDataType::Vec3Type => crate::graph::node::DataType::Vec3,
+            WitDataType::Vec4Type => crate::graph::node::DataType::Vec4,
+            WitDataType::Mat4Type => crate::graph::node::DataType::Mat4,
+            WitDataType::TextureType => crate::graph::node::DataType::Texture,
         }
     }
 
@@ -1121,6 +1126,56 @@ impl ComponentManager {
                 }
             }
             NodeValue::Record(_) => Value::StringVal("<record>".to_string()),
+            NodeValue::Vec2(v) => {
+                Value::Vec2Val(with_ui::wasmflow::node::types::Vec2 { x: v.x, y: v.y })
+            }
+            NodeValue::Vec3(v) => {
+                Value::Vec3Val(with_ui::wasmflow::node::types::Vec3 {
+                    x: v.x,
+                    y: v.y,
+                    z: v.z,
+                })
+            }
+            NodeValue::Vec4(v) => {
+                Value::Vec4Val(with_ui::wasmflow::node::types::Vec4 {
+                    x: v.x,
+                    y: v.y,
+                    z: v.z,
+                    w: v.w,
+                })
+            }
+            NodeValue::Mat4(m) => {
+                Value::Mat4Val(with_ui::wasmflow::node::types::Mat4 {
+                    m00: m.m00, m01: m.m01, m02: m.m02, m03: m.m03,
+                    m10: m.m10, m11: m.m11, m12: m.m12, m13: m.m13,
+                    m20: m.m20, m21: m.m21, m22: m.m22, m23: m.m23,
+                    m30: m.m30, m31: m.m31, m32: m.m32, m33: m.m33,
+                })
+            }
+            NodeValue::Texture(t) => {
+                Value::TextureVal(with_ui::wasmflow::node::types::TextureData {
+                    width: t.width,
+                    height: t.height,
+                    format: match t.format {
+                        crate::graph::node::TextureFormat::Rgba8 => {
+                            with_ui::wasmflow::node::types::TextureFormat::Rgba8
+                        }
+                        crate::graph::node::TextureFormat::Rgb8 => {
+                            with_ui::wasmflow::node::types::TextureFormat::Rgb8
+                        }
+                        crate::graph::node::TextureFormat::R8 => {
+                            with_ui::wasmflow::node::types::TextureFormat::R8
+                        }
+                        crate::graph::node::TextureFormat::Rgba32Float => {
+                            with_ui::wasmflow::node::types::TextureFormat::Rgba32Float
+                        }
+                        crate::graph::node::TextureFormat::Depth24Stencil8 => {
+                            with_ui::wasmflow::node::types::TextureFormat::Depth24Stencil8
+                        }
+                    },
+                    data: t.data.clone(),
+                })
+            }
         }
     }
 
@@ -1233,6 +1288,56 @@ fn node_value_to_wit(value: &NodeValue) -> self::wasmflow::node::types::Value {
             // For now, convert to a placeholder string
             Value::StringVal("<record>".to_string())
         }
+        NodeValue::Vec2(v) => {
+            Value::Vec2Val(self::wasmflow::node::types::Vec2 { x: v.x, y: v.y })
+        }
+        NodeValue::Vec3(v) => {
+            Value::Vec3Val(self::wasmflow::node::types::Vec3 {
+                x: v.x,
+                y: v.y,
+                z: v.z,
+            })
+        }
+        NodeValue::Vec4(v) => {
+            Value::Vec4Val(self::wasmflow::node::types::Vec4 {
+                x: v.x,
+                y: v.y,
+                z: v.z,
+                w: v.w,
+            })
+        }
+        NodeValue::Mat4(m) => {
+            Value::Mat4Val(self::wasmflow::node::types::Mat4 {
+                m00: m.m00, m01: m.m01, m02: m.m02, m03: m.m03,
+                m10: m.m10, m11: m.m11, m12: m.m12, m13: m.m13,
+                m20: m.m20, m21: m.m21, m22: m.m22, m23: m.m23,
+                m30: m.m30, m31: m.m31, m32: m.m32, m33: m.m33,
+            })
+        }
+        NodeValue::Texture(t) => {
+            Value::TextureVal(self::wasmflow::node::types::TextureData {
+                width: t.width,
+                height: t.height,
+                format: match t.format {
+                    crate::graph::node::TextureFormat::Rgba8 => {
+                        self::wasmflow::node::types::TextureFormat::Rgba8
+                    }
+                    crate::graph::node::TextureFormat::Rgb8 => {
+                        self::wasmflow::node::types::TextureFormat::Rgb8
+                    }
+                    crate::graph::node::TextureFormat::R8 => {
+                        self::wasmflow::node::types::TextureFormat::R8
+                    }
+                    crate::graph::node::TextureFormat::Rgba32Float => {
+                        self::wasmflow::node::types::TextureFormat::Rgba32Float
+                    }
+                    crate::graph::node::TextureFormat::Depth24Stencil8 => {
+                        self::wasmflow::node::types::TextureFormat::Depth24Stencil8
+                    }
+                },
+                data: t.data.clone(),
+            })
+        }
     }
 }
 
@@ -1254,6 +1359,56 @@ fn wit_to_node_value(value: &self::wasmflow::node::types::Value) -> NodeValue {
         }
         Value::F32ListVal(items) => {
             NodeValue::List(items.iter().map(|v| NodeValue::F32(*v)).collect())
+        }
+        Value::Vec2Val(v) => {
+            NodeValue::Vec2(crate::graph::node::Vec2 { x: v.x, y: v.y })
+        }
+        Value::Vec3Val(v) => {
+            NodeValue::Vec3(crate::graph::node::Vec3 {
+                x: v.x,
+                y: v.y,
+                z: v.z,
+            })
+        }
+        Value::Vec4Val(v) => {
+            NodeValue::Vec4(crate::graph::node::Vec4 {
+                x: v.x,
+                y: v.y,
+                z: v.z,
+                w: v.w,
+            })
+        }
+        Value::Mat4Val(m) => {
+            NodeValue::Mat4(crate::graph::node::Mat4 {
+                m00: m.m00, m01: m.m01, m02: m.m02, m03: m.m03,
+                m10: m.m10, m11: m.m11, m12: m.m12, m13: m.m13,
+                m20: m.m20, m21: m.m21, m22: m.m22, m23: m.m23,
+                m30: m.m30, m31: m.m31, m32: m.m32, m33: m.m33,
+            })
+        }
+        Value::TextureVal(t) => {
+            NodeValue::Texture(crate::graph::node::TextureData {
+                width: t.width,
+                height: t.height,
+                format: match t.format {
+                    self::wasmflow::node::types::TextureFormat::Rgba8 => {
+                        crate::graph::node::TextureFormat::Rgba8
+                    }
+                    self::wasmflow::node::types::TextureFormat::Rgb8 => {
+                        crate::graph::node::TextureFormat::Rgb8
+                    }
+                    self::wasmflow::node::types::TextureFormat::R8 => {
+                        crate::graph::node::TextureFormat::R8
+                    }
+                    self::wasmflow::node::types::TextureFormat::Rgba32Float => {
+                        crate::graph::node::TextureFormat::Rgba32Float
+                    }
+                    self::wasmflow::node::types::TextureFormat::Depth24Stencil8 => {
+                        crate::graph::node::TextureFormat::Depth24Stencil8
+                    }
+                },
+                data: t.data.clone(),
+            })
         }
     }
 }

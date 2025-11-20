@@ -316,6 +316,12 @@ impl Theme {
             DataType::List(_) => self.port_colors.list_color,
             DataType::Record(_) => self.port_colors.record_color,
             DataType::Any => self.port_colors.any_color,
+            // Graphics types - use consistent colors with viewer
+            DataType::Vec2 => Color32::from_rgb(80, 200, 200), // Light teal
+            DataType::Vec3 => Color32::from_rgb(60, 180, 180), // Medium teal
+            DataType::Vec4 => Color32::from_rgb(40, 160, 160), // Darker teal
+            DataType::Mat4 => Color32::from_rgb(100, 100, 200), // Blue-violet (for matrices)
+            DataType::Texture => Color32::from_rgb(200, 100, 200), // Magenta (for textures)
         }
     }
 

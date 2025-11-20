@@ -5,6 +5,58 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use uuid::Uuid;
 
+/// 2D vector for graphics operations
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Vec2 {
+    pub x: f32,
+    pub y: f32,
+}
+
+/// 3D vector for graphics operations
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Vec3 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+/// 4D vector for graphics operations
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Vec4 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+/// 4x4 matrix in column-major order (standard for OpenGL/WebGPU)
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Mat4 {
+    pub m00: f32, pub m01: f32, pub m02: f32, pub m03: f32,
+    pub m10: f32, pub m11: f32, pub m12: f32, pub m13: f32,
+    pub m20: f32, pub m21: f32, pub m22: f32, pub m23: f32,
+    pub m30: f32, pub m31: f32, pub m32: f32, pub m33: f32,
+}
+
+/// Texture format
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TextureFormat {
+    Rgba8,
+    Rgb8,
+    R8,
+    Rgba32Float,
+    Depth24Stencil8,
+}
+
+/// Texture data
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TextureData {
+    pub width: u32,
+    pub height: u32,
+    pub format: TextureFormat,
+    pub data: Vec<u8>,
+}
+
 /// Typed data flowing through connections between nodes
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NodeValue {
@@ -24,6 +76,16 @@ pub enum NodeValue {
     List(Vec<NodeValue>),
     /// Key-value structured data (BTreeMap for deterministic serialization)
     Record(BTreeMap<String, NodeValue>),
+    /// 2D vector (x, y)
+    Vec2(Vec2),
+    /// 3D vector (x, y, z)
+    Vec3(Vec3),
+    /// 4D vector (x, y, z, w)
+    Vec4(Vec4),
+    /// 4x4 matrix
+    Mat4(Mat4),
+    /// Texture data
+    Texture(TextureData),
 }
 
 impl NodeValue {
@@ -38,6 +100,11 @@ impl NodeValue {
             NodeValue::Binary(_) => "binary",
             NodeValue::List(_) => "list",
             NodeValue::Record(_) => "record",
+            NodeValue::Vec2(_) => "vec2",
+            NodeValue::Vec3(_) => "vec3",
+            NodeValue::Vec4(_) => "vec4",
+            NodeValue::Mat4(_) => "mat4",
+            NodeValue::Texture(_) => "texture",
         }
     }
 
@@ -52,6 +119,11 @@ impl NodeValue {
             NodeValue::Binary(b) => format!("<{} bytes>", b.len()),
             NodeValue::List(items) => format!("[{} items]", items.len()),
             NodeValue::Record(fields) => format!("{{{} fields}}", fields.len()),
+            NodeValue::Vec2(v) => format!("({:.2}, {:.2})", v.x, v.y),
+            NodeValue::Vec3(v) => format!("({:.2}, {:.2}, {:.2})", v.x, v.y, v.z),
+            NodeValue::Vec4(v) => format!("({:.2}, {:.2}, {:.2}, {:.2})", v.x, v.y, v.z, v.w),
+            NodeValue::Mat4(_) => format!("<4x4 matrix>"),
+            NodeValue::Texture(t) => format!("<{}x{} {:?} texture>", t.width, t.height, t.format),
         }
     }
 }
@@ -69,6 +141,16 @@ pub enum DataType {
     Record(Vec<(String, DataType)>),
     /// Accepts any type (for generic nodes like passthrough, logger)
     Any,
+    /// 2D vector
+    Vec2,
+    /// 3D vector
+    Vec3,
+    /// 4D vector
+    Vec4,
+    /// 4x4 matrix
+    Mat4,
+    /// Texture data
+    Texture,
 }
 
 impl DataType {
@@ -84,6 +166,11 @@ impl DataType {
             DataType::List(inner) => format!("list<{}>", inner.name()),
             DataType::Record(_) => "record".to_string(),
             DataType::Any => "any".to_string(),
+            DataType::Vec2 => "vec2".to_string(),
+            DataType::Vec3 => "vec3".to_string(),
+            DataType::Vec4 => "vec4".to_string(),
+            DataType::Mat4 => "mat4".to_string(),
+            DataType::Texture => "texture".to_string(),
         }
     }
 }
@@ -643,6 +730,51 @@ impl GraphNode {
                             _ => {} // Skip complex nested types for now
                         }
                     }
+                }
+                NodeValue::Vec2(v) => {
+                    "Vec2".hash(&mut hasher);
+                    v.x.to_bits().hash(&mut hasher);
+                    v.y.to_bits().hash(&mut hasher);
+                }
+                NodeValue::Vec3(v) => {
+                    "Vec3".hash(&mut hasher);
+                    v.x.to_bits().hash(&mut hasher);
+                    v.y.to_bits().hash(&mut hasher);
+                    v.z.to_bits().hash(&mut hasher);
+                }
+                NodeValue::Vec4(v) => {
+                    "Vec4".hash(&mut hasher);
+                    v.x.to_bits().hash(&mut hasher);
+                    v.y.to_bits().hash(&mut hasher);
+                    v.z.to_bits().hash(&mut hasher);
+                    v.w.to_bits().hash(&mut hasher);
+                }
+                NodeValue::Mat4(m) => {
+                    "Mat4".hash(&mut hasher);
+                    // Hash all 16 matrix components
+                    m.m00.to_bits().hash(&mut hasher);
+                    m.m01.to_bits().hash(&mut hasher);
+                    m.m02.to_bits().hash(&mut hasher);
+                    m.m03.to_bits().hash(&mut hasher);
+                    m.m10.to_bits().hash(&mut hasher);
+                    m.m11.to_bits().hash(&mut hasher);
+                    m.m12.to_bits().hash(&mut hasher);
+                    m.m13.to_bits().hash(&mut hasher);
+                    m.m20.to_bits().hash(&mut hasher);
+                    m.m21.to_bits().hash(&mut hasher);
+                    m.m22.to_bits().hash(&mut hasher);
+                    m.m23.to_bits().hash(&mut hasher);
+                    m.m30.to_bits().hash(&mut hasher);
+                    m.m31.to_bits().hash(&mut hasher);
+                    m.m32.to_bits().hash(&mut hasher);
+                    m.m33.to_bits().hash(&mut hasher);
+                }
+                NodeValue::Texture(t) => {
+                    "Texture".hash(&mut hasher);
+                    t.width.hash(&mut hasher);
+                    t.height.hash(&mut hasher);
+                    // Hash texture data
+                    t.data.hash(&mut hasher);
                 }
             }
         }

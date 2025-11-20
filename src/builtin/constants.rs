@@ -53,6 +53,11 @@ impl ConstantNode {
                 }
             }
             NodeValue::Record(_) => ("Record", DataType::Record(vec![])),
+            NodeValue::Vec2(_) => ("Vec2", DataType::Vec2),
+            NodeValue::Vec3(_) => ("Vec3", DataType::Vec3),
+            NodeValue::Vec4(_) => ("Vec4", DataType::Vec4),
+            NodeValue::Mat4(_) => ("Mat4", DataType::Mat4),
+            NodeValue::Texture(_) => ("Texture", DataType::Texture),
         };
 
         ComponentSpec::new_builtin(
