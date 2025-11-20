@@ -7,6 +7,7 @@
 //! - Serialization and persistence
 
 pub mod builtin;
+pub mod gpu;
 pub mod graph;
 pub mod runtime;
 pub mod ui;

@@ -19,6 +19,12 @@ egui-snarl = { git = "https://github.com/zakarumych/egui-snarl.git", branch = "m
 egui_code_editor = "0.2.20"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
+# GPU Integration (Phase 2)
+wgpu = "22.0"
+naga = { version = "22.0", features = ["glsl-in", "spv-out"] }
+pollster = "0.3"
+bytemuck = { version = "1.14", features = ["derive"] }
+
 # WASM Runtime
 wasmtime = { version = "27.0", features = ["component-model", "async"] }
 wasmtime-wasi = "27.0"

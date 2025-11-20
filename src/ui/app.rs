@@ -107,6 +107,8 @@ pub struct WasmFlowApp {
     splash_screen: Option<crate::ui::SplashScreen>,
     /// T011: Pending graph file to load after components are ready
     pending_graph_load: Option<PathBuf>,
+    /// Phase 2: GPU context for shader rendering
+    gpu_context: Option<Arc<Mutex<crate::gpu::GpuContext>>>,
 }
 
 /// State for incremental execution on the main thread
@@ -210,13 +212,44 @@ impl WasmFlowApp {
             loading_state: crate::ui::LoadingState::NotStarted,                  // T011
             splash_screen: None,                                                 // T011
             pending_graph_load: None,                                            // T011
+            gpu_context: None,                                                   // Phase 2: Initialize GPU later
         };
+
+        // Phase 2: Initialize GPU context
+        app.initialize_gpu();
 
         // T011: Component loading moved to async startup (see start_async_component_loading)
         // TODO: This will be called from main.rs after app creation
         // app.reload_components();
 
         app
+    }
+
+    /// Initialize GPU context for shader rendering (Phase 2)
+    ///
+    /// Attempts to initialize WebGPU. Falls back gracefully if unavailable.
+    /// Sets self.gpu_context to Some(context) on success, None on failure.
+    fn initialize_gpu(&mut self) {
+        log::info!("Initializing GPU context for shader rendering...");
+
+        match crate::gpu::init_gpu_async() {
+            Ok(context) => {
+                log::info!("GPU initialized successfully");
+                log::info!("{}", context.capabilities_info());
+
+                self.gpu_context = Some(Arc::new(Mutex::new(context)));
+                self.status_message = "GPU initialized successfully".to_string();
+            }
+            Err(e) => {
+                log::warn!("GPU initialization failed: {}. Shader preview will use placeholder mode.", e);
+                self.error_message = Some(format!(
+                    "GPU initialization failed: {}\n\nShader preview will run in placeholder mode. \
+                     Real-time rendering requires WebGPU support.",
+                    e
+                ));
+                self.gpu_context = None;
+            }
+        }
     }
 
     /// Start async component loading in background thread
