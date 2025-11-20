@@ -1,0 +1,214 @@
+package wasmflow:node@1.1.0;
+
+/// Data types supported by WasmFlow
+interface types {
+    /// Data type specification for ports
+    variant data-type {
+        u32-type,
+        i32-type,
+        f32-type,
+        string-type,
+        bool-type,
+        binary-type,
+        list-type,
+        any-type,
+        // Graphics primitive types
+        vec2-type,
+        vec3-type,
+        vec4-type,
+        mat4-type,
+        texture-type,
+    }
+
+    /// Values that flow through node connections
+    variant value {
+        u32-val(u32),
+        i32-val(s32),
+        f32-val(f32),
+        string-val(string),
+        bool-val(bool),
+        binary-val(list<u8>),
+        // Non-recursive list types for common cases
+        string-list-val(list<string>),
+        u32-list-val(list<u32>),
+        f32-list-val(list<f32>),
+        // Graphics primitive types
+        vec2-val(vec2),
+        vec3-val(vec3),
+        vec4-val(vec4),
+        mat4-val(mat4),
+        texture-val(texture-data),
+    }
+
+    /// 2D vector
+    record vec2 {
+        x: f32,
+        y: f32,
+    }
+
+    /// 3D vector
+    record vec3 {
+        x: f32,
+        y: f32,
+        z: f32,
+    }
+
+    /// 4D vector
+    record vec4 {
+        x: f32,
+        y: f32,
+        z: f32,
+        w: f32,
+    }
+
+    /// 4x4 matrix (column-major order, standard for OpenGL/WebGPU)
+    record mat4 {
+        m00: f32, m01: f32, m02: f32, m03: f32,
+        m10: f32, m11: f32, m12: f32, m13: f32,
+        m20: f32, m21: f32, m22: f32, m23: f32,
+        m30: f32, m31: f32, m32: f32, m33: f32,
+    }
+
+    /// Texture format
+    enum texture-format {
+        rgba8,
+        rgb8,
+        r8,
+        rgba32-float,
+        depth24-stencil8,
+    }
+
+    /// Texture data
+    record texture-data {
+        width: u32,
+        height: u32,
+        format: texture-format,
+        data: list<u8>,
+    }
+
+    /// Port specification
+    record port-spec {
+        name: string,
+        data-type: data-type,
+        optional: bool,
+        description: string,
+    }
+
+    /// Component metadata
+    record component-info {
+        name: string,
+        version: string,
+        description: string,
+        author: string,
+        category: option<string>,
+    }
+
+    /// Execution error
+    record execution-error {
+        message: string,
+        input-name: option<string>,
+        recovery-hint: option<string>,
+    }
+}
+
+/// Host functions provided by WasmFlow
+interface host {
+    /// Log a message to the console
+    log: func(level: string, message: string);
+
+    /// Get temporary directory path
+    get-temp-dir: func() -> result<string, string>;
+}
+
+/// Metadata interface - provides component information
+interface metadata {
+    use types.{component-info, port-spec};
+
+    /// Get component information
+    get-info: func() -> component-info;
+
+    /// Get input port specifications
+    get-inputs: func() -> list<port-spec>;
+
+    /// Get output port specifications
+    get-outputs: func() -> list<port-spec>;
+
+    /// Get required capabilities
+    get-capabilities: func() -> option<list<string>>;
+}
+
+/// Execution interface - performs the actual computation
+interface execution {
+    use types.{value, execution-error};
+
+    /// Execute the component with given inputs
+    execute: func(inputs: list<tuple<string, value>>) -> result<list<tuple<string, value>>, execution-error>;
+}
+
+/// UI interface - provides custom UI rendering (optional)
+interface ui {
+    use types.{value};
+
+    /// UI element types for declarative footer rendering
+    /// Note: Horizontal/Vertical layouts use separate record types to avoid recursion
+    variant ui-element {
+        /// Simple text label
+        label(string),
+        /// Colored text with RGB color
+        colored-label(colored-text),
+        /// Key-value pair in a grid
+        key-value(key-value-pair),
+        /// Horizontal layout container
+        horizontal(horizontal-layout),
+        /// Vertical layout container
+        vertical(vertical-layout),
+        /// Separator line
+        separator,
+    }
+
+    /// Horizontal layout of UI elements
+    record horizontal-layout {
+        elements: list<ui-element-item>,
+    }
+
+    /// Vertical layout of UI elements
+    record vertical-layout {
+        elements: list<ui-element-item>,
+    }
+
+    /// UI element item (non-recursive version for layouts)
+    variant ui-element-item {
+        /// Simple text label
+        label(string),
+        /// Colored text with RGB color
+        colored-label(colored-text),
+        /// Key-value pair in a grid
+        key-value(key-value-pair),
+        /// Separator line
+        separator,
+    }
+
+    /// Colored text specification
+    record colored-text {
+        text: string,
+        r: u8,
+        g: u8,
+        b: u8,
+    }
+
+    /// Key-value pair for grid display
+    record key-value-pair {
+        key: string,
+        value: string,
+    }
+
+    /// Footer view data
+    record footer-view {
+        elements: list<ui-element>,
+    }
+
+    /// Get custom footer view for this component
+    /// Returns None if component doesn't provide a custom view
+    /// Returns Some(footer-view) with declarative UI elements to render
+    get-footer-view: func(outputs: list<tuple<string, value>>) -> option<footer-view>;
+}

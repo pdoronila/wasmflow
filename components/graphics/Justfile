@@ -1,0 +1,55 @@
+set shell := ["nu", "-c"]
+set unstable
+
+DEFAULT_THREADS := "1"
+
+[script('nu')]
+build component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just build-all {{threads}}
+    } else {
+        just --justfile {{component}}/Justfile build
+    }
+
+[script('nu')]
+install component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just install-all {{threads}}
+    } else {
+        just --justfile {{component}}/Justfile install
+    }
+
+[script('nu')]
+test component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just test-all {{threads}}
+    } else {
+        just --justfile {{component}}/Justfile test
+    }
+
+[script('nu')]
+clean component="" threads=DEFAULT_THREADS:
+    if "{{component}}" == "" {
+        just clean-all {{threads}}
+    } else {
+        cargo clean
+    }
+
+list:
+    ls | where type == dir | get name
+
+[private]
+build-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just build $component }
+
+[private]
+install-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just install $component }
+
+[private]
+test-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just test $component }
+
+[private]
+clean-all threads=DEFAULT_THREADS:
+    ls | where type == dir | get name | par-each --threads {{threads}} { |component| just clean $component }
