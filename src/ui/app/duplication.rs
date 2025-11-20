@@ -163,6 +163,7 @@ fn clone_node(
         creator_data: original.creator_data.clone(), // Clone WASM Creator data
         composition_data: original.composition_data.clone(), // Clone composition binary
         continuous_config: original.continuous_config.clone(), // Clone continuous config
+        shader_editor_data: original.shader_editor_data.clone(), // Clone GLSL shader editor data
         needs_component_refresh: original.needs_component_refresh,
         // Reset UI/runtime state
         selected: true, // Clone is selected

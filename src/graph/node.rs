@@ -305,6 +305,126 @@ impl Default for ContinuousNodeConfig {
     }
 }
 
+/// Shader type enum
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ShaderType {
+    Vertex,
+    Fragment,
+    Compute,
+}
+
+impl ShaderType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ShaderType::Vertex => "vertex",
+            ShaderType::Fragment => "fragment",
+            ShaderType::Compute => "compute",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "vertex" => Some(ShaderType::Vertex),
+            "fragment" => Some(ShaderType::Fragment),
+            "compute" => Some(ShaderType::Compute),
+            _ => None,
+        }
+    }
+
+    pub fn all() -> Vec<ShaderType> {
+        vec![ShaderType::Vertex, ShaderType::Fragment, ShaderType::Compute]
+    }
+}
+
+/// Shader validation state
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ShaderValidationState {
+    Idle,
+    Validating,
+    Valid,
+    Invalid,
+}
+
+impl Default for ShaderValidationState {
+    fn default() -> Self {
+        ShaderValidationState::Idle
+    }
+}
+
+/// GLSL Shader Editor node data (serialized with the graph)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GlslShaderEditorNodeData {
+    /// User-specified shader name
+    pub shader_name: String,
+    /// Shader type (vertex, fragment, compute)
+    pub shader_type: ShaderType,
+    /// Whether to save shader code in graph file
+    pub save_code: bool,
+    /// GLSL shader code (optional - may be empty if save_code was false)
+    #[serde(default)]
+    pub source_code: String,
+    /// Current validation state
+    #[serde(default)]
+    pub validation_state: ShaderValidationState,
+    /// Last validation error message
+    #[serde(skip)]
+    pub last_error: Option<String>,
+    /// Code editor theme preference
+    #[serde(default, skip)]
+    pub editor_theme: crate::ui::code_editor::CodeTheme,
+}
+
+impl GlslShaderEditorNodeData {
+    pub fn new(shader_name: String, shader_type: ShaderType, source_code: String) -> Self {
+        Self {
+            shader_name,
+            shader_type,
+            save_code: true,
+            source_code,
+            validation_state: ShaderValidationState::Idle,
+            last_error: None,
+            editor_theme: crate::ui::code_editor::CodeTheme::default(),
+        }
+    }
+
+    /// Prepare for serialization by clearing source_code if save_code is false
+    pub fn prepare_for_save(&mut self) {
+        if !self.save_code {
+            self.source_code = String::new();
+        }
+    }
+
+    /// Check if source code needs to be loaded (was saved)
+    pub fn has_saved_code(&self) -> bool {
+        self.save_code && !self.source_code.is_empty()
+    }
+
+    /// Validate the shader code (basic validation for Phase 1)
+    pub fn validate_shader(&mut self) -> Result<(), String> {
+        // Basic validation (check for non-empty code)
+        if self.source_code.trim().is_empty() {
+            self.validation_state = ShaderValidationState::Invalid;
+            self.last_error = Some("Shader code is empty".to_string());
+            return Err("Shader code is empty".to_string());
+        }
+
+        // Basic GLSL version check
+        if !self.source_code.contains("#version") {
+            self.validation_state = ShaderValidationState::Invalid;
+            self.last_error =
+                Some("Missing #version directive (e.g., #version 450)".to_string());
+            return Err("Missing #version directive".to_string());
+        }
+
+        // TODO Phase 2: Use naga for full GLSL → SPIR-V validation
+        // For now, mark as valid if basic checks pass
+        self.validation_state = ShaderValidationState::Valid;
+        self.last_error = None;
+
+        Ok(())
+    }
+}
+
 /// Node metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeMetadata {
@@ -605,6 +725,10 @@ pub struct GraphNode {
     /// Stores internal structure for drill-down inspection
     #[serde(default)]
     pub composition_data: Option<CompositionData>,
+    /// GLSL Shader Editor data (only present for GlslShaderEditorNode type)
+    /// Stores the shader code, type, and validation state
+    #[serde(default)]
+    pub shader_editor_data: Option<GlslShaderEditorNodeData>,
 }
 
 /// T084: Default dirty flag to true for new nodes
@@ -634,6 +758,7 @@ impl GraphNode {
             continuous_config: None, // Continuous config set later if node supports it
             selected: false,         // T019: New nodes start unselected
             composition_data: None,  // T026: Composition data only present for composite nodes
+            shader_editor_data: None, // Shader editor data only present for GlslShaderEditorNode type
         }
     }
 

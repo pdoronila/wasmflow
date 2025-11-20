@@ -17,8 +17,8 @@ use super::palette::{Palette, PaletteAction};
 use super::spotlight::{SpotlightAction, SpotlightSearch};
 use super::theme::Theme;
 use crate::builtin::{
-    register_constant_nodes, register_continuous_example, register_http_server_listener,
-    register_wasm_creator_node,
+    register_constant_nodes, register_continuous_example, register_glsl_shader_editor_node,
+    register_http_server_listener, register_wasm_creator_node,
 };
 use crate::graph::command::CommandHistory;
 use crate::graph::graph::NodeGraph;
@@ -152,6 +152,7 @@ impl WasmFlowApp {
         let mut registry = ComponentRegistry::new();
         register_constant_nodes(&mut registry);
         register_wasm_creator_node(&mut registry);
+        register_glsl_shader_editor_node(&mut registry);
         register_continuous_example(&mut registry);
         register_http_server_listener(&mut registry);
 
