@@ -1,13 +1,12 @@
 //! Shader Preview Node
 //!
 //! A built-in node that displays rendered shader output in the node footer.
-//! Phase 1: Accepts texture-data but displays placeholder (no actual rendering yet)
-//! Phase 2: Will integrate WebGPU for actual texture display
+//! Phase 2: Integrated with WebGPU for real-time texture display
 
-use crate::graph::node::{ComponentSpec, DataType, GraphNode, NodeValue, PortSpec, ShaderPreviewNodeData};
+use crate::graph::node::{ComponentSpec, DataType, GraphNode, NodeValue, PortSpec, ShaderPreviewNodeData, TextureData};
 use crate::ui::component_view::ComponentFooterView;
 use crate::ComponentError;
-use egui::{Color32, RichText};
+use egui::{Color32, ColorImage, RichText};
 use std::collections::HashMap;
 
 /// Create component specification
@@ -15,7 +14,7 @@ pub fn spec() -> ComponentSpec {
     let mut spec = ComponentSpec::new_builtin(
         "builtin:graphics:shader-preview".to_string(),
         "Shader Preview".to_string(),
-        "Display rendered shader output (Phase 1: placeholder mode)".to_string(),
+        "Display rendered shader output with real-time GPU rendering".to_string(),
         Some("Graphics".to_string()),
     );
 
@@ -53,6 +52,14 @@ pub fn execute(
     if let Some(NodeValue::Texture(texture)) = inputs.get("texture") {
         node_data.last_texture_size = Some((texture.width, texture.height));
         node_data.last_update = Some(std::time::Instant::now());
+
+        // Cache texture data for GPU upload in footer view
+        node_data.cached_texture_data = Some(texture.clone());
+
+        // Clear GPU texture ID to force re-upload
+        node_data.gpu_texture_id = None;
+
+        log::debug!("Shader preview received texture: {}x{}", texture.width, texture.height);
     }
 
     // No outputs
@@ -81,64 +88,81 @@ impl ComponentFooterView for ShaderPreviewFooterView {
 
         ui.vertical(|ui| {
             ui.set_min_width(400.0);
-            ui.set_max_width(600.0);
+            ui.set_max_width(800.0);
 
             // Header
             ui.horizontal(|ui| {
                 ui.heading(RichText::new("Shader Preview").color(Color32::WHITE));
-                ui.label(RichText::new("(Phase 1: Placeholder)").color(Color32::GRAY));
+                if preview_node.cached_texture_data.is_some() {
+                    ui.label(RichText::new("● Active").color(Color32::GREEN));
+                } else {
+                    ui.label(RichText::new("○ Idle").color(Color32::GRAY));
+                }
             });
 
             ui.add_space(8.0);
 
-            // Preview area (placeholder for Phase 1)
+            // Preview area
             ui.group(|ui| {
-                ui.set_min_height(preview_node.preview_size.1 as f32);
-                ui.set_min_width(preview_node.preview_size.0 as f32);
+                let preview_width = preview_node.preview_size.0 as f32 * preview_node.zoom;
+                let preview_height = preview_node.preview_size.1 as f32 * preview_node.zoom;
 
-                ui.vertical_centered(|ui| {
-                    ui.add_space(80.0);
+                ui.set_min_height(preview_height.min(600.0));
+                ui.set_min_width(preview_width.min(800.0));
 
-                    // Placeholder icon/text
-                    ui.label(
-                        RichText::new("🖼")
-                            .size(64.0)
-                            .color(Color32::from_gray(100)),
-                    );
+                // Upload texture to GPU if needed
+                if let Some(texture_data) = &preview_node.cached_texture_data {
+                    if preview_node.gpu_texture_id.is_none() {
+                        // Convert texture data to egui ColorImage
+                        let color_image = convert_texture_to_color_image(texture_data);
 
-                    ui.add_space(16.0);
-
-                    ui.label(
-                        RichText::new("Shader Preview Placeholder")
-                            .size(16.0)
-                            .color(Color32::GRAY),
-                    );
-
-                    ui.add_space(8.0);
-
-                    ui.label(
-                        RichText::new("GPU rendering will be available in Phase 2")
-                            .size(12.0)
-                            .color(Color32::DARK_GRAY),
-                    );
-
-                    ui.add_space(16.0);
-
-                    // Show texture info if available
-                    if let Some((width, height)) = preview_node.last_texture_size {
-                        ui.label(
-                            RichText::new(format!("Last texture: {}x{}", width, height))
-                                .size(12.0)
-                                .color(Color32::from_gray(150)),
+                        // Upload to egui texture manager
+                        let texture_id = ui.ctx().load_texture(
+                            "shader_preview",
+                            color_image,
+                            egui::TextureOptions::default(),
                         );
-                    } else {
-                        ui.label(
-                            RichText::new("No texture data received")
-                                .size(12.0)
-                                .color(Color32::from_gray(120)),
-                        );
+
+                        preview_node.gpu_texture_id = Some(texture_id.id());
                     }
-                });
+
+                    // Display the texture
+                    if let Some(texture_id) = preview_node.gpu_texture_id {
+                        ui.vertical_centered(|ui| {
+                            ui.image(egui::load::SizedTexture::new(
+                                texture_id,
+                                egui::vec2(preview_width, preview_height),
+                            ));
+                        });
+                    }
+                } else {
+                    // No texture available - show placeholder
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(80.0);
+
+                        ui.label(
+                            RichText::new("🖼")
+                                .size(64.0)
+                                .color(Color32::from_gray(100)),
+                        );
+
+                        ui.add_space(16.0);
+
+                        ui.label(
+                            RichText::new("No Texture Input")
+                                .size(16.0)
+                                .color(Color32::GRAY),
+                        );
+
+                        ui.add_space(8.0);
+
+                        ui.label(
+                            RichText::new("Connect a texture to see preview")
+                                .size(12.0)
+                                .color(Color32::DARK_GRAY),
+                        );
+                    });
+                }
             });
 
             ui.add_space(8.0);
@@ -202,9 +226,108 @@ impl ComponentFooterView for ShaderPreviewFooterView {
     }
 }
 
+/// Convert TextureData to egui ColorImage
+fn convert_texture_to_color_image(texture: &TextureData) -> ColorImage {
+    use crate::graph::node::TextureFormat;
+
+    let width = texture.width as usize;
+    let height = texture.height as usize;
+
+    match texture.format {
+        TextureFormat::Rgba8 => {
+            // RGBA8 format - directly convert to Color32
+            let pixels: Vec<Color32> = texture
+                .data
+                .chunks_exact(4)
+                .map(|chunk| Color32::from_rgba_premultiplied(chunk[0], chunk[1], chunk[2], chunk[3]))
+                .collect();
+
+            ColorImage {
+                size: [width, height],
+                source_size: egui::vec2(width as f32, height as f32),
+                pixels,
+            }
+        }
+        TextureFormat::Rgb8 => {
+            // RGB8 format - add alpha channel
+            let pixels: Vec<Color32> = texture
+                .data
+                .chunks_exact(3)
+                .map(|chunk| Color32::from_rgb(chunk[0], chunk[1], chunk[2]))
+                .collect();
+
+            ColorImage {
+                size: [width, height],
+                source_size: egui::vec2(width as f32, height as f32),
+                pixels,
+            }
+        }
+        TextureFormat::R8 => {
+            // Grayscale - replicate to RGB
+            let pixels: Vec<Color32> = texture
+                .data
+                .iter()
+                .map(|&gray| Color32::from_gray(gray))
+                .collect();
+
+            ColorImage {
+                size: [width, height],
+                source_size: egui::vec2(width as f32, height as f32),
+                pixels,
+            }
+        }
+        TextureFormat::Rgba32Float => {
+            // 32-bit float RGBA - convert to 8-bit
+            let pixels: Vec<Color32> = texture
+                .data
+                .chunks_exact(16) // 4 floats * 4 bytes
+                .map(|chunk| {
+                    let r = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                    let g = f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+                    let b = f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
+                    let a = f32::from_le_bytes([chunk[12], chunk[13], chunk[14], chunk[15]]);
+
+                    Color32::from_rgba_premultiplied(
+                        (r.clamp(0.0, 1.0) * 255.0) as u8,
+                        (g.clamp(0.0, 1.0) * 255.0) as u8,
+                        (b.clamp(0.0, 1.0) * 255.0) as u8,
+                        (a.clamp(0.0, 1.0) * 255.0) as u8,
+                    )
+                })
+                .collect();
+
+            ColorImage {
+                size: [width, height],
+                source_size: egui::vec2(width as f32, height as f32),
+                pixels,
+            }
+        }
+        TextureFormat::Depth24Stencil8 => {
+            // Depth/stencil - visualize depth as grayscale
+            let pixels: Vec<Color32> = texture
+                .data
+                .chunks_exact(4)
+                .map(|chunk| {
+                    // Depth is in first 3 bytes (24-bit), visualize as grayscale
+                    let depth = ((chunk[0] as u32) | ((chunk[1] as u32) << 8) | ((chunk[2] as u32) << 16)) as f32
+                        / 16777215.0; // Max 24-bit value
+                    let gray = (depth * 255.0) as u8;
+                    Color32::from_gray(gray)
+                })
+                .collect();
+
+            ColorImage {
+                size: [width, height],
+                source_size: egui::vec2(width as f32, height as f32),
+                pixels,
+            }
+        }
+    }
+}
+
 /// Register the shader preview node in the component registry
 pub fn register_shader_preview_node(registry: &mut crate::graph::node::ComponentRegistry) {
     let spec = spec().with_footer_view(std::sync::Arc::new(ShaderPreviewFooterView::new()));
     registry.register_builtin(spec);
-    log::info!("Registered Shader Preview Node (Phase 1: placeholder mode)");
+    log::info!("Registered Shader Preview Node with GPU rendering support");
 }

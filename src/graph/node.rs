@@ -442,6 +442,12 @@ pub struct ShaderPreviewNodeData {
     /// Last update timestamp (for stats display)
     #[serde(skip)]
     pub last_update: Option<std::time::Instant>,
+    /// GPU texture ID for egui (runtime only)
+    #[serde(skip)]
+    pub gpu_texture_id: Option<egui::TextureId>,
+    /// Cached texture data for GPU upload (runtime only)
+    #[serde(skip)]
+    pub cached_texture_data: Option<TextureData>,
 }
 
 impl ShaderPreviewNodeData {
@@ -453,6 +459,8 @@ impl ShaderPreviewNodeData {
             zoom: 1.0,
             last_texture_size: None,
             last_update: None,
+            gpu_texture_id: None,
+            cached_texture_data: None,
         }
     }
 }
