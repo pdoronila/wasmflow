@@ -6,12 +6,14 @@
 pub mod buffer;
 pub mod context;
 pub mod shader;
+pub mod texture;
 
 pub use buffer::{
     BufferError, CameraUniforms, GeometryBuffers, GpuBuffer, LightUniforms, MaterialUniforms,
 };
 pub use context::{GpuContext, GpuError, GpuInitResult};
 pub use shader::{CompiledShader, CompilationResult, ShaderCompilationError, ShaderStage};
+pub use texture::{generate_checker, generate_gradient, generate_solid_color, GpuTexture, TextureError};
 
 /// Initialize GPU context asynchronously
 pub fn init_gpu_async() -> GpuInitResult {
