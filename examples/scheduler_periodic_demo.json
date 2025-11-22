@@ -1,0 +1,197 @@
+{
+  "name": "Scheduler Demo - Periodic Real-Time Tasks",
+  "description": "Demonstrates periodic task scheduling with different rates. Simulates a real-time system with fast sensor (10Hz), medium actuator (2Hz), and slow logger (0.2Hz).",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "component_id": "builtin:constant:string",
+      "display_name": "Periodic Task List",
+      "position": {
+        "x": 50.0,
+        "y": 100.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "00000000-0000-0000-0001-000000000001",
+          "name": "value",
+          "data_type": "String",
+          "current_value": {
+            "String": "[\n  {\n    \"component_id\": \"user:echo\",\n    \"priority\": 200,\n    \"budget_ms\": 20,\n    \"period_ms\": 100,\n    \"deadline_ms\": 90,\n    \"display_name\": \"Fast Sensor (10Hz)\"\n  },\n  {\n    \"component_id\": \"user:math-adder\",\n    \"priority\": 180,\n    \"budget_ms\": 40,\n    \"period_ms\": 500,\n    \"deadline_ms\": 450,\n    \"display_name\": \"Actuator Update (2Hz)\"\n  },\n  {\n    \"component_id\": \"user:format-template\",\n    \"priority\": 50,\n    \"budget_ms\": 100,\n    \"period_ms\": 5000,\n    \"deadline_ms\": 4900,\n    \"display_name\": \"Status Logger (0.2Hz)\"\n  }\n]"
+          }
+        }
+      ],
+      "execution_state": "Idle",
+      "continuous_config": null
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "component_id": "builtin:continuous:scheduler",
+      "display_name": "Real-Time Scheduler (EDF)",
+      "position": {
+        "x": 400.0,
+        "y": 150.0
+      },
+      "inputs": [
+        {
+          "id": "00000000-0000-0000-0002-000000000001",
+          "name": "tasks_json",
+          "data_type": "String",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-000000000002",
+          "name": "tasks",
+          "data_type": "List",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-000000000003",
+          "name": "time_quantum_ms",
+          "data_type": "U32",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-000000000004",
+          "name": "schedule_mode",
+          "data_type": "String",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-000000000005",
+          "name": "enable_preemption",
+          "data_type": "Bool",
+          "current_value": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "00000000-0000-0000-0002-100000000001",
+          "name": "status",
+          "data_type": "String",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000002",
+          "name": "executed_task",
+          "data_type": "String",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000003",
+          "name": "execution_time_ms",
+          "data_type": "U32",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000004",
+          "name": "budget_exceeded",
+          "data_type": "Bool",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000005",
+          "name": "schedule_mode",
+          "data_type": "String",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000006",
+          "name": "execution_success",
+          "data_type": "Bool",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000007",
+          "name": "execution_error",
+          "data_type": "String",
+          "current_value": null
+        },
+        {
+          "id": "00000000-0000-0000-0002-100000000008",
+          "name": "schedule_state",
+          "data_type": "Record",
+          "current_value": null
+        }
+      ],
+      "execution_state": "Idle",
+      "continuous_config": {
+        "supports_continuous": true,
+        "enabled": false
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "component_id": "builtin:constant:string",
+      "display_name": "Algorithm: EDF",
+      "position": {
+        "x": 50.0,
+        "y": 300.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "00000000-0000-0000-0003-000000000001",
+          "name": "value",
+          "data_type": "String",
+          "current_value": {
+            "String": "earliest-deadline-first"
+          }
+        }
+      ],
+      "execution_state": "Idle",
+      "continuous_config": null
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000004",
+      "component_id": "builtin:constant:u32",
+      "display_name": "Time Quantum (50ms)",
+      "position": {
+        "x": 50.0,
+        "y": 400.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "00000000-0000-0000-0004-000000000001",
+          "name": "value",
+          "data_type": "U32",
+          "current_value": {
+            "U32": 50
+          }
+        }
+      ],
+      "execution_state": "Idle",
+      "continuous_config": null
+    }
+  ],
+  "connections": [
+    {
+      "id": "00000000-0000-0000-1000-000000000001",
+      "from_node": "00000000-0000-0000-0000-000000000001",
+      "from_port": "00000000-0000-0000-0001-000000000001",
+      "to_node": "00000000-0000-0000-0000-000000000002",
+      "to_port": "00000000-0000-0000-0002-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-1000-000000000002",
+      "from_node": "00000000-0000-0000-0000-000000000003",
+      "from_port": "00000000-0000-0000-0003-000000000001",
+      "to_node": "00000000-0000-0000-0000-000000000002",
+      "to_port": "00000000-0000-0000-0002-000000000004"
+    },
+    {
+      "id": "00000000-0000-0000-1000-000000000003",
+      "from_node": "00000000-0000-0000-0000-000000000004",
+      "from_port": "00000000-0000-0000-0004-000000000001",
+      "to_node": "00000000-0000-0000-0000-000000000002",
+      "to_port": "00000000-0000-0000-0002-000000000003"
+    }
+  ],
+  "metadata": {
+    "created_at": "2025-01-09T00:00:00Z",
+    "author": "WasmFlow Scheduler",
+    "tags": ["scheduler", "demo", "periodic", "real-time", "edf"]
+  }
+}

@@ -1,0 +1,19 @@
+# Build the task-builder component
+
+# Build the component in release mode
+build:
+    cargo build --target wasm32-wasip2 --release
+
+# Build and copy to bin directory
+install: build
+    mkdir -p ../../bin
+    cp target/wasm32-wasip2/release/task_builder.wasm ../../bin/task-builder.wasm
+    @echo "✓ Installed task-builder.wasm to components/bin/"
+
+# Run tests
+test:
+    cargo test
+
+# Clean build artifacts
+clean:
+    cargo clean

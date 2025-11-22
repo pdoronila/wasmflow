@@ -20,9 +20,14 @@ use crate::ContinuousNodeError;
 // This allows the TcpListener to persist across execution iterations
 use once_cell::sync::Lazy;
 use std::collections::HashMap as StdHashMap;
-use crate::builtin::HttpServerListenerExecutor;
+use crate::builtin::{HttpServerListenerExecutor, TimePartitionedSchedulerExecutor};
 
 static HTTP_EXECUTORS: Lazy<Arc<Mutex<StdHashMap<Uuid, HttpServerListenerExecutor>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(StdHashMap::new())));
+
+// Static cache for scheduler executors
+// This allows the scheduler state to persist across execution iterations
+static SCHEDULER_EXECUTORS: Lazy<Arc<Mutex<StdHashMap<Uuid, TimePartitionedSchedulerExecutor>>>> =
     Lazy::new(|| Arc::new(Mutex::new(StdHashMap::new())));
 
 // Helper function to safely read interval from graph
@@ -560,6 +565,77 @@ impl ContinuousExecutionManager {
                                 } else {
                                     Err("Failed to lock graph".to_string())
                                 }
+                            }
+                            Some("builtin:continuous:scheduler") => {
+                                // Time-Partitioned Scheduler: execute tasks with deterministic budgets
+                                use crate::runtime::engine::NodeExecutor;
+
+                                // Resolve inputs from graph connections
+                                let inputs = if let Ok(graph_lock) = graph.lock() {
+                                    let mut resolved_inputs = HashMap::new();
+
+                                    // Get all input values for the scheduler node
+                                    if let Some(node) = graph_lock.nodes.get(&node_id) {
+                                        for input_port in &node.inputs {
+                                            // Try to get value from connections first
+                                            let mut found_connection = false;
+                                            for connection in graph_lock.connections.iter() {
+                                                if connection.to_node == node_id
+                                                    && connection.to_port == input_port.id
+                                                {
+                                                    // Get source node's output value
+                                                    if let Some(source_node) =
+                                                        graph_lock.nodes.get(&connection.from_node)
+                                                    {
+                                                        if let Some(source_port) = source_node
+                                                            .outputs
+                                                            .iter()
+                                                            .find(|p| p.id == connection.from_port)
+                                                        {
+                                                            if let Some(value) =
+                                                                &source_port.current_value
+                                                            {
+                                                                resolved_inputs.insert(
+                                                                    input_port.name.clone(),
+                                                                    value.clone(),
+                                                                );
+                                                                found_connection = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // If no connection, use port's current value
+                                            if !found_connection {
+                                                if let Some(value) = &input_port.current_value {
+                                                    resolved_inputs
+                                                        .insert(input_port.name.clone(), value.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    resolved_inputs
+                                } else {
+                                    HashMap::new()
+                                };
+
+                                // Get or create persistent executor for this node
+                                let mut executors = SCHEDULER_EXECUTORS.lock().unwrap();
+                                let executor = executors.entry(node_id).or_insert_with(|| {
+                                    log::info!(
+                                        "Creating new scheduler executor for node {}",
+                                        node_id
+                                    );
+                                    // Create scheduler with ComponentManager for real execution
+                                    TimePartitionedSchedulerExecutor::with_component_manager(
+                                        _component_manager.clone()
+                                    )
+                                });
+
+                                executor.execute(&inputs).map_err(|e| e.to_string())
                             }
                             _ => {
                                 // Unknown continuous node type

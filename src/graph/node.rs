@@ -1418,6 +1418,24 @@ let result = value * 2.0;
         // Initialize texture loader data for texture loader nodes (Phase 3)
         if self.id == "builtin:graphics:texture-loader" {
             node.texture_loader_data = Some(TextureLoaderNodeData::new());
+        // Initialize continuous_config for Time-Partitioned Scheduler
+        if self.id == "builtin:continuous:scheduler" {
+            node.continuous_config = Some(ContinuousNodeConfig {
+                supports_continuous: true,
+                enabled: true,
+                runtime_state: ContinuousRuntimeState::default(),
+            });
+
+            // Set default values for scheduler inputs
+            if let Some(quantum_input) = node.get_input_mut("time_quantum_ms") {
+                quantum_input.current_value = Some(NodeValue::U32(100));
+            }
+            if let Some(mode_input) = node.get_input_mut("schedule_mode") {
+                mode_input.current_value = Some(NodeValue::String("round-robin".to_string()));
+            }
+            if let Some(preemption_input) = node.get_input_mut("enable_preemption") {
+                preemption_input.current_value = Some(NodeValue::Bool(false));
+            }
         }
 
         node

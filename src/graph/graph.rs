@@ -473,6 +473,108 @@ impl NodeGraph {
     pub fn has_capability_grant(&self, node_id: Uuid) -> bool {
         self.capability_grants.contains_key(&node_id)
     }
+
+    /// Migrate builtin nodes to match their current component specs
+    /// This updates ports and continuous_config when loading older saved files
+    pub fn migrate_builtin_nodes(&mut self) {
+        use crate::graph::node::ComponentRegistry;
+        use crate::builtin::{
+            register_constant_nodes, register_continuous_example,
+            register_http_server_listener, register_scheduler,
+            register_wasm_creator_node,
+        };
+
+        // Create a registry with all current builtin specs
+        let mut registry = ComponentRegistry::new();
+        register_constant_nodes(&mut registry);
+        register_wasm_creator_node(&mut registry);
+        register_continuous_example(&mut registry);
+        register_http_server_listener(&mut registry);
+        register_scheduler(&mut registry);
+
+        for node in self.nodes.values_mut() {
+            // Only migrate builtin nodes (component_id starts with "builtin:")
+            if !node.component_id.starts_with("builtin:") {
+                continue;
+            }
+
+            // Get current spec from registry
+            let Some(spec) = registry.get_by_id(&node.component_id) else {
+                log::warn!("No current spec found for builtin node: {}", node.component_id);
+                continue;
+            };
+
+            // Store existing port values before migration
+            let mut input_values: HashMap<String, crate::graph::node::NodeValue> = HashMap::new();
+            for port in &node.inputs {
+                if let Some(value) = &port.current_value {
+                    input_values.insert(port.name.clone(), value.clone());
+                }
+            }
+
+            let mut output_values: HashMap<String, crate::graph::node::NodeValue> = HashMap::new();
+            for port in &node.outputs {
+                if let Some(value) = &port.current_value {
+                    output_values.insert(port.name.clone(), value.clone());
+                }
+            }
+
+            // Update to current spec - recreate ports from spec
+            let mut new_inputs = Vec::new();
+            for input_spec in &spec.input_spec {
+                new_inputs.push(crate::graph::node::Port::new(
+                    input_spec.name.clone(),
+                    input_spec.data_type.clone(),
+                    crate::graph::node::PortDirection::Input,
+                    input_spec.optional,
+                ));
+            }
+            node.inputs = new_inputs;
+
+            let mut new_outputs = Vec::new();
+            for output_spec in &spec.output_spec {
+                new_outputs.push(crate::graph::node::Port::new(
+                    output_spec.name.clone(),
+                    output_spec.data_type.clone(),
+                    crate::graph::node::PortDirection::Output,
+                    output_spec.optional,
+                ));
+            }
+            node.outputs = new_outputs;
+
+            // Restore values for ports that still exist
+            for port in &mut node.inputs {
+                if let Some(value) = input_values.get(&port.name) {
+                    port.current_value = Some(value.clone());
+                    log::debug!("Restored input value for {}.{}", node.component_id, port.name);
+                }
+            }
+
+            for port in &mut node.outputs {
+                if let Some(value) = output_values.get(&port.name) {
+                    port.current_value = Some(value.clone());
+                    log::debug!("Restored output value for {}.{}", node.component_id, port.name);
+                }
+            }
+
+            // Update continuous_config for continuous builtins
+            if node.component_id == "builtin:continuous:timer"
+                || node.component_id == "builtin:continuous:combiner"
+                || node.component_id == "builtin:continuous:http-server-listener"
+                || node.component_id == "builtin:continuous:scheduler" {
+                if node.continuous_config.is_none() {
+                    node.continuous_config = Some(crate::graph::node::ContinuousNodeConfig {
+                        supports_continuous: true,
+                        enabled: true,
+                        runtime_state: crate::graph::node::ContinuousRuntimeState::default(),
+                    });
+                    log::info!("Enabled continuous mode for {}", node.component_id);
+                }
+            }
+
+            log::info!("Migrated builtin node: {} to current spec", node.component_id);
+        }
+    }
 }
 
 /// Validation report

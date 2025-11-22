@@ -201,6 +201,10 @@ impl NodeGraph {
             }
         }
 
+        // Migrate builtin nodes to current component specs
+        // This ensures old saved files get updated ports and configs
+        graph.migrate_builtin_nodes();
+
         log::info!("Graph structure validation passed");
         Ok(graph)
     }

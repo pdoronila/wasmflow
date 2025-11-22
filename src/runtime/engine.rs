@@ -773,6 +773,11 @@ pub fn register_builtin_executors(engine: &mut ExecutionEngine) {
         "builtin:continuous:http-server-listener".to_string(),
         Box::new(crate::builtin::HttpServerListenerExecutor::new()),
     );
+    // Register time-partitioned scheduler executor
+    engine.register_executor(
+        "builtin:continuous:scheduler".to_string(),
+        Box::new(crate::builtin::TimePartitionedSchedulerExecutor::new()),
+    );
 }
 
 #[cfg(test)]

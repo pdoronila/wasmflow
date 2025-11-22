@@ -10,6 +10,7 @@ pub mod shader_program_linker; // Shader Program Linker Node
 pub mod texture_loader; // Texture Loader Node (Phase 3)
 pub mod envmap_loader; // Environment Map Loader Node (Phase 4 Step 2)
 pub mod http_server_listener; // HTTP server listener node
+pub mod scheduler; // Time-partitioned scheduler (Integrity RTOS-inspired)
 pub mod views;
 pub mod wasm_creator; // T040: WASM Component Creator Node
 
@@ -23,5 +24,6 @@ pub use shader_program_linker::register_shader_program_linker_node; // Shader pr
 pub use texture_loader::register_texture_loader_node; // Texture loader registration (Phase 3)
 pub use envmap_loader::register_envmap_loader_node; // Environment map loader registration (Phase 4)
 pub use http_server_listener::{register_http_server_listener, HttpServerListenerExecutor};
+pub use scheduler::{register_scheduler, TimePartitionedSchedulerExecutor};
 pub use views::{ConstantNodeFooterView, HttpFetchFooterView};
 pub use wasm_creator::register_wasm_creator_node; // T040: Registration function
