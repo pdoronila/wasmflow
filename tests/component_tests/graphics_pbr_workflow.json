@@ -1,0 +1,298 @@
+{
+  "name": "Graphics PBR Workflow Test",
+  "description": "Comprehensive test of PBR (Cook-Torrance BRDF) pipeline with all components",
+  "tests": [
+    {
+      "name": "PBR Material - Dielectric",
+      "description": "Test PBR material with dielectric properties",
+      "component": "pbr-material",
+      "inputs": {
+        "base_color": {"vec3": [0.8, 0.2, 0.1]},
+        "metallic": {"f32": 0.0},
+        "roughness": {"f32": 0.5},
+        "ao": {"f32": 1.0}
+      },
+      "expected_outputs": {
+        "f0": {"vec3": [0.04, 0.04, 0.04]},
+        "roughness": {"f32": 0.5},
+        "ao": {"f32": 1.0},
+        "base_color": {"vec3": [0.8, 0.2, 0.1]}
+      }
+    },
+    {
+      "name": "PBR Material - Metallic",
+      "description": "Test PBR material with metallic properties (gold)",
+      "component": "pbr-material",
+      "inputs": {
+        "base_color": {"vec3": [1.0, 0.71, 0.29]},
+        "metallic": {"f32": 1.0},
+        "roughness": {"f32": 0.2}
+      },
+      "expected_outputs": {
+        "f0": {"vec3": [1.0, 0.71, 0.29]},
+        "roughness": {"f32": 0.2},
+        "ao": {"f32": 1.0},
+        "base_color": {"vec3": [1.0, 0.71, 0.29]}
+      }
+    },
+    {
+      "name": "PBR Fresnel - Normal Incidence",
+      "description": "Test Fresnel at normal incidence (should equal F0)",
+      "component": "pbr-fresnel",
+      "inputs": {
+        "f0": {"vec3": [0.04, 0.04, 0.04]},
+        "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "half_vector": {"vec3": [0.0, 1.0, 0.0]}
+      },
+      "expected_outputs": {
+        "fresnel": {"vec3_approx": [0.04, 0.04, 0.04], "tolerance": 0.001}
+      }
+    },
+    {
+      "name": "PBR Fresnel - Grazing Angle",
+      "description": "Test Fresnel at grazing angle (should approach 1.0)",
+      "component": "pbr-fresnel",
+      "inputs": {
+        "f0": {"vec3": [0.04, 0.04, 0.04]},
+        "view_dir": {"vec3": [0.0, 0.1, 0.99]},
+        "half_vector": {"vec3": [0.0, 0.1, 0.99]}
+      },
+      "expected_outputs": {
+        "fresnel": {"vec3_greater_than": [0.5, 0.5, 0.5]}
+      }
+    },
+    {
+      "name": "PBR GGX Distribution - Smooth Surface",
+      "description": "Test GGX distribution with smooth surface (high peak)",
+      "component": "pbr-ggx-distribution",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "half_vector": {"vec3": [0.0, 1.0, 0.0]},
+        "roughness": {"f32": 0.1}
+      },
+      "expected_outputs": {
+        "distribution": {"f32_greater_than": 1.0}
+      }
+    },
+    {
+      "name": "PBR GGX Distribution - Rough Surface",
+      "description": "Test GGX distribution with rough surface (lower, broader peak)",
+      "component": "pbr-ggx-distribution",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "half_vector": {"vec3": [0.0, 1.0, 0.0]},
+        "roughness": {"f32": 0.9}
+      },
+      "expected_outputs": {
+        "distribution": {"f32_range": [0.0, 1.5]}
+      }
+    },
+    {
+      "name": "PBR Smith Geometry - Aligned",
+      "description": "Test Smith geometry with aligned view and light (high value)",
+      "component": "pbr-smith-geometry",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "roughness": {"f32": 0.5}
+      },
+      "expected_outputs": {
+        "geometry": {"f32_range": [0.5, 1.0]}
+      }
+    },
+    {
+      "name": "PBR Smith Geometry - Grazing",
+      "description": "Test Smith geometry with grazing angles (lower value)",
+      "component": "pbr-smith-geometry",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "view_dir": {"vec3": [0.866, 0.5, 0.0]},
+        "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "roughness": {"f32": 0.5}
+      },
+      "expected_outputs": {
+        "geometry": {"f32_range": [0.0, 1.0]}
+      }
+    },
+    {
+      "name": "PBR BRDF - Dielectric Material",
+      "description": "Test complete Cook-Torrance BRDF with dielectric material",
+      "component": "pbr-brdf",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "f0": {"vec3": [0.04, 0.04, 0.04]},
+        "roughness": {"f32": 0.5},
+        "base_color": {"vec3": [0.8, 0.2, 0.1]}
+      },
+      "expected_outputs": {
+        "diffuse": {"vec3_exists": true},
+        "specular": {"vec3_exists": true},
+        "total_brdf": {"vec3_exists": true}
+      }
+    },
+    {
+      "name": "PBR BRDF - Metallic Material",
+      "description": "Test complete BRDF with metallic material (gold)",
+      "component": "pbr-brdf",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "f0": {"vec3": [1.0, 0.71, 0.29]},
+        "roughness": {"f32": 0.2},
+        "base_color": {"vec3": [1.0, 0.71, 0.29]}
+      },
+      "expected_outputs": {
+        "diffuse": {"vec3_exists": true},
+        "specular": {"vec3_exists": true},
+        "total_brdf": {"vec3_exists": true}
+      }
+    },
+    {
+      "name": "PBR BRDF - Energy Conservation",
+      "description": "Verify BRDF respects energy conservation (total <= 1.0)",
+      "component": "pbr-brdf",
+      "inputs": {
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+        "f0": {"vec3": [0.04, 0.04, 0.04]},
+        "roughness": {"f32": 0.5},
+        "base_color": {"vec3": [0.8, 0.8, 0.8]}
+      },
+      "expected_outputs": {
+        "total_brdf": {"vec3_max_value": 1.0}
+      }
+    },
+    {
+      "name": "Spot Light - Basic Configuration",
+      "description": "Test spot light creation with cone angles",
+      "component": "light-spot",
+      "inputs": {
+        "position": {"vec3": [0.0, 5.0, 0.0]},
+        "direction": {"vec3": [0.0, -1.0, 0.0]},
+        "color": {"vec3": [1.0, 1.0, 1.0]},
+        "intensity": {"f32": 1.0},
+        "inner_angle": {"f32": 15.0},
+        "outer_angle": {"f32": 30.0},
+        "radius": {"f32": 10.0}
+      },
+      "expected_outputs": {
+        "light_data": {"string_contains": ["spot", "\"inner_angle\":15", "\"outer_angle\":30"]}
+      }
+    },
+    {
+      "name": "Complete PBR Pipeline - Sphere",
+      "description": "End-to-end test: geometry → material → BRDF → lighting",
+      "workflow": [
+        {
+          "step": "Generate sphere geometry",
+          "component": "primitive-sphere",
+          "inputs": {
+            "radius": {"f32": 1.0},
+            "segments": {"u32": 32},
+            "rings": {"u32": 16}
+          },
+          "store_outputs": ["positions", "normals", "uvs", "tangents", "indices"]
+        },
+        {
+          "step": "Setup camera",
+          "component": "perspective-camera",
+          "inputs": {
+            "position": {"vec3": [0.0, 0.0, 5.0]},
+            "target": {"vec3": [0.0, 0.0, 0.0]},
+            "up": {"vec3": [0.0, 1.0, 0.0]},
+            "fov": {"f32": 60.0},
+            "aspect_ratio": {"f32": 1.777778},
+            "near": {"f32": 0.1},
+            "far": {"f32": 100.0}
+          },
+          "store_outputs": ["view_matrix", "projection_matrix", "camera_position"]
+        },
+        {
+          "step": "Create PBR material (brushed metal)",
+          "component": "pbr-material",
+          "inputs": {
+            "base_color": {"vec3": [0.9, 0.9, 0.9]},
+            "metallic": {"f32": 1.0},
+            "roughness": {"f32": 0.6}
+          },
+          "store_outputs": ["f0", "roughness", "base_color"]
+        },
+        {
+          "step": "Create directional light",
+          "component": "light-directional",
+          "inputs": {
+            "direction": {"vec3": [1.0, -1.0, -1.0]},
+            "color": {"vec3": [1.0, 1.0, 1.0]},
+            "intensity": {"f32": 1.0}
+          },
+          "store_outputs": ["light_data"]
+        },
+        {
+          "step": "Calculate BRDF for sample point",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"from_step": 0, "output": "normals", "index": 0},
+            "view_dir": {"vec3": [0.0, 0.0, 1.0]},
+            "light_dir": {"vec3": [-0.577, 0.577, 0.577]},
+            "f0": {"from_step": 2, "output": "f0"},
+            "roughness": {"from_step": 2, "output": "roughness"},
+            "base_color": {"from_step": 2, "output": "base_color"}
+          },
+          "verify_outputs": {
+            "total_brdf": {"vec3_exists": true},
+            "diffuse": {"vec3_exists": true},
+            "specular": {"vec3_exists": true}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Multi-Material Comparison",
+      "description": "Compare BRDF output for different material types",
+      "workflow": [
+        {
+          "step": "Setup viewing geometry",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]}
+          }
+        },
+        {
+          "step": "Test plastic material",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "roughness": {"f32": 0.5},
+            "base_color": {"vec3": [0.8, 0.1, 0.1]}
+          },
+          "store_outputs": ["plastic_diffuse:diffuse", "plastic_specular:specular"]
+        },
+        {
+          "step": "Test gold material",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"vec3": [1.0, 0.71, 0.29]},
+            "roughness": {"f32": 0.2},
+            "base_color": {"vec3": [1.0, 0.71, 0.29]}
+          },
+          "verify_outputs": {
+            "diffuse": {"vec3_less_than_stored": "plastic_diffuse"},
+            "specular": {"vec3_greater_than_stored": "plastic_specular"}
+          }
+        }
+      ]
+    }
+  ]
+}

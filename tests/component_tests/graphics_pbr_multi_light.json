@@ -1,0 +1,305 @@
+{
+  "name": "Graphics PBR Multi-Light Test",
+  "description": "Test PBR rendering with multiple light sources (directional, point, spot)",
+  "tests": [
+    {
+      "name": "Spot Light - Direction Normalization",
+      "description": "Verify spot light normalizes direction vector",
+      "component": "light-spot",
+      "inputs": {
+        "position": {"vec3": [0.0, 0.0, 0.0]},
+        "direction": {"vec3": [3.0, 4.0, 0.0]},
+        "color": {"vec3": [1.0, 1.0, 1.0]},
+        "intensity": {"f32": 1.0},
+        "inner_angle": {"f32": 10.0},
+        "outer_angle": {"f32": 20.0},
+        "radius": {"f32": 5.0}
+      },
+      "expected_outputs": {
+        "light_data": {"string_contains": ["\"direction\":[0.6,0.8,0"]}
+      }
+    },
+    {
+      "name": "Spot Light - Narrow Cone",
+      "description": "Test spot light with narrow cone (5° inner, 10° outer)",
+      "component": "light-spot",
+      "inputs": {
+        "position": {"vec3": [0.0, 10.0, 0.0]},
+        "direction": {"vec3": [0.0, -1.0, 0.0]},
+        "color": {"vec3": [1.0, 0.9, 0.7]},
+        "intensity": {"f32": 5.0},
+        "inner_angle": {"f32": 5.0},
+        "outer_angle": {"f32": 10.0},
+        "radius": {"f32": 20.0}
+      },
+      "expected_outputs": {
+        "light_data": {"string_contains": ["spot", "\"inner_angle\":5", "\"outer_angle\":10", "\"intensity\":5"]}
+      }
+    },
+    {
+      "name": "Spot Light - Wide Cone",
+      "description": "Test spot light with wide cone (45° inner, 60° outer)",
+      "component": "light-spot",
+      "inputs": {
+        "position": {"vec3": [5.0, 5.0, 5.0]},
+        "direction": {"vec3": [-1.0, -1.0, -1.0]},
+        "color": {"vec3": [0.8, 0.8, 1.0]},
+        "intensity": {"f32": 2.0},
+        "inner_angle": {"f32": 45.0},
+        "outer_angle": {"f32": 60.0},
+        "radius": {"f32": 15.0}
+      },
+      "expected_outputs": {
+        "light_data": {"string_contains": ["spot", "\"inner_angle\":45", "\"outer_angle\":60"]}
+      }
+    },
+    {
+      "name": "Multi-Light Scene - Three Lights",
+      "description": "Create a scene with directional, point, and spot lights",
+      "workflow": [
+        {
+          "step": "Create sun (directional)",
+          "component": "light-directional",
+          "inputs": {
+            "direction": {"vec3": [1.0, -1.0, 0.0]},
+            "color": {"vec3": [1.0, 0.95, 0.9]},
+            "intensity": {"f32": 0.8}
+          },
+          "store_outputs": ["sun_data:light_data"]
+        },
+        {
+          "step": "Create fill light (point)",
+          "component": "light-point",
+          "inputs": {
+            "position": {"vec3": [-3.0, 2.0, 3.0]},
+            "color": {"vec3": [0.7, 0.7, 1.0]},
+            "intensity": {"f32": 1.5},
+            "radius": {"f32": 10.0}
+          },
+          "store_outputs": ["fill_data:light_data"]
+        },
+        {
+          "step": "Create spotlight (spot)",
+          "component": "light-spot",
+          "inputs": {
+            "position": {"vec3": [0.0, 5.0, 0.0]},
+            "direction": {"vec3": [0.0, -1.0, 0.0]},
+            "color": {"vec3": [1.0, 0.8, 0.6]},
+            "intensity": {"f32": 3.0},
+            "inner_angle": {"f32": 20.0},
+            "outer_angle": {"f32": 35.0},
+            "radius": {"f32": 12.0}
+          },
+          "verify_outputs": {
+            "light_data": {"string_contains": ["spot"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "PBR with Mixed Lighting",
+      "description": "Calculate BRDF contributions from different light types",
+      "workflow": [
+        {
+          "step": "Setup material (copper)",
+          "component": "pbr-material",
+          "inputs": {
+            "base_color": {"vec3": [0.95, 0.64, 0.54]},
+            "metallic": {"f32": 1.0},
+            "roughness": {"f32": 0.3},
+            "ao": {"f32": 1.0}
+          },
+          "store_outputs": ["f0", "roughness", "base_color"]
+        },
+        {
+          "step": "BRDF from directional light",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [-0.707, 0.707, 0.0]},
+            "f0": {"from_step": 0, "output": "f0"},
+            "roughness": {"from_step": 0, "output": "roughness"},
+            "base_color": {"from_step": 0, "output": "base_color"}
+          },
+          "store_outputs": ["dir_brdf:total_brdf"]
+        },
+        {
+          "step": "BRDF from point light (closer, different angle)",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.6, 0.8, 0.0]},
+            "f0": {"from_step": 0, "output": "f0"},
+            "roughness": {"from_step": 0, "output": "roughness"},
+            "base_color": {"from_step": 0, "output": "base_color"}
+          },
+          "store_outputs": ["point_brdf:total_brdf"]
+        },
+        {
+          "step": "Verify both contributions are valid",
+          "verify": {
+            "dir_brdf": {"vec3_exists": true, "vec3_max_value": 1.0},
+            "point_brdf": {"vec3_exists": true, "vec3_max_value": 1.0}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roughness Variation Test",
+      "description": "Compare BRDF for same material at different roughness values",
+      "workflow": [
+        {
+          "step": "Setup base parameters",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 0.866, 0.5]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "base_color": {"vec3": [0.8, 0.8, 0.8]}
+          }
+        },
+        {
+          "step": "Smooth surface (roughness=0.1)",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 0.866, 0.5]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "roughness": {"f32": 0.1},
+            "base_color": {"vec3": [0.8, 0.8, 0.8]}
+          },
+          "store_outputs": ["smooth_specular:specular"]
+        },
+        {
+          "step": "Medium surface (roughness=0.5)",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 0.866, 0.5]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "roughness": {"f32": 0.5},
+            "base_color": {"vec3": [0.8, 0.8, 0.8]}
+          },
+          "store_outputs": ["medium_specular:specular"]
+        },
+        {
+          "step": "Rough surface (roughness=0.9)",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 0.866, 0.5]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "roughness": {"f32": 0.9},
+            "base_color": {"vec3": [0.8, 0.8, 0.8]}
+          },
+          "verify_outputs": {
+            "specular": {"vec3_less_than_stored": "medium_specular"}
+          }
+        },
+        {
+          "step": "Verify smooth > medium > rough for specular",
+          "verify": {
+            "smooth_specular": {"vec3_greater_than_stored": "medium_specular"},
+            "medium_specular": {"vec3_greater_than_stored": "rough_specular"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complete Multi-Light PBR Scene",
+      "description": "Full pipeline with geometry, materials, and multiple lights",
+      "workflow": [
+        {
+          "step": "Generate cube geometry",
+          "component": "primitive-cube",
+          "inputs": {
+            "size": {"f32": 2.0}
+          },
+          "store_outputs": ["positions", "normals", "tangents"]
+        },
+        {
+          "step": "Setup camera",
+          "component": "perspective-camera",
+          "inputs": {
+            "position": {"vec3": [5.0, 5.0, 5.0]},
+            "target": {"vec3": [0.0, 0.0, 0.0]},
+            "up": {"vec3": [0.0, 1.0, 0.0]},
+            "fov": {"f32": 45.0},
+            "aspect_ratio": {"f32": 1.777778},
+            "near": {"f32": 0.1},
+            "far": {"f32": 100.0}
+          },
+          "store_outputs": ["view_matrix", "projection_matrix"]
+        },
+        {
+          "step": "Create PBR material (rough plastic)",
+          "component": "pbr-material",
+          "inputs": {
+            "base_color": {"vec3": [0.2, 0.6, 0.9]},
+            "metallic": {"f32": 0.0},
+            "roughness": {"f32": 0.7},
+            "ao": {"f32": 0.9}
+          },
+          "store_outputs": ["f0", "roughness", "ao", "base_color"]
+        },
+        {
+          "step": "Create sun (directional)",
+          "component": "light-directional",
+          "inputs": {
+            "direction": {"vec3": [1.0, -1.0, -1.0]},
+            "color": {"vec3": [1.0, 1.0, 1.0]},
+            "intensity": {"f32": 1.0}
+          },
+          "store_outputs": ["sun_light:light_data"]
+        },
+        {
+          "step": "Create rim light (point)",
+          "component": "light-point",
+          "inputs": {
+            "position": {"vec3": [-5.0, 3.0, -5.0]},
+            "color": {"vec3": [0.5, 0.7, 1.0]},
+            "intensity": {"f32": 2.0},
+            "radius": {"f32": 15.0}
+          },
+          "store_outputs": ["rim_light:light_data"]
+        },
+        {
+          "step": "Create spotlight accent",
+          "component": "light-spot",
+          "inputs": {
+            "position": {"vec3": [0.0, 8.0, 0.0]},
+            "direction": {"vec3": [0.0, -1.0, 0.0]},
+            "color": {"vec3": [1.0, 0.9, 0.7]},
+            "intensity": {"f32": 4.0},
+            "inner_angle": {"f32": 15.0},
+            "outer_angle": {"f32": 30.0},
+            "radius": {"f32": 20.0}
+          },
+          "store_outputs": ["spot_light:light_data"]
+        },
+        {
+          "step": "Calculate BRDF for top face",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.577, 0.577, 0.577]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"from_step": 2, "output": "f0"},
+            "roughness": {"from_step": 2, "output": "roughness"},
+            "base_color": {"from_step": 2, "output": "base_color"}
+          },
+          "verify_outputs": {
+            "diffuse": {"vec3_exists": true},
+            "specular": {"vec3_exists": true},
+            "total_brdf": {"vec3_exists": true, "vec3_max_value": 1.0}
+          }
+        }
+      ]
+    }
+  ]
+}
