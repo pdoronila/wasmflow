@@ -779,6 +779,10 @@ pub struct GraphNode {
     /// Stores preview settings and state
     #[serde(default)]
     pub shader_preview_data: Option<ShaderPreviewNodeData>,
+    /// Linked Program data (only present for ShaderProgramLinkerNode type)
+    /// Stores compiled shader program state
+    #[serde(default)]
+    pub linked_program: Option<crate::builtin::shader_program_linker::LinkedProgram>,
 }
 
 /// T084: Default dirty flag to true for new nodes
@@ -810,6 +814,7 @@ impl GraphNode {
             composition_data: None,  // T026: Composition data only present for composite nodes
             shader_editor_data: None, // Shader editor data only present for GlslShaderEditorNode type
             shader_preview_data: None, // Shader preview data only present for ShaderPreviewNode type
+            linked_program: None, // Linked program data only present for ShaderProgramLinkerNode type
         }
     }
 
