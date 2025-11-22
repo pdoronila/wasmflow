@@ -3,10 +3,10 @@
 //! A built-in node that loads image files (PNG, JPG) and outputs texture data for GPU rendering.
 //! Phase 3: Texture system foundation for PBR materials
 
-use crate::graph::node::{ComponentSpec, DataType, GraphNode, NodeValue, PortSpec, TextureData, TextureLoaderNodeData};
+use crate::graph::node::{ComponentRegistry, ComponentSpec, DataType, GraphNode, NodeValue, PortSpec, TextureData, TextureLoaderNodeData};
 use crate::ui::component_view::ComponentFooterView;
 use crate::ComponentError;
-use egui::{Color32, ColorImage, RichText, TextureHandle};
+use egui::{Color32, ColorImage, RichText};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -101,8 +101,8 @@ pub fn execute(
 
 /// Register the texture loader node with the component registry
 pub fn register_texture_loader_node(
-    registry: &mut crate::ComponentRegistry,
-) -> Result<(), crate::ComponentError> {
+    registry: &mut ComponentRegistry,
+) -> Result<(), ComponentError> {
     let spec = spec().with_footer_view(std::sync::Arc::new(TextureLoaderFooterView::new()));
     registry.register_component(spec)?;
     log::info!("Registered texture-loader builtin node");

@@ -158,7 +158,7 @@ impl WasmFlowApp {
         register_glsl_shader_editor_node(&mut registry);
         register_shader_preview_node(&mut registry);
         register_shader_program_linker_node(&mut registry);
-        register_texture_loader_node(&mut registry);
+        let _ = register_texture_loader_node(&mut registry);
         register_continuous_example(&mut registry);
         register_http_server_listener(&mut registry);
 

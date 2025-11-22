@@ -417,6 +417,11 @@ mod tests {
             0.5, 1.0, // Top UV
         ];
 
+        let tangents = vec![
+            1.0, 0.0, 0.0, 1.0, // Tangent pointing right, handedness = 1.0
+            1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0,
+        ];
+
         let indices = vec![0, 1, 2];
 
         let geometry = GeometryBuffers::from_geometry_data(
@@ -424,6 +429,7 @@ mod tests {
             &positions,
             &normals,
             &uvs,
+            &tangents,
             &indices,
         )
         .expect("Geometry creation failed");

@@ -183,6 +183,14 @@ impl GpuBuffer {
 }
 
 /// Geometry buffer set containing all buffers for a mesh
+///
+/// Vertex Format (48 bytes per vertex):
+/// - Position: vec3 (12 bytes, location 0, offset 0)
+/// - Normal: vec3 (12 bytes, location 1, offset 12)
+/// - UV: vec2 (8 bytes, location 2, offset 24)
+/// - Tangent: vec4 (16 bytes, location 3, offset 32)
+///   - xyz: tangent vector
+///   - w: handedness (-1.0 or 1.0) for bitangent = cross(normal, tangent.xyz) * tangent.w
 pub struct GeometryBuffers {
     pub vertex_buffer: GpuBuffer,
     pub index_buffer: GpuBuffer,
@@ -198,6 +206,7 @@ impl GeometryBuffers {
     /// * `positions` - Vertex positions (flattened vec3 array)
     /// * `normals` - Vertex normals (flattened vec3 array)
     /// * `uvs` - Texture coordinates (flattened vec2 array)
+    /// * `tangents` - Vertex tangents (flattened vec4 array, w = handedness)
     /// * `indices` - Triangle indices
     ///
     /// # Returns
@@ -207,6 +216,7 @@ impl GeometryBuffers {
         positions: &[f32],
         normals: &[f32],
         uvs: &[f32],
+        tangents: &[f32],
         indices: &[u32],
     ) -> Result<Self, BufferError> {
         // Validate input sizes
@@ -225,6 +235,11 @@ impl GeometryBuffers {
                 "UVs must be multiple of 2 (vec2)".to_string(),
             ));
         }
+        if tangents.len() % 4 != 0 {
+            return Err(BufferError::InvalidData(
+                "Tangents must be multiple of 4 (vec4)".to_string(),
+            ));
+        }
 
         let vertex_count = positions.len() / 3;
         if normals.len() / 3 != vertex_count {
@@ -241,9 +256,16 @@ impl GeometryBuffers {
                 uvs.len() / 2
             )));
         }
+        if tangents.len() / 4 != vertex_count {
+            return Err(BufferError::InvalidData(format!(
+                "Position and tangent counts don't match: {} vs {}",
+                vertex_count,
+                tangents.len() / 4
+            )));
+        }
 
-        // Interleave vertex data: [pos.xyz, normal.xyz, uv.xy] per vertex
-        let mut vertex_data = Vec::with_capacity(vertex_count * 8);
+        // Interleave vertex data: [pos.xyz, normal.xyz, uv.xy, tangent.xyzw] per vertex
+        let mut vertex_data = Vec::with_capacity(vertex_count * 12);
         for i in 0..vertex_count {
             // Position (3 floats)
             vertex_data.push(positions[i * 3]);
@@ -258,6 +280,12 @@ impl GeometryBuffers {
             // UV (2 floats)
             vertex_data.push(uvs[i * 2]);
             vertex_data.push(uvs[i * 2 + 1]);
+
+            // Tangent (4 floats: xyz = tangent vector, w = handedness)
+            vertex_data.push(tangents[i * 4]);
+            vertex_data.push(tangents[i * 4 + 1]);
+            vertex_data.push(tangents[i * 4 + 2]);
+            vertex_data.push(tangents[i * 4 + 3]);
         }
 
         let vertex_buffer =
@@ -301,10 +329,16 @@ impl GeometryBuffers {
                 shader_location: 2,
                 format: wgpu::VertexFormat::Float32x2,
             },
+            // Tangent (location 3)
+            wgpu::VertexAttribute {
+                offset: 32, // 8 * 4 bytes
+                shader_location: 3,
+                format: wgpu::VertexFormat::Float32x4,
+            },
         ];
 
         wgpu::VertexBufferLayout {
-            array_stride: 32, // 8 floats * 4 bytes
+            array_stride: 48, // 12 floats * 4 bytes
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: VERTEX_ATTRIBUTES,
         }

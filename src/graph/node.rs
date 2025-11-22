@@ -472,7 +472,7 @@ impl Default for ShaderPreviewNodeData {
 }
 
 /// Texture loader node data (Phase 3)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TextureLoaderNodeData {
     /// Path to the loaded texture file
     pub file_path: Option<std::path::PathBuf>,
@@ -487,6 +487,18 @@ pub struct TextureLoaderNodeData {
     /// Load error message (if any)
     #[serde(skip)]
     pub error_message: Option<String>,
+}
+
+impl std::fmt::Debug for TextureLoaderNodeData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TextureLoaderNodeData")
+            .field("file_path", &self.file_path)
+            .field("dimensions", &self.dimensions)
+            .field("cached_pixels", &self.cached_pixels.as_ref().map(|v| v.len()))
+            .field("thumbnail", &self.thumbnail.is_some())
+            .field("error_message", &self.error_message)
+            .finish()
+    }
 }
 
 impl TextureLoaderNodeData {
