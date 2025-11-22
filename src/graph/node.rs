@@ -471,6 +471,42 @@ impl Default for ShaderPreviewNodeData {
     }
 }
 
+/// Texture loader node data (Phase 3)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TextureLoaderNodeData {
+    /// Path to the loaded texture file
+    pub file_path: Option<std::path::PathBuf>,
+    /// Cached texture dimensions
+    pub dimensions: Option<(u32, u32)>,
+    /// Cached pixel data (RGBA8)
+    #[serde(skip)]
+    pub cached_pixels: Option<Vec<u8>>,
+    /// Thumbnail texture handle for UI (runtime only)
+    #[serde(skip)]
+    pub thumbnail: Option<egui::TextureHandle>,
+    /// Load error message (if any)
+    #[serde(skip)]
+    pub error_message: Option<String>,
+}
+
+impl TextureLoaderNodeData {
+    pub fn new() -> Self {
+        Self {
+            file_path: None,
+            dimensions: None,
+            cached_pixels: None,
+            thumbnail: None,
+            error_message: None,
+        }
+    }
+}
+
+impl Default for TextureLoaderNodeData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Node metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeMetadata {
@@ -783,6 +819,10 @@ pub struct GraphNode {
     /// Stores compiled shader program state
     #[serde(default)]
     pub linked_program: Option<crate::builtin::shader_program_linker::LinkedProgram>,
+    /// Texture Loader data (only present for TextureLoaderNode type) - Phase 3
+    /// Stores loaded texture file path and cached pixel data
+    #[serde(default)]
+    pub texture_loader_data: Option<TextureLoaderNodeData>,
 }
 
 /// T084: Default dirty flag to true for new nodes
@@ -815,6 +855,7 @@ impl GraphNode {
             shader_editor_data: None, // Shader editor data only present for GlslShaderEditorNode type
             shader_preview_data: None, // Shader preview data only present for ShaderPreviewNode type
             linked_program: None, // Linked program data only present for ShaderProgramLinkerNode type
+            texture_loader_data: None, // Texture loader data only present for TextureLoaderNode type (Phase 3)
         }
     }
 

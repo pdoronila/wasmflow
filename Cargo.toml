@@ -17,7 +17,7 @@ egui = "0.33"
 eframe = { version = "0.33", default-features = true, features = ["default"] }
 egui-snarl = { git = "https://github.com/zakarumych/egui-snarl.git", branch = "main" }
 egui_code_editor = "0.2.20"
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "gif"] }
 
 # GPU Integration (Phase 2)
 wgpu = "22.0"

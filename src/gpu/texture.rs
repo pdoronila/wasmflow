@@ -251,6 +251,91 @@ impl GpuTexture {
         })
     }
 
+    /// Create a texture from RGB8 data (converts to RGBA8)
+    ///
+    /// # Arguments
+    /// * `device` - WebGPU device
+    /// * `queue` - WebGPU queue for data transfer
+    /// * `width` - Texture width in pixels
+    /// * `height` - Texture height in pixels
+    /// * `data` - RGB pixel data (width * height * 3 bytes)
+    /// * `label` - Debug label
+    ///
+    /// # Returns
+    /// GPU texture with alpha channel set to 255 (opaque)
+    pub fn from_rgb8(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        width: u32,
+        height: u32,
+        data: &[u8],
+        label: Option<&str>,
+    ) -> Result<Self, TextureError> {
+        let expected_size = (width * height * 3) as usize;
+        if data.len() != expected_size {
+            return Err(TextureError::InvalidDataSize {
+                expected: expected_size,
+                actual: data.len(),
+            });
+        }
+
+        // Convert RGB8 to RGBA8 (add alpha channel = 255)
+        let mut rgba_data = Vec::with_capacity((width * height * 4) as usize);
+        for chunk in data.chunks_exact(3) {
+            rgba_data.push(chunk[0]); // R
+            rgba_data.push(chunk[1]); // G
+            rgba_data.push(chunk[2]); // B
+            rgba_data.push(255); // A (opaque)
+        }
+
+        Self::from_rgba8(device, queue, width, height, &rgba_data, label)
+    }
+
+    /// Create a custom sampler with specified filtering and addressing modes
+    ///
+    /// # Arguments
+    /// * `device` - WebGPU device
+    /// * `mag_filter` - Magnification filter (Linear or Nearest)
+    /// * `min_filter` - Minification filter (Linear or Nearest)
+    /// * `address_mode` - UV wrapping mode (Repeat, ClampToEdge, MirrorRepeat)
+    ///
+    /// # Returns
+    /// Custom sampler with specified parameters
+    pub fn create_custom_sampler(
+        device: &wgpu::Device,
+        mag_filter: wgpu::FilterMode,
+        min_filter: wgpu::FilterMode,
+        address_mode: wgpu::AddressMode,
+    ) -> wgpu::Sampler {
+        device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Custom Sampler"),
+            address_mode_u: address_mode,
+            address_mode_v: address_mode,
+            address_mode_w: address_mode,
+            mag_filter,
+            min_filter,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        })
+    }
+
+    /// Update the texture's sampler with custom settings
+    ///
+    /// # Arguments
+    /// * `device` - WebGPU device
+    /// * `mag_filter` - Magnification filter
+    /// * `min_filter` - Minification filter
+    /// * `address_mode` - UV wrapping mode
+    pub fn update_sampler(
+        &mut self,
+        device: &wgpu::Device,
+        mag_filter: wgpu::FilterMode,
+        min_filter: wgpu::FilterMode,
+        address_mode: wgpu::AddressMode,
+    ) {
+        self.sampler = Self::create_custom_sampler(device, mag_filter, min_filter, address_mode);
+    }
+
     /// Create default texture sampler
     fn create_default_sampler(device: &wgpu::Device) -> wgpu::Sampler {
         device.create_sampler(&wgpu::SamplerDescriptor {
@@ -535,5 +620,81 @@ mod tests {
             true,
         );
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rgb8_texture_creation() {
+        let Some((device, queue)) = create_test_device() else {
+            println!("GPU not available, skipping test");
+            return;
+        };
+
+        let width = 4;
+        let height = 4;
+        let data = vec![255u8; (width * height * 3) as usize]; // White texture (RGB)
+
+        let result =
+            GpuTexture::from_rgb8(&device, &queue, width, height, &data, Some("Test RGB8 Texture"));
+        assert!(result.is_ok());
+
+        let texture = result.unwrap();
+        assert_eq!(texture.size.width, width);
+        assert_eq!(texture.size.height, height);
+        assert_eq!(texture.format, wgpu::TextureFormat::Rgba8UnormSrgb);
+    }
+
+    #[test]
+    fn test_rgb8_invalid_data_size() {
+        let Some((device, queue)) = create_test_device() else {
+            return;
+        };
+
+        let data = vec![0u8; 10]; // Wrong size for 4x4 RGB
+        let result = GpuTexture::from_rgb8(&device, &queue, 4, 4, &data, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_custom_sampler_creation() {
+        let Some((device, _queue)) = create_test_device() else {
+            return;
+        };
+
+        let sampler = GpuTexture::create_custom_sampler(
+            &device,
+            wgpu::FilterMode::Nearest,
+            wgpu::FilterMode::Nearest,
+            wgpu::AddressMode::ClampToEdge,
+        );
+
+        // Just verify it doesn't panic - we can't inspect sampler properties directly
+        assert_eq!(std::mem::size_of_val(&sampler), std::mem::size_of::<wgpu::Sampler>());
+    }
+
+    #[test]
+    fn test_sampler_update() {
+        let Some((device, queue)) = create_test_device() else {
+            return;
+        };
+
+        let width = 4;
+        let height = 4;
+        let data = vec![255u8; (width * height * 4) as usize];
+
+        let mut texture =
+            GpuTexture::from_rgba8(&device, &queue, width, height, &data, Some("Test Texture"))
+                .unwrap();
+
+        // Update sampler settings
+        texture.update_sampler(
+            &device,
+            wgpu::FilterMode::Nearest,
+            wgpu::FilterMode::Nearest,
+            wgpu::AddressMode::ClampToEdge,
+        );
+
+        // Verify texture still works after sampler update
+        assert_eq!(texture.size.width, width);
+        assert_eq!(texture.size.height, height);
     }
 }

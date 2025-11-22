@@ -166,6 +166,7 @@ fn clone_node(
         shader_editor_data: original.shader_editor_data.clone(), // Clone GLSL shader editor data
         shader_preview_data: original.shader_preview_data.clone(), // Clone shader preview data
         linked_program: original.linked_program.clone(), // Clone linked program data
+        texture_loader_data: original.texture_loader_data.clone(), // Clone texture loader data (Phase 3)
         needs_component_refresh: original.needs_component_refresh,
         // Reset UI/runtime state
         selected: true, // Clone is selected
