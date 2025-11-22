@@ -398,6 +398,192 @@ impl LightUniforms {
     }
 }
 
+/// Single light in array (supports both directional and point lights)
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct LightData {
+    pub position_or_direction: [f32; 3], // 12 bytes - position for point, direction for directional
+    pub light_type: u32,                  // 4 bytes - 0=directional, 1=point
+    pub color: [f32; 3],                  // 12 bytes
+    pub intensity: f32,                   // 4 bytes
+    pub radius: f32,                      // 4 bytes - only for point lights
+    pub _padding: [f32; 3],               // 12 bytes (alignment to 16 bytes)
+}
+
+/// Light types for GPU shaders
+pub const LIGHT_TYPE_DIRECTIONAL: u32 = 0;
+pub const LIGHT_TYPE_POINT: u32 = 1;
+
+impl LightData {
+    /// Create directional light data
+    pub fn directional(direction: [f32; 3], color: [f32; 3], intensity: f32) -> Self {
+        Self {
+            position_or_direction: direction,
+            light_type: LIGHT_TYPE_DIRECTIONAL,
+            color,
+            intensity,
+            radius: 0.0,
+            _padding: [0.0; 3],
+        }
+    }
+
+    /// Create point light data
+    pub fn point(position: [f32; 3], color: [f32; 3], intensity: f32, radius: f32) -> Self {
+        Self {
+            position_or_direction: position,
+            light_type: LIGHT_TYPE_POINT,
+            color,
+            intensity,
+            radius,
+            _padding: [0.0; 3],
+        }
+    }
+
+    /// Parse from JSON string (from light WASM components)
+    pub fn from_json(json_str: &str) -> Result<Self, String> {
+        use serde_json::Value;
+
+        let data: Value = serde_json::from_str(json_str)
+            .map_err(|e| format!("Failed to parse light JSON: {}", e))?;
+
+        let light_type_str = data["light_type"]
+            .as_str()
+            .ok_or("Missing light_type field")?;
+
+        match light_type_str {
+            "directional" => {
+                let direction = data["direction"]
+                    .as_array()
+                    .ok_or("Missing direction field")?
+                    .iter()
+                    .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                    .collect::<Vec<_>>();
+                let color = data["color"]
+                    .as_array()
+                    .ok_or("Missing color field")?
+                    .iter()
+                    .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                    .collect::<Vec<_>>();
+                let intensity = data["intensity"]
+                    .as_f64()
+                    .ok_or("Missing intensity field")? as f32;
+
+                if direction.len() != 3 || color.len() != 3 {
+                    return Err("Invalid direction or color array length".to_string());
+                }
+
+                Ok(Self::directional(
+                    [direction[0], direction[1], direction[2]],
+                    [color[0], color[1], color[2]],
+                    intensity,
+                ))
+            }
+            "point" => {
+                let position = data["position"]
+                    .as_array()
+                    .ok_or("Missing position field")?
+                    .iter()
+                    .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                    .collect::<Vec<_>>();
+                let color = data["color"]
+                    .as_array()
+                    .ok_or("Missing color field")?
+                    .iter()
+                    .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                    .collect::<Vec<_>>();
+                let intensity = data["intensity"]
+                    .as_f64()
+                    .ok_or("Missing intensity field")? as f32;
+                let radius = data["radius"]
+                    .as_f64()
+                    .ok_or("Missing radius field")? as f32;
+
+                if position.len() != 3 || color.len() != 3 {
+                    return Err("Invalid position or color array length".to_string());
+                }
+
+                Ok(Self::point(
+                    [position[0], position[1], position[2]],
+                    [color[0], color[1], color[2]],
+                    intensity,
+                    radius,
+                ))
+            }
+            _ => Err(format!("Unknown light type: {}", light_type_str)),
+        }
+    }
+}
+
+/// Multi-light uniform buffer (supports up to MAX_LIGHTS lights)
+pub const MAX_LIGHTS: usize = 8;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct MultiLightUniforms {
+    pub lights: [LightData; MAX_LIGHTS], // Array of lights
+    pub light_count: u32,                 // Active light count
+    pub _padding: [f32; 3],               // Alignment
+}
+
+impl MultiLightUniforms {
+    /// Create empty multi-light uniforms
+    pub fn new() -> Self {
+        Self {
+            lights: [LightData {
+                position_or_direction: [0.0; 3],
+                light_type: LIGHT_TYPE_DIRECTIONAL,
+                color: [0.0; 3],
+                intensity: 0.0,
+                radius: 0.0,
+                _padding: [0.0; 3],
+            }; MAX_LIGHTS],
+            light_count: 0,
+            _padding: [0.0; 3],
+        }
+    }
+
+    /// Add a light (returns false if max lights reached)
+    pub fn add_light(&mut self, light: LightData) -> bool {
+        if self.light_count as usize >= MAX_LIGHTS {
+            return false;
+        }
+
+        self.lights[self.light_count as usize] = light;
+        self.light_count += 1;
+        true
+    }
+
+    /// Create buffer from multi-light uniforms
+    pub fn create_buffer(&self, device: &wgpu::Device) -> Result<GpuBuffer, BufferError> {
+        GpuBuffer::from_uniform_data(device, self, Some("Multi-Light Uniforms"))
+    }
+
+    /// Parse from array of JSON strings
+    pub fn from_json_array(json_strings: &[&str]) -> Result<Self, String> {
+        let mut uniforms = Self::new();
+
+        for (i, json_str) in json_strings.iter().enumerate() {
+            if i >= MAX_LIGHTS {
+                log::warn!("Exceeded maximum number of lights ({}), ignoring extras", MAX_LIGHTS);
+                break;
+            }
+
+            let light_data = LightData::from_json(json_str)?;
+            if !uniforms.add_light(light_data) {
+                break;
+            }
+        }
+
+        Ok(uniforms)
+    }
+}
+
+impl Default for MultiLightUniforms {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

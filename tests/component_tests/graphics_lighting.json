@@ -1,0 +1,307 @@
+{
+  "description": "Test lighting components (directional light, point light, Phong lighting)",
+  "tests": [
+    {
+      "name": "Directional Light Creation",
+      "description": "Create a directional light and verify JSON output",
+      "graph": {
+        "nodes": [
+          {
+            "id": "dir_vec",
+            "component": "vec3-construct",
+            "inputs": {
+              "x": 0.0,
+              "y": -1.0,
+              "z": 0.0
+            }
+          },
+          {
+            "id": "color_vec",
+            "component": "vec3-construct",
+            "inputs": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          },
+          {
+            "id": "dir_light",
+            "component": "light-directional",
+            "inputs": {
+              "direction": {"from_node": "dir_vec", "from_port": "vector"},
+              "color": {"from_node": "color_vec", "from_port": "vector"},
+              "intensity": 1.0
+            }
+          }
+        ],
+        "output": {"from_node": "dir_light", "from_port": "light_data"}
+      },
+      "expected_output": {
+        "type": "string",
+        "contains": ["directional", "direction", "color", "intensity"]
+      }
+    },
+    {
+      "name": "Point Light Creation",
+      "description": "Create a point light and verify JSON output",
+      "graph": {
+        "nodes": [
+          {
+            "id": "pos_vec",
+            "component": "vec3-construct",
+            "inputs": {
+              "x": 0.0,
+              "y": 5.0,
+              "z": 0.0
+            }
+          },
+          {
+            "id": "color_vec",
+            "component": "vec3-construct",
+            "inputs": {
+              "x": 1.0,
+              "y": 0.8,
+              "z": 0.6
+            }
+          },
+          {
+            "id": "point_light",
+            "component": "light-point",
+            "inputs": {
+              "position": {"from_node": "pos_vec", "from_port": "vector"},
+              "color": {"from_node": "color_vec", "from_port": "vector"},
+              "intensity": 2.5,
+              "radius": 10.0
+            }
+          }
+        ],
+        "output": {"from_node": "point_light", "from_port": "light_data"}
+      },
+      "expected_output": {
+        "type": "string",
+        "contains": ["point", "position", "color", "intensity", "radius"]
+      }
+    },
+    {
+      "name": "Phong Lighting - Full Brightness",
+      "description": "Test Phong lighting with aligned normal, light, and view vectors",
+      "graph": {
+        "nodes": [
+          {
+            "id": "normal",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "light_dir",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "view_dir",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "surface_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.5, "y": 0.5, "z": 0.5}
+          },
+          {
+            "id": "light_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 1.0, "z": 1.0}
+          },
+          {
+            "id": "phong",
+            "component": "lighting-phong",
+            "inputs": {
+              "normal": {"from_node": "normal", "from_port": "vector"},
+              "light_dir": {"from_node": "light_dir", "from_port": "vector"},
+              "view_dir": {"from_node": "view_dir", "from_port": "vector"},
+              "surface_color": {"from_node": "surface_color", "from_port": "vector"},
+              "light_color": {"from_node": "light_color", "from_port": "vector"},
+              "shininess": 32.0
+            }
+          }
+        ],
+        "output": {"from_node": "phong", "from_port": "lit_color"}
+      },
+      "expected_output": {
+        "type": "vec3",
+        "min_component": 0.5,
+        "note": "All components should be >= 0.5 due to full diffuse (0.5*1.0) + specular"
+      }
+    },
+    {
+      "name": "Phong Lighting - Perpendicular Light",
+      "description": "Test Phong lighting with perpendicular light (should be dark)",
+      "graph": {
+        "nodes": [
+          {
+            "id": "normal",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "light_dir",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 0.0, "z": 0.0}
+          },
+          {
+            "id": "view_dir",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "surface_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.5, "y": 0.5, "z": 0.5}
+          },
+          {
+            "id": "light_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 1.0, "z": 1.0}
+          },
+          {
+            "id": "phong",
+            "component": "lighting-phong",
+            "inputs": {
+              "normal": {"from_node": "normal", "from_port": "vector"},
+              "light_dir": {"from_node": "light_dir", "from_port": "vector"},
+              "view_dir": {"from_node": "view_dir", "from_port": "vector"},
+              "surface_color": {"from_node": "surface_color", "from_port": "vector"},
+              "light_color": {"from_node": "light_color", "from_port": "vector"},
+              "shininess": 32.0
+            }
+          }
+        ],
+        "output": {"from_node": "phong", "from_port": "lit_color"}
+      },
+      "expected_output": {
+        "type": "vec3",
+        "max_component": 0.1,
+        "note": "All components should be near 0 (no diffuse, no specular)"
+      }
+    },
+    {
+      "name": "Phong Lighting - Colored Surface",
+      "description": "Test Phong lighting with a red surface",
+      "graph": {
+        "nodes": [
+          {
+            "id": "normal",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "light_dir",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "view_dir",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": 1.0, "z": 0.0}
+          },
+          {
+            "id": "surface_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 0.0, "z": 0.0}
+          },
+          {
+            "id": "light_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 1.0, "z": 1.0}
+          },
+          {
+            "id": "phong",
+            "component": "lighting-phong",
+            "inputs": {
+              "normal": {"from_node": "normal", "from_port": "vector"},
+              "light_dir": {"from_node": "light_dir", "from_port": "vector"},
+              "view_dir": {"from_node": "view_dir", "from_port": "vector"},
+              "surface_color": {"from_node": "surface_color", "from_port": "vector"},
+              "light_color": {"from_node": "light_color", "from_port": "vector"},
+              "shininess": 32.0
+            }
+          }
+        ],
+        "output": {"from_node": "phong", "from_port": "lit_color"}
+      },
+      "expected_output": {
+        "type": "vec3",
+        "check": {
+          "x": {"min": 0.5, "note": "Red component strong"},
+          "y": {"min": 0.0, "max": 1.0, "note": "Green from specular only"},
+          "z": {"min": 0.0, "max": 1.0, "note": "Blue from specular only"}
+        }
+      }
+    },
+    {
+      "name": "Multi-Component Lighting Workflow",
+      "description": "Test a complete lighting setup with multiple lights and Phong calculation",
+      "graph": {
+        "nodes": [
+          {
+            "id": "dir_vec",
+            "component": "vec3-construct",
+            "inputs": {"x": 0.0, "y": -1.0, "z": 0.0}
+          },
+          {
+            "id": "white",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 1.0, "z": 1.0}
+          },
+          {
+            "id": "dir_light",
+            "component": "light-directional",
+            "inputs": {
+              "direction": {"from_node": "dir_vec", "from_port": "vector"},
+              "color": {"from_node": "white", "from_port": "vector"},
+              "intensity": 1.0
+            }
+          },
+          {
+            "id": "point_pos",
+            "component": "vec3-construct",
+            "inputs": {"x": 5.0, "y": 5.0, "z": 0.0}
+          },
+          {
+            "id": "warm_color",
+            "component": "vec3-construct",
+            "inputs": {"x": 1.0, "y": 0.8, "z": 0.6}
+          },
+          {
+            "id": "point_light",
+            "component": "light-point",
+            "inputs": {
+              "position": {"from_node": "point_pos", "from_port": "vector"},
+              "color": {"from_node": "warm_color", "from_port": "vector"},
+              "intensity": 1.5,
+              "radius": 10.0
+            }
+          }
+        ],
+        "outputs": [
+          {"from_node": "dir_light", "from_port": "light_data"},
+          {"from_node": "point_light", "from_port": "light_data"}
+        ]
+      },
+      "expected_outputs": [
+        {"type": "string", "contains": ["directional"]},
+        {"type": "string", "contains": ["point", "radius"]}
+      ]
+    }
+  ],
+  "metadata": {
+    "feature": "Step 8 - Basic Lighting Nodes",
+    "components_tested": [
+      "light-directional",
+      "light-point",
+      "lighting-phong"
+    ],
+    "created": "2025-11-20",
+    "phase": 2
+  }
+}
