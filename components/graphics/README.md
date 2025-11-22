@@ -649,12 +649,118 @@ Phase 3 extends the graphics system with physically-based rendering (PBR) materi
 - Graphics pipeline summary: `docs/GRAPHICS_PIPELINE_SUMMARY.md`
 - PBR shader README: `examples/shaders/pbr/README.md`
 
-### Phase 3: Future Work
-- Image-based lighting (IBL) and environment maps
-- Texture maps (albedo, roughness, metallic, AO, emissive)
-- Advanced PBR features (clear coat, subsurface scattering)
-- Post-processing effects (bloom, tone mapping, SSAO)
-- Compute shaders and ray tracing utilities
+## Phase 4: Advanced Rendering - Shadow Mapping (Complete)
+
+Phase 4 implements advanced rendering features starting with a complete shadow mapping system.
+
+### Shadow Components
+
+#### shadow-directional
+Calculate cascaded shadow map matrices for directional lights (sun/moon).
+
+**Inputs:**
+- `light_direction` (vec3): Light direction (will be normalized)
+- `view_matrix` (mat4): Camera view matrix
+- `projection_matrix` (mat4): Camera projection matrix
+- `near` (f32): Camera near plane distance
+- `far` (f32): Camera far plane distance
+- `cascade_count` (u32): Number of cascades (1-4)
+
+**Outputs:**
+- `shadow_matrices` (list): Flattened shadow matrices (cascade_count × 16 floats)
+- `cascade_splits` (list): Split distances for cascade selection
+
+**Features:**
+- Practical split scheme (λ=0.5) for balanced cascade distribution
+- Frustum-fitted orthographic projection per cascade
+- Tight AABB bounds for maximum shadow resolution
+- 6 unit tests covering split schemes, matrix generation, error handling
+
+**Example:**
+```
+light_direction: [0.0, -1.0, 0.0]  // Downward sun
+view_matrix: <from perspective-camera>
+projection_matrix: <from perspective-camera>
+near: 0.1
+far: 100.0
+cascade_count: 4
+→ shadow_matrices: [64 floats = 4 cascades × 16 elements]
+→ cascade_splits: [split0, split1, split2, split3]
+```
+
+#### shadow-point
+Calculate 6 cubemap shadow matrices for point lights (omnidirectional).
+
+**Inputs:**
+- `light_position` (vec3): Point light world position
+- `near` (f32): Shadow near plane distance
+- `far` (f32): Shadow far plane distance (light radius)
+
+**Outputs:**
+- `shadow_matrices` (list): 6 matrices flattened (96 floats)
+
+**Features:**
+- 90° FOV perspective projection for each cubemap face
+- Face order: +X, -X, +Y, -Y, +Z, -Z
+- Correct up vectors for each face orientation
+- 7 unit tests covering count, validity, position variations
+
+**Example:**
+```
+light_position: [0.0, 5.0, 0.0]
+near: 0.1
+far: 10.0  // Light radius
+→ shadow_matrices: [96 floats = 6 faces × 16 elements]
+```
+
+#### shadow-spot
+Calculate perspective shadow matrix for spot lights (cone-shaped).
+
+**Inputs:**
+- `light_position` (vec3): Spot light world position
+- `light_direction` (vec3): Spot light direction (will be normalized)
+- `cone_angle` (f32): Spot light cone angle in degrees (0-180)
+- `near` (f32): Shadow near plane distance
+- `far` (f32): Shadow far plane distance (light range)
+
+**Outputs:**
+- `shadow_matrix` (list): Shadow matrix (16 floats, column-major)
+
+**Features:**
+- FOV matches cone angle for exact shadow coverage
+- Perspective projection matching light frustum
+- Automatic up vector selection (avoids parallel-to-direction)
+- 9 unit tests covering cone angles, directions, error handling
+
+**Example:**
+```
+light_position: [0.0, 5.0, 0.0]
+light_direction: [0.0, -1.0, 0.0]
+cone_angle: 45.0  // Degrees
+near: 0.1
+far: 20.0
+→ shadow_matrix: [16 floats]
+```
+
+### Shadow Sampling Shaders
+
+**Location**: `examples/shaders/shadow/`
+
+Complete GLSL shaders for shadow sampling with PCF (Percentage Closer Filtering):
+
+- **shadow_common.glsl**: Shared PCF utilities (4, 9, 16 samples) + bias calculation
+- **shadow_directional.frag.glsl**: CSM with automatic cascade selection
+- **shadow_point.frag.glsl**: Cubemap shadows with distance attenuation
+- **shadow_spot.frag.glsl**: Cone-matched shadows with smooth falloff
+
+See `examples/shaders/shadow/README.md` for complete usage guide, buffer layouts, and performance tuning.
+
+### Phase 4: Future Work
+- Environment maps and skybox rendering
+- Image-based lighting (IBL) with split-sum approximation
+- Post-processing effects (bloom, tone mapping, SSAO, DOF, motion blur)
+- Advanced PBR features (clear coat, subsurface scattering, anisotropic reflections)
+- Performance optimizations (compute shaders, light culling, LOD systems)
 
 ## License
 
