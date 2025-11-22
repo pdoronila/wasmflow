@@ -755,12 +755,91 @@ Complete GLSL shaders for shadow sampling with PCF (Percentage Closer Filtering)
 
 See `examples/shaders/shadow/README.md` for complete usage guide, buffer layouts, and performance tuning.
 
+### Phase 4: Advanced Rendering - Environment Maps and IBL (Partial Complete)
+
+**Completed Features:**
+
+#### Environment Map Loader Node
+Built-in node for loading cubemap environment maps from 6 separate images.
+
+- **Component ID**: `builtin:graphics:envmap-loader`
+- **Inputs**: None (UI-driven file selection)
+- **Outputs**:
+  - `cubemap` (binary): Packed 6-face RGBA8 data
+  - `size` (u32): Face size in pixels
+- **Features**:
+  - Load 6 faces: +X, -X, +Y, -Y, +Z, -Z
+  - Validation: Square dimensions, consistent size
+  - Footer view with status and memory usage
+- **Location**: `src/builtin/envmap_loader.rs`
+
+#### Skybox Shaders
+GLSL shaders for rendering environment cubemaps as background.
+
+- **Location**: `examples/shaders/skybox/`
+- **Shaders**:
+  - `skybox.vert.glsl`: Removes translation, depth = 1.0
+  - `skybox.frag.glsl`: HDR support, tone mapping (ACES/Reinhard), exposure, gamma
+- **Features**:
+  - Renders behind all geometry
+  - HDR environment support
+  - Configurable exposure and brightness
+- **Documentation**: Complete README with usage examples
+
+#### IBL (Image-Based Lighting) Shaders
+Complete IBL pipeline using split-sum approximation.
+
+- **Location**: `examples/shaders/ibl/`
+
+**Pre-computation Shaders** (run once per environment):
+
+1. **irradiance_convolution.frag.glsl**
+   - Generates diffuse irradiance cubemap (32×32)
+   - Monte Carlo hemisphere sampling
+   - ~50-200ms pre-compute time
+
+2. **prefilter_specular.frag.glsl**
+   - Pre-filters environment for roughness levels
+   - GGX importance sampling (1024 samples/pixel)
+   - 512×512 cubemap with 5 mip levels
+   - ~500ms-2s pre-compute time
+
+3. **brdf_integration.frag.glsl**
+   - BRDF integration lookup table
+   - 512×512 RG texture
+   - Generate once, reuse for all materials
+   - ~100-400ms pre-compute time
+
+**Runtime Shader**:
+
+4. **pbr_ibl.frag.glsl**
+   - Complete PBR with environment lighting
+   - Cook-Torrance BRDF + IBL
+   - Optional direct lighting
+   - ACES tone mapping + gamma correction
+
+**Utility Shaders**:
+
+5. **equirect_to_cubemap.frag.glsl**
+   - Converts equirectangular (.hdr) to cubemap
+   - Spherical coordinate mapping
+
+6. **cubemap_convolution.vert.glsl**
+   - Shared vertex shader for convolution passes
+
+**Documentation**: 300+ line README with complete workflow, performance tuning, troubleshooting
+
+**Total Memory** (typical IBL setup):
+- Irradiance map: 49 KB (32×32)
+- Prefilter map: 6 MB (512×512 with mips)
+- BRDF LUT: 1 MB (512×512)
+- **Total**: ~7 MB per environment
+
 ### Phase 4: Future Work
-- Environment maps and skybox rendering
-- Image-based lighting (IBL) with split-sum approximation
-- Post-processing effects (bloom, tone mapping, SSAO, DOF, motion blur)
-- Advanced PBR features (clear coat, subsurface scattering, anisotropic reflections)
-- Performance optimizations (compute shaders, light culling, LOD systems)
+- **Reflection Probes**: Multiple probe blending, parallax correction
+- **Post-Processing**: Bloom, tone mapping pipeline, SSAO, DOF, motion blur
+- **Advanced PBR**: Clear coat, subsurface scattering, anisotropic reflections
+- **Performance**: Compute shaders, light culling, LOD systems
 
 ## License
 

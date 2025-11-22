@@ -2110,10 +2110,112 @@ float calculateShadowBias(vec3 normal, vec3 lightDir, float base, float max);
   - Performance tuning recommendations
   - Common issues and troubleshooting
 
+### Phase 4 Step 2: Environment Maps and Skybox (Complete ✓)
+
+**Added**: 2025-11-22
+
+**GPU Cubemap Support** (`src/gpu/texture.rs`):
+- `GpuTexture::from_cubemap_rgba8()`: Create cubemap from 6 RGBA8 face images
+- Face order: +X (right), -X (left), +Y (top), -Y (bottom), +Z (front), -Z (back)
+- Automatic cubemap view and sampler creation
+- Linear filtering with clamp-to-edge addressing
+
+**Skybox Shaders** (`examples/shaders/skybox/`):
+- **skybox.vert.glsl**: Removes translation, renders at depth = 1.0
+- **skybox.frag.glsl**: HDR support with exposure, tone mapping (ACES/Reinhard), gamma correction
+- Complete README with rendering pipeline, troubleshooting
+
+**Environment Map Loader Node** (`builtin:graphics:envmap-loader`):
+- Load 6 separate image files (PNG, JPG, BMP, GIF)
+- Validation: Square dimensions, all faces same size
+- Outputs: cubemap (binary), size (u32)
+- Footer view: Status, memory usage, error messages
+- 267 lines, 5 unit tests
+
+### Phase 4 Steps 3 & 5: IBL and Utilities (Complete ✓)
+
+**Added**: 2025-11-22
+
+**Location**: `examples/shaders/ibl/`
+
+Complete Image-Based Lighting pipeline using split-sum approximation.
+
+**Pre-computation Shaders** (run once per environment):
+
+1. **irradiance_convolution.frag.glsl** - Diffuse irradiance map
+   - Convolves environment map over hemisphere (Lambertian diffuse)
+   - Monte Carlo sampling (~2500 samples/pixel)
+   - Output: 32×32 or 64×64 cubemap
+   - Time: ~50-200ms
+
+2. **prefilter_specular.frag.glsl** - Specular pre-filter
+   - GGX importance sampling (1024 samples/pixel)
+   - Hammersley low-discrepancy sequence
+   - Multiple mip levels for different roughness (0.0-1.0)
+   - Output: 512×512 cubemap with 5 mips
+   - Time: ~500ms-2s
+
+3. **brdf_integration.frag.glsl** - BRDF integration LUT
+   - Split-sum approximation lookup table
+   - Output: 512×512 RG texture (scale, bias)
+   - Generate once per application, reuse for all materials
+   - Time: ~100-400ms
+
+**Runtime Shader**:
+
+4. **pbr_ibl.frag.glsl** - Complete PBR with IBL
+   - Cook-Torrance BRDF with energy conservation
+   - Diffuse + Specular IBL
+   - Optional direct lighting
+   - ACES tone mapping + gamma correction
+   - ~120-150 ALU per fragment
+
+**Utility Shaders**:
+
+5. **equirect_to_cubemap.frag.glsl** - Format conversion
+   - Converts equirectangular (.hdr) to cubemap
+   - Spherical to cartesian coordinate mapping
+
+6. **cubemap_convolution.vert.glsl** - Shared vertex shader
+   - Used for irradiance and pre-filter passes
+   - Renders to specific cubemap face
+
+**IBL Workflow**:
+
+```rust
+// 1. Pre-computation (once per environment)
+let irradiance = generate_irradiance_map(&env_cubemap, 32);    // Diffuse
+let prefilter = generate_prefilter_map(&env_cubemap, 512, 5);  // Specular
+
+// 2. Pre-computation (once per application)
+let brdf_lut = generate_brdf_lut(512);  // BRDF LUT
+
+// 3. Runtime: Bind all IBL textures
+render_pass.set_bind_group(0, &ibl_bind_group, &[]);
+// Shader samples: irradiance (diffuse), prefilter (specular), BRDF LUT
+```
+
+**Performance Characteristics**:
+
+| Component       | Resolution | Memory   | Pre-compute Time |
+|-----------------|------------|----------|------------------|
+| Irradiance      | 32×32      | 49 KB    | ~50-200ms        |
+| Prefilter       | 512×512    | 6 MB     | ~500ms-2s        |
+| BRDF LUT        | 512×512    | 1 MB     | ~100-400ms       |
+
+**Quality Settings**:
+- Irradiance: 16×16 (mobile), 32×32 (default), 64×64 (high)
+- Prefilter: 256×256 (mobile), 512×512 (default), 1024×1024 (high)
+- BRDF LUT: 256×256 (good), 512×512 (default)
+
+**Documentation**:
+- Complete README (`examples/shaders/ibl/README.md`, 300+ lines)
+- Usage workflow, performance tuning, troubleshooting
+- Integration examples with existing PBR
+
 ### Future Work (Phase 4 Remaining)
 
-- **Environment Maps & Cubemaps**: Skybox rendering, reflection probes
-- **IBL**: Image-based lighting with split-sum approximation
+- **Reflection Probes**: Multiple probe blending, parallax correction
 - **Post-Processing**: Bloom, tone mapping, SSAO, DOF, motion blur
 - **Advanced PBR**: Clear coat, subsurface scattering, anisotropic reflections
 - **Performance**: Compute shaders, light culling, LOD systems
