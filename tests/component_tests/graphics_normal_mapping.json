@@ -1,0 +1,256 @@
+{
+  "name": "Graphics Normal Mapping Test",
+  "description": "Test normal mapping workflow with TBN matrix transformation",
+  "tests": [
+    {
+      "name": "Normal Map - Flat Surface",
+      "description": "Test normal map with flat normal ([0.5, 0.5, 1.0] texture value)",
+      "component": "normal-map",
+      "inputs": {
+        "tangent_normal": {"vec3": [0.5, 0.5, 1.0]},
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "tangent": {"vec3": [1.0, 0.0, 0.0]}
+      },
+      "expected_outputs": {
+        "world_normal": {"vec3_approx": [0.0, 1.0, 0.0], "tolerance": 0.1}
+      }
+    },
+    {
+      "name": "Normal Map - Bump to Right",
+      "description": "Test normal map with bump pointing right in tangent space",
+      "component": "normal-map",
+      "inputs": {
+        "tangent_normal": {"vec3": [1.0, 0.5, 0.5]},
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "tangent": {"vec3": [1.0, 0.0, 0.0]}
+      },
+      "expected_outputs": {
+        "world_normal": {"vec3_exists": true}
+      }
+    },
+    {
+      "name": "Normal Map - With Bitangent",
+      "description": "Test normal map with explicit bitangent",
+      "component": "normal-map",
+      "inputs": {
+        "tangent_normal": {"vec3": [0.5, 0.5, 1.0]},
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "tangent": {"vec3": [1.0, 0.0, 0.0]},
+        "bitangent": {"vec3": [0.0, 0.0, 1.0]}
+      },
+      "expected_outputs": {
+        "world_normal": {"vec3_exists": true}
+      }
+    },
+    {
+      "name": "Normal Map - Angled Surface",
+      "description": "Test normal map on angled surface (45°)",
+      "component": "normal-map",
+      "inputs": {
+        "tangent_normal": {"vec3": [0.5, 0.5, 1.0]},
+        "normal": {"vec3": [0.707, 0.707, 0.0]},
+        "tangent": {"vec3": [0.707, -0.707, 0.0]}
+      },
+      "expected_outputs": {
+        "world_normal": {"vec3_length_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Complete Normal Mapped PBR Pipeline",
+      "description": "End-to-end test with normal mapping integrated into PBR workflow",
+      "workflow": [
+        {
+          "step": "Generate sphere geometry with tangents",
+          "component": "primitive-sphere",
+          "inputs": {
+            "radius": {"f32": 1.0},
+            "segments": {"u32": 32},
+            "rings": {"u32": 16}
+          },
+          "store_outputs": ["positions", "normals", "uvs", "tangents"]
+        },
+        {
+          "step": "Create simulated normal map value (slight bump)",
+          "description": "In real workflow, this would come from texture-sampler",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.6, 0.5, 0.9]}
+          }
+        },
+        {
+          "step": "Apply normal mapping",
+          "component": "normal-map",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.6, 0.5, 0.9]},
+            "normal": {"from_step": 0, "output": "normals", "index": 0},
+            "tangent": {"from_step": 0, "output": "tangents", "index": 0}
+          },
+          "store_outputs": ["perturbed_normal:world_normal"]
+        },
+        {
+          "step": "Create PBR material",
+          "component": "pbr-material",
+          "inputs": {
+            "base_color": {"vec3": [0.8, 0.4, 0.2]},
+            "metallic": {"f32": 0.0},
+            "roughness": {"f32": 0.6},
+            "ao": {"f32": 1.0}
+          },
+          "store_outputs": ["f0", "roughness", "base_color"]
+        },
+        {
+          "step": "Calculate BRDF with perturbed normal",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"from_step": 2, "output": "perturbed_normal"},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "f0": {"from_step": 3, "output": "f0"},
+            "roughness": {"from_step": 3, "output": "roughness"},
+            "base_color": {"from_step": 3, "output": "base_color"}
+          },
+          "verify_outputs": {
+            "total_brdf": {"vec3_exists": true, "vec3_max_value": 1.0},
+            "diffuse": {"vec3_exists": true},
+            "specular": {"vec3_exists": true}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Normal Mapping Effect Comparison",
+      "description": "Compare BRDF with and without normal mapping",
+      "workflow": [
+        {
+          "step": "Setup geometry",
+          "inputs": {
+            "base_normal": {"vec3": [0.0, 1.0, 0.0]},
+            "tangent": {"vec3": [1.0, 0.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.577, 0.577, 0.577]}
+          }
+        },
+        {
+          "step": "Calculate BRDF without normal mapping",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.577, 0.577, 0.577]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "roughness": {"f32": 0.5},
+            "base_color": {"vec3": [0.8, 0.8, 0.8]}
+          },
+          "store_outputs": ["flat_brdf:total_brdf"]
+        },
+        {
+          "step": "Apply normal mapping (bump to side)",
+          "component": "normal-map",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.8, 0.5, 0.7]},
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "tangent": {"vec3": [1.0, 0.0, 0.0]}
+          },
+          "store_outputs": ["bumped_normal:world_normal"]
+        },
+        {
+          "step": "Calculate BRDF with normal mapping",
+          "component": "pbr-brdf",
+          "inputs": {
+            "normal": {"from_step": 2, "output": "bumped_normal"},
+            "view_dir": {"vec3": [0.0, 1.0, 0.0]},
+            "light_dir": {"vec3": [0.577, 0.577, 0.577]},
+            "f0": {"vec3": [0.04, 0.04, 0.04]},
+            "roughness": {"f32": 0.5},
+            "base_color": {"vec3": [0.8, 0.8, 0.8]}
+          },
+          "verify_outputs": {
+            "total_brdf": {"vec3_not_equal_stored": "flat_brdf"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Normal Mapping with Multiple Surfaces",
+      "description": "Test normal mapping on different surface orientations",
+      "workflow": [
+        {
+          "step": "Normal map on horizontal surface",
+          "component": "normal-map",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.6, 0.5, 0.9]},
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "tangent": {"vec3": [1.0, 0.0, 0.0]}
+          },
+          "store_outputs": ["horizontal_normal:world_normal"]
+        },
+        {
+          "step": "Normal map on vertical surface",
+          "component": "normal-map",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.6, 0.5, 0.9]},
+            "normal": {"vec3": [1.0, 0.0, 0.0]},
+            "tangent": {"vec3": [0.0, 1.0, 0.0]}
+          },
+          "store_outputs": ["vertical_normal:world_normal"]
+        },
+        {
+          "step": "Normal map on 45° angled surface",
+          "component": "normal-map",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.6, 0.5, 0.9]},
+            "normal": {"vec3": [0.707, 0.707, 0.0]},
+            "tangent": {"vec3": [0.707, -0.707, 0.0]}
+          },
+          "verify_outputs": {
+            "world_normal": {"vec3_length_approx": 1.0, "tolerance": 0.01}
+          }
+        },
+        {
+          "step": "Verify all normals are normalized",
+          "verify": {
+            "horizontal_normal": {"vec3_length_approx": 1.0, "tolerance": 0.01},
+            "vertical_normal": {"vec3_length_approx": 1.0, "tolerance": 0.01}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tangent-Bitangent Orthogonality",
+      "description": "Verify TBN matrix is orthogonal for correct transformations",
+      "workflow": [
+        {
+          "step": "Setup TBN basis",
+          "inputs": {
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "tangent": {"vec3": [1.0, 0.0, 0.0]}
+          }
+        },
+        {
+          "step": "Apply normal mapping",
+          "component": "normal-map",
+          "inputs": {
+            "tangent_normal": {"vec3": [0.5, 0.5, 1.0]},
+            "normal": {"vec3": [0.0, 1.0, 0.0]},
+            "tangent": {"vec3": [1.0, 0.0, 0.0]}
+          },
+          "verify_outputs": {
+            "world_normal": {"vec3_length_approx": 1.0, "tolerance": 0.01}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Extreme Normal Perturbation",
+      "description": "Test with extreme normal map values (large bumps)",
+      "component": "normal-map",
+      "inputs": {
+        "tangent_normal": {"vec3": [1.0, 0.2, 0.3]},
+        "normal": {"vec3": [0.0, 1.0, 0.0]},
+        "tangent": {"vec3": [1.0, 0.0, 0.0]}
+      },
+      "expected_outputs": {
+        "world_normal": {"vec3_length_approx": 1.0, "tolerance": 0.01}
+      }
+    }
+  ]
+}
