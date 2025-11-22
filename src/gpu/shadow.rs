@@ -173,8 +173,8 @@ pub fn calculate_directional_shadow_matrix(
 fn calculate_frustum_corners_world_space(
     view_matrix: Mat4,
     projection_matrix: Mat4,
-    near_distance: f32,
-    far_distance: f32,
+    _near_distance: f32,
+    _far_distance: f32,
 ) -> Vec<Vec3> {
     let inv_view_proj = (projection_matrix * view_matrix).inverse();
 

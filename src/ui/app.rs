@@ -18,10 +18,8 @@ use super::spotlight::{SpotlightAction, SpotlightSearch};
 use super::theme::Theme;
 use crate::builtin::{
     register_constant_nodes, register_continuous_example, register_glsl_shader_editor_node,
-    register_http_server_listener, register_shader_preview_node,
+    register_http_server_listener, register_scheduler, register_shader_preview_node,
     register_shader_program_linker_node, register_texture_loader_node, register_wasm_creator_node,
-    register_constant_nodes, register_continuous_example, register_http_server_listener,
-    register_scheduler, register_wasm_creator_node,
 };
 use crate::graph::command::CommandHistory;
 use crate::graph::graph::NodeGraph;

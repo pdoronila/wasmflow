@@ -1418,6 +1418,8 @@ let result = value * 2.0;
         // Initialize texture loader data for texture loader nodes (Phase 3)
         if self.id == "builtin:graphics:texture-loader" {
             node.texture_loader_data = Some(TextureLoaderNodeData::new());
+        }
+
         // Initialize continuous_config for Time-Partitioned Scheduler
         if self.id == "builtin:continuous:scheduler" {
             node.continuous_config = Some(ContinuousNodeConfig {

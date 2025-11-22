@@ -1,0 +1,489 @@
+{
+  "name": "Graphics Demo - Complete PBR Pipeline",
+  "version": 1,
+  "metadata": {
+    "author": "WasmFlow Graphics",
+    "description": "Comprehensive demonstration of the graphics pipeline: geometry primitives, camera, lighting (directional/point/spot), PBR materials, and shadow mapping",
+    "created_at": "2025-11-22T00:00:00Z",
+    "modified_at": "2025-11-22T00:00:00Z"
+  },
+  "nodes": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "component_id": "user:primitive-sphere",
+      "display_name": "Main Sphere",
+      "position": {"x": 100.0, "y": 100.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0001-000000000001", "name": "radius", "data_type": "F32", "current_value": {"F32": 1.0}},
+        {"id": "00000000-0000-0000-0001-000000000002", "name": "segments", "data_type": "U32", "current_value": {"U32": 32}},
+        {"id": "00000000-0000-0000-0001-000000000003", "name": "rings", "data_type": "U32", "current_value": {"U32": 16}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0001-100000000001", "name": "positions", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0001-100000000002", "name": "normals", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0001-100000000003", "name": "uvs", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0001-100000000004", "name": "indices", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "component_id": "user:vec3-construct",
+      "display_name": "Camera Position",
+      "position": {"x": 100.0, "y": 300.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0002-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": 0.0}},
+        {"id": "00000000-0000-0000-0002-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": 2.0}},
+        {"id": "00000000-0000-0000-0002-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": 5.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0002-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "component_id": "user:vec3-construct",
+      "display_name": "Camera Target",
+      "position": {"x": 100.0, "y": 450.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0003-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": 0.0}},
+        {"id": "00000000-0000-0000-0003-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": 0.0}},
+        {"id": "00000000-0000-0000-0003-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": 0.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0003-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000004",
+      "component_id": "user:vec3-construct",
+      "display_name": "Camera Up",
+      "position": {"x": 100.0, "y": 600.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0004-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": 0.0}},
+        {"id": "00000000-0000-0000-0004-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": 1.0}},
+        {"id": "00000000-0000-0000-0004-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": 0.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0004-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "component_id": "user:perspective-camera",
+      "display_name": "Main Camera",
+      "position": {"x": 400.0, "y": 400.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0005-000000000001", "name": "position", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0005-000000000002", "name": "target", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0005-000000000003", "name": "up", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0005-000000000004", "name": "fov", "data_type": "F32", "current_value": {"F32": 60.0}},
+        {"id": "00000000-0000-0000-0005-000000000005", "name": "aspect_ratio", "data_type": "F32", "current_value": {"F32": 1.777}},
+        {"id": "00000000-0000-0000-0005-000000000006", "name": "near", "data_type": "F32", "current_value": {"F32": 0.1}},
+        {"id": "00000000-0000-0000-0005-000000000007", "name": "far", "data_type": "F32", "current_value": {"F32": 100.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0005-100000000001", "name": "view_matrix", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0005-100000000002", "name": "projection_matrix", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0005-100000000003", "name": "camera_position", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0005-100000000004", "name": "view_direction", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000006",
+      "component_id": "user:vec3-construct",
+      "display_name": "Directional Light Direction",
+      "position": {"x": 100.0, "y": 800.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0006-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": 0.3}},
+        {"id": "00000000-0000-0000-0006-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": -1.0}},
+        {"id": "00000000-0000-0000-0006-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": 0.2}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0006-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000007",
+      "component_id": "user:color-rgb",
+      "display_name": "Sun Color (Warm)",
+      "position": {"x": 100.0, "y": 950.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0007-000000000001", "name": "r", "data_type": "F32", "current_value": {"F32": 1.0}},
+        {"id": "00000000-0000-0000-0007-000000000002", "name": "g", "data_type": "F32", "current_value": {"F32": 0.95}},
+        {"id": "00000000-0000-0000-0007-000000000003", "name": "b", "data_type": "F32", "current_value": {"F32": 0.85}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0007-100000000001", "name": "color", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000008",
+      "component_id": "user:light-directional",
+      "display_name": "Sun Light",
+      "position": {"x": 400.0, "y": 850.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0008-000000000001", "name": "direction", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0008-000000000002", "name": "color", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0008-000000000003", "name": "intensity", "data_type": "F32", "current_value": {"F32": 1.2}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0008-100000000001", "name": "light_data", "data_type": "String", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000009",
+      "component_id": "user:shadow-directional",
+      "display_name": "Sun Shadow (CSM)",
+      "position": {"x": 700.0, "y": 850.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0009-000000000001", "name": "light_direction", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0009-000000000002", "name": "view_matrix", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0009-000000000003", "name": "projection_matrix", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0009-000000000004", "name": "near", "data_type": "F32", "current_value": {"F32": 0.1}},
+        {"id": "00000000-0000-0000-0009-000000000005", "name": "far", "data_type": "F32", "current_value": {"F32": 100.0}},
+        {"id": "00000000-0000-0000-0009-000000000006", "name": "cascade_count", "data_type": "U32", "current_value": {"U32": 4}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0009-100000000001", "name": "shadow_matrices", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0009-100000000002", "name": "cascade_splits", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000010",
+      "component_id": "user:vec3-construct",
+      "display_name": "Point Light Position",
+      "position": {"x": 100.0, "y": 1150.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0010-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": 2.0}},
+        {"id": "00000000-0000-0000-0010-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": 3.0}},
+        {"id": "00000000-0000-0000-0010-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": 1.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0010-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000011",
+      "component_id": "user:color-rgb",
+      "display_name": "Point Light Color (Blue)",
+      "position": {"x": 100.0, "y": 1300.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0011-000000000001", "name": "r", "data_type": "F32", "current_value": {"F32": 0.4}},
+        {"id": "00000000-0000-0000-0011-000000000002", "name": "g", "data_type": "F32", "current_value": {"F32": 0.6}},
+        {"id": "00000000-0000-0000-0011-000000000003", "name": "b", "data_type": "F32", "current_value": {"F32": 1.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0011-100000000001", "name": "color", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000012",
+      "component_id": "user:light-point",
+      "display_name": "Accent Light",
+      "position": {"x": 400.0, "y": 1200.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0012-000000000001", "name": "position", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0012-000000000002", "name": "color", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0012-000000000003", "name": "intensity", "data_type": "F32", "current_value": {"F32": 0.8}},
+        {"id": "00000000-0000-0000-0012-000000000004", "name": "radius", "data_type": "F32", "current_value": {"F32": 10.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0012-100000000001", "name": "light_data", "data_type": "String", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000013",
+      "component_id": "user:pbr-material",
+      "display_name": "Gold Material",
+      "position": {"x": 700.0, "y": 100.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0013-000000000001", "name": "base_color", "data_type": "List", "current_value": {"List": [1.0, 0.71, 0.29]}},
+        {"id": "00000000-0000-0000-0013-000000000002", "name": "metallic", "data_type": "F32", "current_value": {"F32": 1.0}},
+        {"id": "00000000-0000-0000-0013-000000000003", "name": "roughness", "data_type": "F32", "current_value": {"F32": 0.2}},
+        {"id": "00000000-0000-0000-0013-000000000004", "name": "ao", "data_type": "F32", "current_value": {"F32": 1.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0013-100000000001", "name": "f0", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0013-100000000002", "name": "roughness", "data_type": "F32", "current_value": null},
+        {"id": "00000000-0000-0000-0013-100000000003", "name": "ao", "data_type": "F32", "current_value": null},
+        {"id": "00000000-0000-0000-0013-100000000004", "name": "base_color", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000014",
+      "component_id": "user:vec3-construct",
+      "display_name": "Spot Light Position",
+      "position": {"x": 100.0, "y": 1450.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0014-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": -3.0}},
+        {"id": "00000000-0000-0000-0014-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": 4.0}},
+        {"id": "00000000-0000-0000-0014-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": 2.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0014-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000015",
+      "component_id": "user:vec3-construct",
+      "display_name": "Spot Light Direction",
+      "position": {"x": 100.0, "y": 1600.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0015-000000000001", "name": "x", "data_type": "F32", "current_value": {"F32": 0.5}},
+        {"id": "00000000-0000-0000-0015-000000000002", "name": "y", "data_type": "F32", "current_value": {"F32": -1.0}},
+        {"id": "00000000-0000-0000-0015-000000000003", "name": "z", "data_type": "F32", "current_value": {"F32": -0.3}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0015-100000000001", "name": "vec3", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000016",
+      "component_id": "user:color-rgb",
+      "display_name": "Spot Light Color (Orange)",
+      "position": {"x": 100.0, "y": 1750.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0016-000000000001", "name": "r", "data_type": "F32", "current_value": {"F32": 1.0}},
+        {"id": "00000000-0000-0000-0016-000000000002", "name": "g", "data_type": "F32", "current_value": {"F32": 0.5}},
+        {"id": "00000000-0000-0000-0016-000000000003", "name": "b", "data_type": "F32", "current_value": {"F32": 0.2}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0016-100000000001", "name": "color", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000017",
+      "component_id": "user:light-spot",
+      "display_name": "Rim Light",
+      "position": {"x": 400.0, "y": 1600.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0017-000000000001", "name": "position", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0017-000000000002", "name": "direction", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0017-000000000003", "name": "color", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0017-000000000004", "name": "intensity", "data_type": "F32", "current_value": {"F32": 1.5}},
+        {"id": "00000000-0000-0000-0017-000000000005", "name": "inner_angle", "data_type": "F32", "current_value": {"F32": 20.0}},
+        {"id": "00000000-0000-0000-0017-000000000006", "name": "outer_angle", "data_type": "F32", "current_value": {"F32": 30.0}},
+        {"id": "00000000-0000-0000-0017-000000000007", "name": "radius", "data_type": "F32", "current_value": {"F32": 15.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0017-100000000001", "name": "light_data", "data_type": "String", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000018",
+      "component_id": "user:shadow-spot",
+      "display_name": "Rim Shadow",
+      "position": {"x": 700.0, "y": 1600.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0018-000000000001", "name": "light_position", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0018-000000000002", "name": "light_direction", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0018-000000000003", "name": "cone_angle", "data_type": "F32", "current_value": {"F32": 30.0}},
+        {"id": "00000000-0000-0000-0018-000000000004", "name": "near", "data_type": "F32", "current_value": {"F32": 0.1}},
+        {"id": "00000000-0000-0000-0018-000000000005", "name": "far", "data_type": "F32", "current_value": {"F32": 15.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0018-100000000001", "name": "shadow_matrix", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000019",
+      "component_id": "user:primitive-plane",
+      "display_name": "Ground Plane",
+      "position": {"x": 1000.0, "y": 100.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0019-000000000001", "name": "width", "data_type": "F32", "current_value": {"F32": 20.0}},
+        {"id": "00000000-0000-0000-0019-000000000002", "name": "depth", "data_type": "F32", "current_value": {"F32": 20.0}},
+        {"id": "00000000-0000-0000-0019-000000000003", "name": "width_segments", "data_type": "U32", "current_value": {"U32": 10}},
+        {"id": "00000000-0000-0000-0019-000000000004", "name": "depth_segments", "data_type": "U32", "current_value": {"U32": 10}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0019-100000000001", "name": "positions", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0019-100000000002", "name": "normals", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0019-100000000003", "name": "uvs", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0019-100000000004", "name": "indices", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "component_id": "user:pbr-material",
+      "display_name": "Plastic Material (Red)",
+      "position": {"x": 1000.0, "y": 300.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0020-000000000001", "name": "base_color", "data_type": "List", "current_value": {"List": [0.8, 0.1, 0.1]}},
+        {"id": "00000000-0000-0000-0020-000000000002", "name": "metallic", "data_type": "F32", "current_value": {"F32": 0.0}},
+        {"id": "00000000-0000-0000-0020-000000000003", "name": "roughness", "data_type": "F32", "current_value": {"F32": 0.5}},
+        {"id": "00000000-0000-0000-0020-000000000004", "name": "ao", "data_type": "F32", "current_value": {"F32": 1.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0020-100000000001", "name": "f0", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0020-100000000002", "name": "roughness", "data_type": "F32", "current_value": null},
+        {"id": "00000000-0000-0000-0020-100000000003", "name": "ao", "data_type": "F32", "current_value": null},
+        {"id": "00000000-0000-0000-0020-100000000004", "name": "base_color", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000021",
+      "component_id": "user:primitive-sphere",
+      "display_name": "Copper Sphere",
+      "position": {"x": 1000.0, "y": 500.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0021-000000000001", "name": "radius", "data_type": "F32", "current_value": {"F32": 0.8}},
+        {"id": "00000000-0000-0000-0021-000000000002", "name": "segments", "data_type": "U32", "current_value": {"U32": 32}},
+        {"id": "00000000-0000-0000-0021-000000000003", "name": "rings", "data_type": "U32", "current_value": {"U32": 16}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0021-100000000001", "name": "positions", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0021-100000000002", "name": "normals", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0021-100000000003", "name": "uvs", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0021-100000000004", "name": "indices", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000022",
+      "component_id": "user:pbr-material",
+      "display_name": "Copper Material",
+      "position": {"x": 1000.0, "y": 700.0},
+      "inputs": [
+        {"id": "00000000-0000-0000-0022-000000000001", "name": "base_color", "data_type": "List", "current_value": {"List": [0.95, 0.64, 0.54]}},
+        {"id": "00000000-0000-0000-0022-000000000002", "name": "metallic", "data_type": "F32", "current_value": {"F32": 1.0}},
+        {"id": "00000000-0000-0000-0022-000000000003", "name": "roughness", "data_type": "F32", "current_value": {"F32": 0.3}},
+        {"id": "00000000-0000-0000-0022-000000000004", "name": "ao", "data_type": "F32", "current_value": {"F32": 1.0}}
+      ],
+      "outputs": [
+        {"id": "00000000-0000-0000-0022-100000000001", "name": "f0", "data_type": "List", "current_value": null},
+        {"id": "00000000-0000-0000-0022-100000000002", "name": "roughness", "data_type": "F32", "current_value": null},
+        {"id": "00000000-0000-0000-0022-100000000003", "name": "ao", "data_type": "F32", "current_value": null},
+        {"id": "00000000-0000-0000-0022-100000000004", "name": "base_color", "data_type": "List", "current_value": null}
+      ],
+      "execution_state": "Idle"
+    }
+  ],
+  "connections": [
+    {
+      "id": "00000000-0000-0000-c000-000000000001",
+      "from_node": "00000000-0000-0000-0000-000000000002",
+      "from_port": "00000000-0000-0000-0002-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000005",
+      "to_port": "00000000-0000-0000-0005-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000002",
+      "from_node": "00000000-0000-0000-0000-000000000003",
+      "from_port": "00000000-0000-0000-0003-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000005",
+      "to_port": "00000000-0000-0000-0005-000000000002"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000003",
+      "from_node": "00000000-0000-0000-0000-000000000004",
+      "from_port": "00000000-0000-0000-0004-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000005",
+      "to_port": "00000000-0000-0000-0005-000000000003"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000004",
+      "from_node": "00000000-0000-0000-0000-000000000006",
+      "from_port": "00000000-0000-0000-0006-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000008",
+      "to_port": "00000000-0000-0000-0008-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000005",
+      "from_node": "00000000-0000-0000-0000-000000000007",
+      "from_port": "00000000-0000-0000-0007-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000008",
+      "to_port": "00000000-0000-0000-0008-000000000002"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000006",
+      "from_node": "00000000-0000-0000-0000-000000000006",
+      "from_port": "00000000-0000-0000-0006-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000009",
+      "to_port": "00000000-0000-0000-0009-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000007",
+      "from_node": "00000000-0000-0000-0000-000000000005",
+      "from_port": "00000000-0000-0000-0005-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000009",
+      "to_port": "00000000-0000-0000-0009-000000000002"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000008",
+      "from_node": "00000000-0000-0000-0000-000000000005",
+      "from_port": "00000000-0000-0000-0005-100000000002",
+      "to_node": "00000000-0000-0000-0000-000000000009",
+      "to_port": "00000000-0000-0000-0009-000000000003"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000009",
+      "from_node": "00000000-0000-0000-0000-000000000010",
+      "from_port": "00000000-0000-0000-0010-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000012",
+      "to_port": "00000000-0000-0000-0012-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000010",
+      "from_node": "00000000-0000-0000-0000-000000000011",
+      "from_port": "00000000-0000-0000-0011-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000012",
+      "to_port": "00000000-0000-0000-0012-000000000002"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000011",
+      "from_node": "00000000-0000-0000-0000-000000000014",
+      "from_port": "00000000-0000-0000-0014-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000017",
+      "to_port": "00000000-0000-0000-0017-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000012",
+      "from_node": "00000000-0000-0000-0000-000000000015",
+      "from_port": "00000000-0000-0000-0015-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000017",
+      "to_port": "00000000-0000-0000-0017-000000000002"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000013",
+      "from_node": "00000000-0000-0000-0000-000000000016",
+      "from_port": "00000000-0000-0000-0016-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000017",
+      "to_port": "00000000-0000-0000-0017-000000000003"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000014",
+      "from_node": "00000000-0000-0000-0000-000000000014",
+      "from_port": "00000000-0000-0000-0014-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000018",
+      "to_port": "00000000-0000-0000-0018-000000000001"
+    },
+    {
+      "id": "00000000-0000-0000-c000-000000000015",
+      "from_node": "00000000-0000-0000-0000-000000000015",
+      "from_port": "00000000-0000-0000-0015-100000000001",
+      "to_node": "00000000-0000-0000-0000-000000000018",
+      "to_port": "00000000-0000-0000-0018-000000000002"
+    }
+  ]
+}
