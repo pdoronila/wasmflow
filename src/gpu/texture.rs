@@ -291,6 +291,120 @@ impl GpuTexture {
         Self::from_rgba8(device, queue, width, height, &rgba_data, label)
     }
 
+    /// Create a cubemap texture from 6 RGBA8 face images
+    ///
+    /// Face order: +X (right), -X (left), +Y (top), -Y (bottom), +Z (front), -Z (back)
+    ///
+    /// # Arguments
+    /// * `device` - WebGPU device
+    /// * `queue` - WebGPU queue for data transfer
+    /// * `size` - Cubemap face size (must be square, all faces same size)
+    /// * `face_data` - Array of 6 RGBA8 face images (each size × size × 4 bytes)
+    /// * `label` - Debug label
+    ///
+    /// # Returns
+    /// GPU cubemap texture ready for sampling in shaders
+    pub fn from_cubemap_rgba8(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        size: u32,
+        face_data: &[&[u8]; 6],
+        label: Option<&str>,
+    ) -> Result<Self, TextureError> {
+        if size == 0 {
+            return Err(TextureError::InvalidDimensions(size, size));
+        }
+
+        let expected_face_size = (size * size * 4) as usize;
+        for (i, face) in face_data.iter().enumerate() {
+            if face.len() != expected_face_size {
+                return Err(TextureError::InvalidDataSize {
+                    expected: expected_face_size,
+                    actual: face.len(),
+                });
+            }
+        }
+
+        let texture_size = wgpu::Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: 6, // 6 faces for cubemap
+        };
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label,
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        // Upload each face to its corresponding layer
+        for (face_index, face) in face_data.iter().enumerate() {
+            queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: 0,
+                        y: 0,
+                        z: face_index as u32,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                face,
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * size),
+                    rows_per_image: Some(size),
+                },
+                wgpu::Extent3d {
+                    width: size,
+                    height: size,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+
+        // Create cubemap view
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("Cubemap View"),
+            dimension: Some(wgpu::TextureViewDimension::Cube),
+            ..Default::default()
+        });
+
+        // Create sampler for cubemap (typically linear filtering with clamp to edge)
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Cubemap Sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        log::debug!(
+            "Created cubemap texture: {} ({}x{} per face)",
+            label.unwrap_or("unnamed"),
+            size,
+            size
+        );
+
+        Ok(GpuTexture {
+            texture,
+            view,
+            sampler,
+            size: texture_size,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            label: label.map(String::from),
+        })
+    }
+
     /// Create a custom sampler with specified filtering and addressing modes
     ///
     /// # Arguments
