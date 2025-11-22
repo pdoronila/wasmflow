@@ -1378,6 +1378,30 @@ let result = value * 2.0;
             }
         }
 
+        // Initialize GLSL shader editor data for shader editor nodes
+        if self.id == "builtin:graphics:glsl-shader-editor" {
+            node.shader_editor_data = Some(GlslShaderEditorNodeData::new(
+                "Untitled Shader".to_string(),
+                ShaderType::Vertex,
+                String::new(),
+            ));
+        }
+
+        // Initialize shader preview data for shader preview nodes
+        if self.id == "builtin:graphics:shader-preview" {
+            node.shader_preview_data = Some(ShaderPreviewNodeData::new());
+        }
+
+        // Initialize linked program data for shader program linker nodes
+        if self.id == "builtin:graphics:shader-program-linker" {
+            node.linked_program = Some(crate::builtin::shader_program_linker::LinkedProgram::new());
+        }
+
+        // Initialize texture loader data for texture loader nodes (Phase 3)
+        if self.id == "builtin:graphics:texture-loader" {
+            node.texture_loader_data = Some(TextureLoaderNodeData::new());
+        }
+
         node
     }
 }
