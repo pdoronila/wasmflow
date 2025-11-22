@@ -13,7 +13,7 @@ use exports::wasmflow::node::execution::Guest as ExecutionGuest;
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;
 use wasmflow::node::types::*;
 
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 
 struct Component;
 
@@ -72,6 +72,12 @@ impl MetadataGuest for Component {
                 description: "UV coordinates as JSON strings (format: \"u,v\")".to_string(),
             },
             PortSpec {
+                name: "tangents".to_string(),
+                data_type: DataType::ListType,
+                optional: false,
+                description: "Tangent vectors as JSON strings (format: \"x,y,z,w\" where w=handedness)".to_string(),
+            },
+            PortSpec {
                 name: "indices".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
@@ -118,7 +124,7 @@ impl ExecutionGuest for Component {
         }
 
         // Generate plane mesh
-        let (vertices, normals, uvs, indices) = generate_plane(width, height, subdivisions);
+        let (vertices, normals, uvs, tangents, indices) = generate_plane(width, height, subdivisions);
 
         // Convert to string representations
         let vertex_strings: Vec<String> = vertices
@@ -136,26 +142,33 @@ impl ExecutionGuest for Component {
             .map(|(u, v)| format!("{},{}", u, v))
             .collect();
 
+        let tangent_strings: Vec<String> = tangents
+            .iter()
+            .map(|t| format!("{},{},{},{}", t.x, t.y, t.z, t.w))
+            .collect();
+
         Ok(vec![
             ("vertices".to_string(), Value::StringListVal(vertex_strings)),
             ("normals".to_string(), Value::StringListVal(normal_strings)),
             ("uvs".to_string(), Value::StringListVal(uv_strings)),
+            ("tangents".to_string(), Value::StringListVal(tangent_strings)),
             ("indices".to_string(), Value::U32ListVal(indices)),
         ])
     }
 }
 
 /// Generate a subdivided plane mesh (XZ plane, facing +Y)
-fn generate_plane(width: f32, height: f32, subdivisions: u32) -> (Vec<Vec3>, Vec<Vec3>, Vec<(f32, f32)>, Vec<u32>) {
+fn generate_plane(width: f32, height: f32, subdivisions: u32) -> (Vec<Vec3>, Vec<Vec3>, Vec<(f32, f32)>, Vec<Vec4>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut normals = Vec::new();
     let mut uvs = Vec::new();
+    let mut tangents = Vec::new();
     let mut indices = Vec::new();
 
     let half_w = width / 2.0;
     let half_h = height / 2.0;
 
-    // Generate vertices and UVs
+    // Generate vertices, normals, UVs, and tangents
     for z in 0..=subdivisions {
         for x in 0..=subdivisions {
             let u = (x as f32) / (subdivisions as f32);
@@ -167,6 +180,7 @@ fn generate_plane(width: f32, height: f32, subdivisions: u32) -> (Vec<Vec3>, Vec
 
             vertices.push(Vec3::new(pos_x, 0.0, pos_z));
             normals.push(Vec3::new(0.0, 1.0, 0.0)); // All normals point up (+Y)
+            tangents.push(Vec4::new(1.0, 0.0, 0.0, 1.0)); // Tangent points along +X (U direction)
             uvs.push((u, v));
         }
     }
@@ -192,7 +206,7 @@ fn generate_plane(width: f32, height: f32, subdivisions: u32) -> (Vec<Vec3>, Vec
         }
     }
 
-    (vertices, normals, uvs, indices)
+    (vertices, normals, uvs, tangents, indices)
 }
 
 // Helper functions
@@ -251,7 +265,7 @@ mod tests {
         ];
 
         let result = Component::execute(inputs).unwrap();
-        assert_eq!(result.len(), 4);
+        assert_eq!(result.len(), 5);
 
         // Extract outputs
         let vertices = if let Value::StringListVal(v) = &result[0].1 {
@@ -260,7 +274,13 @@ mod tests {
             panic!("Expected StringListVal for vertices");
         };
 
-        let indices = if let Value::U32ListVal(i) = &result[3].1 {
+        let tangents = if let Value::StringListVal(t) = &result[3].1 {
+            t
+        } else {
+            panic!("Expected StringListVal for tangents");
+        };
+
+        let indices = if let Value::U32ListVal(i) = &result[4].1 {
             i
         } else {
             panic!("Expected U32ListVal for indices");
@@ -268,6 +288,7 @@ mod tests {
 
         // Single subdivision: (1+1) * (1+1) = 4 vertices
         assert_eq!(vertices.len(), 4);
+        assert_eq!(tangents.len(), 4);
 
         // Single subdivision: 1 * 1 * 2 triangles * 3 indices = 6 indices
         assert_eq!(indices.len(), 6);
@@ -289,7 +310,7 @@ mod tests {
             panic!("Expected StringListVal");
         };
 
-        let indices = if let Value::U32ListVal(i) = &result[3].1 {
+        let indices = if let Value::U32ListVal(i) = &result[4].1 {
             i
         } else {
             panic!("Expected U32ListVal");
