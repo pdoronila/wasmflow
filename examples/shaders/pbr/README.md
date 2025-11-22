@@ -220,3 +220,179 @@ These shaders are designed to work with:
 - Light data from `light-directional`, `light-point`, `light-spot`
 
 The shader program linker (`builtin:graphics:shader-program-linker`) can compile these shaders and create render pipelines.
+
+## Normal Mapping
+
+### pbr_normal_mapped.vert.glsl / pbr_normal_mapped.frag.glsl
+
+PBR implementation with tangent-space normal mapping for enhanced surface detail.
+
+**Features:**
+- All features from pbr_single_light shader
+- Tangent-space normal map support
+- TBN (Tangent-Bitangent-Normal) matrix transformation
+- Normal strength parameter for blending
+- Automatic bitangent calculation
+
+**Additional Uniforms:**
+- **MaterialUniforms** (set=1, binding=0):
+  - `float normal_strength` - Normal map intensity [0=no effect, 1=full effect, >1=exaggerated]
+  
+- **Normal Map Texture** (set=1, binding=1):
+  - `sampler2D normal_map` - Normal map texture in tangent space
+
+**Vertex Outputs (additional):**
+- `location=5` - `vec3 frag_bitangent` - Bitangent vector (calculated from normal × tangent)
+
+**Normal Map Format:**
+- Expected in standard [0, 1] range (RGB encoding)
+- Automatically converted to [-1, 1] tangent-space normals
+- Blue channel (Z) typically dominant (~1.0 for flat surfaces)
+- Standard format: (R=X, G=Y, B=Z) in tangent space
+
+**TBN Matrix:**
+```glsl
+mat3 TBN = mat3(
+    normalize(frag_tangent),      // T (X-axis in tangent space)
+    normalize(frag_bitangent),    // B (Y-axis in tangent space)
+    normalize(frag_normal)        // N (Z-axis in tangent space)
+);
+```
+
+**Normal Map Sampling:**
+```glsl
+vec3 tangent_normal = texture(normal_map, frag_uv).xyz;
+tangent_normal = tangent_normal * 2.0 - 1.0;  // [0,1] → [-1,1]
+tangent_normal.xy *= normal_strength;  // Apply strength
+tangent_normal = normalize(tangent_normal);
+vec3 world_normal = normalize(TBN * tangent_normal);
+```
+
+**Normal Strength Usage:**
+- `0.0`: No normal mapping (flat surface)
+- `0.5`: Subtle bumps (50% effect)
+- `1.0`: Full normal map effect
+- `>1.0`: Exaggerated bumps (can create interesting stylized effects)
+
+**Use Cases:**
+- Brick walls without modeling individual bricks
+- Rough metal surfaces (scratches, dents)
+- Fabric weave patterns
+- Stone surfaces (cracks, pits)
+- Wood grain detail
+- Any surface requiring micro-geometry without vertex cost
+
+**Performance:**
+- Adds 1 texture lookup per fragment
+- Adds ~10-15 ALU operations for TBN transformation
+- Minimal performance impact on modern GPUs
+- Much cheaper than actual geometry detail
+
+**Creating Normal Maps:**
+Normal maps can be created from:
+- High-poly to low-poly baking (Blender, Substance Painter)
+- Photo-based generation (CrazyBump, NormalMap-Online)
+- Procedural generation (Substance Designer)
+- Height map conversion (Photoshop, GIMP)
+
+**Tangent Space vs World Space:**
+- **Tangent space**: Normals relative to surface (portable across instances)
+- **World space**: Normals in absolute coordinates (not portable)
+- We use tangent space for flexibility and reusability
+
+## Example Material Configurations with Normal Mapping
+
+### Rough Brick Wall
+```glsl
+// Material uniforms
+base_color = vec4(0.7, 0.4, 0.3, 1.0);
+metallic = 0.0;
+roughness = 0.9;
+ao = 0.8;  // Mortar crevices
+normal_strength = 1.0;
+
+// Normal map: Brick pattern with deep grooves
+```
+
+### Brushed Metal with Scratches
+```glsl
+// Material uniforms
+base_color = vec4(0.85, 0.85, 0.85, 1.0);
+metallic = 1.0;
+roughness = 0.4;
+normal_strength = 0.7;  // Subtle scratches
+
+// Normal map: Directional scratch pattern
+```
+
+### Polished Stone with Cracks
+```glsl
+// Material uniforms
+base_color = vec4(0.3, 0.3, 0.35, 1.0);
+metallic = 0.0;
+roughness = 0.2;  // Polished
+ao = 0.9;
+normal_strength = 0.8;
+
+// Normal map: Crack network on smooth surface
+```
+
+### Fabric with Weave Pattern
+```glsl
+// Material uniforms
+base_color = vec4(0.6, 0.1, 0.1, 1.0);  // Red fabric
+metallic = 0.0;
+roughness = 0.7;
+normal_strength = 0.5;  // Subtle weave
+
+// Normal map: Cloth weave pattern
+```
+
+## Integration with WasmFlow Components
+
+The normal-mapped shaders integrate with the following components:
+
+**Geometry Requirements:**
+- `primitive-sphere`, `primitive-cube`, `primitive-plane` (all include tangents)
+- Custom geometry must provide tangent vectors (location=3)
+
+**Normal Map Workflow:**
+```
+texture-sampler → tangent_normal (vec3)
+       ↓
+normal-map → world_normal
+       ↓
+pbr-brdf → lit_color
+```
+
+**Component Chain:**
+1. **texture-sampler**: Sample normal map texture at UV coordinates
+2. **normal-map**: Transform tangent-space normal to world-space using TBN
+3. **pbr-brdf**: Calculate lighting with perturbed normal
+
+**Shader Equivalent:**
+The GPU shader combines steps 2-3 for efficiency, but the math is identical to the WASM components.
+
+## Troubleshooting Normal Maps
+
+**Problem: Normals pointing in wrong direction**
+- Solution: Check tangent vector calculation (may need to flip)
+- Verify normal map is in correct space (tangent, not world)
+
+**Problem: Lighting artifacts at seams**
+- Solution: Ensure tangents are consistent across shared vertices
+- Use proper UV unwrapping with minimal distortion
+
+**Problem: Normal map has no visible effect**
+- Solution: Check normal_strength is not 0.0
+- Verify normal map texture is bound correctly
+- Ensure tangents are present in geometry
+
+**Problem: Excessively bumpy surface**
+- Solution: Reduce normal_strength parameter
+- Check normal map isn't too "intense" (blue channel should be dominant)
+
+**Problem: Inverted bumps (convex appears concave)**
+- Solution: Invert green channel of normal map (Y-axis flip)
+- Some software uses different Y-axis conventions
+
