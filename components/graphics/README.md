@@ -597,12 +597,64 @@ just test
 **New Built-in Nodes (Step 9):**
 - `shader-program-linker`: Links vertex + fragment shaders into executable GPU program
 
-### Phase 3: Advanced Features (Future)
-- PBR materials and BRDF calculations
-- Post-processing effects
-- Compute shaders
-- Ray tracing utilities
-- Environment mapping and IBL
+## Phase 3: PBR Materials and Texture System (In Progress)
+
+Phase 3 extends the graphics system with physically-based rendering (PBR) materials, texture sampling, and advanced lighting.
+
+### Phase 3 Step 1: Texture System Foundation (Complete ✓)
+
+**Texture Loading and Sampling:**
+- Built-in `texture-loader` node: Load PNG, JPG, BMP, GIF images with file picker UI
+- GPU texture management (`src/gpu/texture.rs`): Upload textures to GPU, create samplers
+- `texture-sampler` component: CPU-side bilinear texture sampling with UV wrapping modes
+
+**Features:**
+- Supported formats: PNG, JPG, BMP, GIF → RGBA8 (sRGB)
+- UV wrapping modes: repeat, clamp, mirror
+- Bilinear filtering for smooth sampling
+- Thumbnail preview in texture loader UI
+- Texture statistics display (dimensions, memory usage)
+
+**Integration:**
+- `image` crate dependency for file loading
+- Registered as `builtin:graphics:texture-loader`
+- Outputs: texture data (RGBA8), width, height
+
+### Phase 3 Steps 3-7: PBR Materials (Complete ✓)
+
+**PBR BRDF Components:**
+- `pbr-fresnel`: Fresnel-Schlick approximation for reflectivity
+- `pbr-ggx-distribution`: GGX/Trowbridge-Reitz normal distribution function
+- `pbr-smith-geometry`: Smith geometry/visibility term (shadowing/masking)
+- `pbr-material`: Material property management with F0 calculation
+- `pbr-brdf`: Complete Cook-Torrance BRDF assembly
+
+**Advanced Lighting:**
+- `light-spot`: Spot light with cone-shaped emission and smooth falloff
+- `normal-map`: Tangent-space to world-space normal transformation
+
+**Example Shaders:**
+- `pbr_single_light.vert/frag.glsl`: Single directional light PBR
+- `pbr_multi_light.vert/frag.glsl`: Up to 8 mixed lights (directional/point/spot)
+- `pbr_normal_mapped.vert/frag.glsl`: Full PBR with normal mapping
+
+**Material Workflow:**
+- Metallic/roughness workflow (industry standard)
+- Cook-Torrance microfacet BRDF
+- Energy conservation: diffuse + specular ≤ 1.0
+- Physically accurate F0 calculation: `lerp(0.04, base_color, metallic)`
+
+**Documentation:**
+- Complete PBR implementation guide: `docs/PHASE3_PBR_COMPLETE.md`
+- Graphics pipeline summary: `docs/GRAPHICS_PIPELINE_SUMMARY.md`
+- PBR shader README: `examples/shaders/pbr/README.md`
+
+### Phase 3: Future Work
+- Image-based lighting (IBL) and environment maps
+- Texture maps (albedo, roughness, metallic, AO, emissive)
+- Advanced PBR features (clear coat, subsurface scattering)
+- Post-processing effects (bloom, tone mapping, SSAO)
+- Compute shaders and ray tracing utilities
 
 ## License
 

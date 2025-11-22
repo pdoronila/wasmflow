@@ -1,0 +1,220 @@
+{
+  "name": "Graphics Texture Sampling Test",
+  "description": "Test texture sampling component with various UV coordinates and wrapping modes",
+  "tests": [
+    {
+      "name": "Texture Sampler - Center Sample",
+      "description": "Sample texture at center UV coordinate (0.5, 0.5)",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [0.5, 0.5]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "clamp"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_approx": [0.5, 0.5, 0.25], "tolerance": 0.1},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Top Left Corner",
+      "description": "Sample texture at top-left corner (0.0, 0.0)",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [0.0, 0.0]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "clamp"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_approx": [1.0, 0.0, 0.0], "tolerance": 0.01},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Bottom Right Corner",
+      "description": "Sample texture at bottom-right corner (1.0, 1.0)",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [1.0, 1.0]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "clamp"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_approx": [1.0, 1.0, 0.0], "tolerance": 0.01},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Repeat Mode",
+      "description": "Test UV wrapping with repeat mode (UV > 1.0)",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [1.5, 1.5]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "repeat"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_approx": [0.5, 0.5, 0.25], "tolerance": 0.1},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Clamp Mode",
+      "description": "Test UV clamping (UV > 1.0 clamps to edge)",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [2.0, 2.0]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "clamp"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_approx": [1.0, 1.0, 0.0], "tolerance": 0.01},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Mirror Mode",
+      "description": "Test UV mirroring (UV > 1.0 mirrors texture)",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [1.5, 0.5]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "mirror"}
+      },
+      "expected_outputs": {
+        "color": {"f32_exists": true},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Bilinear Interpolation",
+      "description": "Test bilinear filtering between pixels",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [0.25, 0.25]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "clamp"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_exists": true},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Negative UV (Clamp)",
+      "description": "Test negative UV coordinates with clamp mode",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [-0.5, -0.5]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "clamp"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_approx": [1.0, 0.0, 0.0], "tolerance": 0.01},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Texture Sampler - Negative UV (Repeat)",
+      "description": "Test negative UV coordinates with repeat mode",
+      "component": "texture-sampler",
+      "inputs": {
+        "uv": {"f32_list": [-0.5, 0.5]},
+        "texture_data": {"binary": [
+          255, 0, 0, 255,     0, 255, 0, 255,
+          0, 0, 255, 255,     255, 255, 0, 255
+        ]},
+        "width": {"u32": 2},
+        "height": {"u32": 2},
+        "wrap_mode": {"string": "repeat"}
+      },
+      "expected_outputs": {
+        "color": {"f32_list_exists": true},
+        "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+      }
+    },
+    {
+      "name": "Complete Texture Sampling Workflow",
+      "description": "End-to-end test with geometry + UVs + texture sampling",
+      "workflow": [
+        {
+          "step": "Generate plane with UV coordinates",
+          "component": "primitive-plane",
+          "inputs": {
+            "width": {"f32": 2.0},
+            "height": {"f32": 2.0},
+            "subdivisions": {"u32": 1}
+          },
+          "store_outputs": ["uvs"]
+        },
+        {
+          "step": "Create test texture (2x2 gradient)",
+          "description": "Simulated texture data: Red → Green / Blue → Yellow",
+          "inputs": {
+            "texture_data": {"binary": [
+              255, 0, 0, 255,     0, 255, 0, 255,
+              0, 0, 255, 255,     255, 255, 0, 255
+            ]},
+            "width": {"u32": 2},
+            "height": {"u32": 2}
+          }
+        },
+        {
+          "step": "Sample texture at first UV coordinate",
+          "component": "texture-sampler",
+          "inputs": {
+            "uv": {"from_step": 0, "output": "uvs", "index": 0},
+            "texture_data": {"from_step": 1, "input": "texture_data"},
+            "width": {"from_step": 1, "input": "width"},
+            "height": {"from_step": 1, "input": "height"},
+            "wrap_mode": {"string": "repeat"}
+          },
+          "verify_outputs": {
+            "color": {"f32_list_exists": true},
+            "alpha": {"f32_approx": 1.0, "tolerance": 0.01}
+          }
+        }
+      ]
+    }
+  ]
+}

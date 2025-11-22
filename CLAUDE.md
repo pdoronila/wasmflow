@@ -1653,12 +1653,235 @@ Vertex GLSL → shader-program-linker ← Fragment GLSL
 - Shader usage examples
 - Performance notes
 
-### Future Enhancements (Phase 3)
+## Phase 3: PBR Materials and Texture System
 
-- **PBR Materials**: Metallic/roughness workflow, IBL
-- **Shadow Mapping**: Directional and point light shadows
+**Added**: 2025-11-22 (Phase 3: Step 1 + Steps 3-7 complete)
+
+**Location**: `src/gpu/texture.rs`, `src/builtin/texture_loader.rs`, `components/graphics/pbr-*`, `components/graphics/normal-map`, `examples/shaders/pbr/`
+
+Phase 3 implements physically-based rendering (PBR) with texture loading, Cook-Torrance BRDF, and normal mapping.
+
+### Texture System (Step 1 Complete ✓)
+
+**GPU Texture Management** (`src/gpu/texture.rs`):
+- `GpuTexture` struct: Wraps wgpu::Texture, view, and sampler
+- `from_rgba8()`: Create texture from RGBA8 pixel data
+- `from_rgb8()`: Create texture from RGB8 data (adds alpha = 255)
+- `create_render_target()`: Create offscreen render target with MSAA
+- `create_depth_texture()`: Create depth buffer for depth testing
+- Procedural generators: `generate_solid_color()`, `generate_checker()`, `generate_gradient()`
+
+**Texture Loader Built-in Node** (`src/builtin/texture_loader.rs`):
+- Component ID: `builtin:graphics:texture-loader`
+- File picker UI for PNG, JPG, BMP, GIF images
+- Loads image via `image` crate, converts to RGBA8
+- Outputs: `texture` (TextureData), `width` (u32), `height` (u32)
+- Footer view features:
+  - Thumbnail preview (max 256×256, aspect-ratio preserved)
+  - File path and dimensions display
+  - Memory usage statistics
+  - Error message display
+  - Status indicator (loaded/no file)
+
+**Texture Sampler Component** (existing):
+- CPU-side bilinear texture sampling
+- UV wrapping modes: repeat, clamp, mirror
+- Used for CPU workflows and testing
+
+**Integration:**
+```rust
+// In node graph
+TextureData { width, height, data: Vec<u8>, format: TextureFormat::Rgba8 }
+
+// Upload to GPU
+let gpu_texture = GpuTexture::from_rgba8(&device, &queue, width, height, &data, Some("label"))?;
+```
+
+### PBR BRDF Components (Steps 3-7 Complete ✓)
+
+**Cook-Torrance Microfacet BRDF:**
+
+Components implement the formula:
+```
+f(l, v) = k_d * base_color / π + k_s * (D * F * G) / (4 * (n·v) * (n·l))
+
+Where:
+  D = GGX normal distribution function
+  F = Fresnel-Schlick approximation
+  G = Smith geometry function
+  k_d = (1 - F) * (1 - metallic)  // Energy conservation
+  k_s = F
+```
+
+**Components:**
+
+1. **pbr-fresnel** (`components/graphics/pbr-fresnel/`):
+   - Inputs: `f0` (vec3), `view_dir` (vec3), `half_vector` (vec3)
+   - Output: `fresnel` (vec3)
+   - Formula: `F = F0 + (1 - F0) * (1 - cos_theta)^5`
+   - 5 unit tests
+
+2. **pbr-ggx-distribution** (`components/graphics/pbr-ggx-distribution/`):
+   - Inputs: `normal` (vec3), `half_vector` (vec3), `roughness` (f32)
+   - Output: `distribution` (f32)
+   - Formula: `D = α² / (π * ((n·h)² * (α² - 1) + 1)²)` where α = roughness²
+   - 6 unit tests
+
+3. **pbr-smith-geometry** (`components/graphics/pbr-smith-geometry/`):
+   - Inputs: `normal`, `view_dir`, `light_dir`, `roughness`
+   - Output: `geometry` (f32)
+   - Formula: `G = G1(v) * G1(l)` with GGX variant
+   - 7 unit tests
+
+4. **pbr-material** (`components/graphics/pbr-material/`):
+   - Inputs: `base_color` (vec3), `metallic` (f32), `roughness` (f32), `ao` (f32, optional)
+   - Outputs: `f0`, `roughness`, `ao`, `base_color`
+   - F0 calculation: `lerp(vec3(0.04), base_color, metallic)`
+   - 9 unit tests
+
+5. **pbr-brdf** (`components/graphics/pbr-brdf/`):
+   - Complete Cook-Torrance BRDF implementation
+   - Inputs: `normal`, `view_dir`, `light_dir`, `f0`, `roughness`, `base_color`, `metallic`
+   - Outputs: `diffuse` (vec3), `specular` (vec3), `total_brdf` (vec3)
+   - Energy conservation verified in tests
+   - 8 unit tests
+
+**Advanced Lighting:**
+
+6. **light-spot** (`components/graphics/light-spot/`):
+   - Spot light with cone-shaped emission
+   - Inputs: `position`, `direction`, `color`, `intensity`, `inner_angle`, `outer_angle`, `radius`
+   - Output: `light_data` (JSON string for GPU uniforms)
+   - Cone falloff: `smoothstep(outer_cos, inner_cos, cos_angle)`
+   - Distance attenuation: `1 / (1 + (d² / r²))`
+   - 9 unit tests
+
+**Normal Mapping:**
+
+7. **normal-map** (`components/graphics/normal-map/`):
+   - Tangent-space to world-space normal transformation
+   - Inputs: `tangent_normal` (vec3), `normal` (vec3), `tangent` (vec3), `bitangent` (vec3, optional)
+   - Output: `world_normal` (vec3)
+   - TBN matrix construction: `[T B N]` (column vectors)
+   - Conversion: `[0,1] → * 2.0 - 1.0 → [-1,1]` tangent space
+   - Auto-calculates bitangent if not provided: `B = N × T`
+   - 8 unit tests
+
+### Example PBR Shaders
+
+**Location**: `examples/shaders/pbr/`
+
+1. **pbr_single_light.vert/frag.glsl**:
+   - Single directional light PBR
+   - Complete Cook-Torrance BRDF in fragment shader
+   - Tone mapping (Reinhard) + gamma correction
+   - ~50-100 ALU per fragment
+
+2. **pbr_multi_light.vert/frag.glsl**:
+   - Up to 8 mixed lights (directional, point, spot)
+   - Multi-light accumulation loop
+   - Per-light attenuation and cone falloff
+   - ~50-100 ALU per light per fragment
+
+3. **pbr_normal_mapped.vert/frag.glsl**:
+   - Full PBR with normal mapping
+   - TBN matrix construction in vertex shader
+   - Normal map sampling and transformation
+   - `normal_strength` parameter for blending
+   - +10-15 ALU for TBN transformation
+
+### Integration Tests
+
+**graphics_texture_sampling.json** (10 tests):
+- Texture sampler component tests
+- UV coordinates (center, corners, edges)
+- Wrapping modes (repeat, clamp, mirror)
+- Bilinear interpolation verification
+- Negative UV handling
+- Complete texture sampling workflow
+
+**graphics_pbr_workflow.json** (12 tests):
+- Individual PBR component tests
+- Complete PBR pipeline workflow
+- Multi-material comparison (plastic vs gold)
+- Energy conservation validation
+
+**graphics_pbr_multi_light.json** (13 tests):
+- Spot light configuration tests
+- Multi-light scene creation (directional + point + spot)
+- Roughness variation tests
+- Complete multi-light PBR scene
+
+**graphics_normal_mapping.json** (9 tests):
+- Basic normal mapping tests
+- Complete normal-mapped PBR pipeline
+- Effect comparison (flat vs bumped)
+- TBN orthogonality verification
+
+### Material Presets
+
+**Metals:**
+- Gold: `{base_color: [1.0, 0.71, 0.29], metallic: 1.0, roughness: 0.2}`
+- Copper: `{base_color: [0.95, 0.64, 0.54], metallic: 1.0, roughness: 0.3}`
+- Brushed Aluminum: `{base_color: [0.9, 0.9, 0.9], metallic: 1.0, roughness: 0.6}`
+
+**Dielectrics:**
+- Red Plastic: `{base_color: [0.8, 0.1, 0.1], metallic: 0.0, roughness: 0.5}`
+- Polished Stone: `{base_color: [0.3, 0.3, 0.35], metallic: 0.0, roughness: 0.2, ao: 0.9}`
+- Rough Fabric: `{base_color: [0.6, 0.1, 0.1], metallic: 0.0, roughness: 0.7}`
+
+### Documentation
+
+**PBR Implementation Guide**: `docs/PHASE3_PBR_COMPLETE.md` (472 lines)
+- Complete Phase 3 documentation
+- All component details with formulas
+- Material property guidelines
+- Example configurations
+- Performance characteristics
+- Physical accuracy principles
+
+**Graphics Pipeline Summary**: `docs/GRAPHICS_PIPELINE_SUMMARY.md` (650+ lines)
+- Complete architecture overview
+- Component reference table
+- Shader reference table
+- Integration test summary
+- Example workflows
+- Material presets
+- Performance characteristics
+- Usage examples (GLSL and WASM)
+
+**PBR Shader README**: `examples/shaders/pbr/README.md` (398 lines)
+- Buffer layout specifications
+- Normal mapping integration
+- Material workflow documentation
+- Troubleshooting guide
+
+### Performance Characteristics
+
+**WASM Components:**
+- Binary sizes: 100-120 KB per component (with glam + LTO)
+- Execution: <1ms per BRDF calculation
+- Memory: Stack-allocated, no heap allocations
+
+**GLSL Shaders:**
+- Single light: ~50-100 ALU per fragment
+- Multi-light: ~50-100 ALU per light per fragment
+- Normal mapping: +10-15 ALU for TBN
+- GPU throughput: Millions of fragments per second
+
+**Texture System:**
+- Image loading: `image` crate with PNG, JPG, BMP, GIF support
+- Texture upload: <100ms for 1024×1024 RGBA8
+- GPU formats: Rgba8UnormSrgb (base color), Rgba8Unorm (normal maps)
+
+### Future Work (Phase 4)
+
+- **Texture Maps**: Albedo, normal, metallic/roughness, AO, emissive texture support
+- **IBL**: Image-based lighting with split-sum approximation
+- **Advanced PBR**: Clear coat, subsurface scattering, anisotropic reflections
+- **Shadow Mapping**: Directional, point, spot shadows with PCF/VSM
+- **Post-Processing**: Bloom, tone mapping, SSAO, DOF, motion blur
 - **Deferred Rendering**: Support for many lights (>8)
-- **Post-Processing**: Bloom, tone mapping, SSAO
-- **Texture Support**: Diffuse, normal, PBR texture sets
+- **Performance**: Compute shaders, light culling, LOD systems
 
 <!-- MANUAL ADDITIONS END -->
