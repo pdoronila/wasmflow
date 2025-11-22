@@ -13,7 +13,7 @@ use exports::wasmflow::node::execution::Guest as ExecutionGuest;
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;
 use wasmflow::node::types::*;
 
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 
 struct Component;
 
@@ -58,6 +58,12 @@ impl MetadataGuest for Component {
                 description: "UV coordinates as JSON strings (format: \"u,v\")".to_string(),
             },
             PortSpec {
+                name: "tangents".to_string(),
+                data_type: DataType::ListType,
+                optional: false,
+                description: "Tangent vectors as JSON strings (format: \"x,y,z,w\" where w=handedness)".to_string(),
+            },
+            PortSpec {
                 name: "indices".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
@@ -89,7 +95,7 @@ impl ExecutionGuest for Component {
         }
 
         // Generate cube mesh
-        let (vertices, normals, uvs, indices) = generate_cube(size.x, size.y, size.z);
+        let (vertices, normals, uvs, tangents, indices) = generate_cube(size.x, size.y, size.z);
 
         // Convert to string representations
         let vertex_strings: Vec<String> = vertices
@@ -107,20 +113,27 @@ impl ExecutionGuest for Component {
             .map(|(u, v)| format!("{},{}", u, v))
             .collect();
 
+        let tangent_strings: Vec<String> = tangents
+            .iter()
+            .map(|t| format!("{},{},{},{}", t.x, t.y, t.z, t.w))
+            .collect();
+
         Ok(vec![
             ("vertices".to_string(), Value::StringListVal(vertex_strings)),
             ("normals".to_string(), Value::StringListVal(normal_strings)),
             ("uvs".to_string(), Value::StringListVal(uv_strings)),
+            ("tangents".to_string(), Value::StringListVal(tangent_strings)),
             ("indices".to_string(), Value::U32ListVal(indices)),
         ])
     }
 }
 
-/// Generate a cube mesh with separate vertices per face (for proper normals)
-fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, Vec<(f32, f32)>, Vec<u32>) {
+/// Generate a cube mesh with separate vertices per face (for proper normals and tangents)
+fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, Vec<(f32, f32)>, Vec<Vec4>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut normals = Vec::new();
     let mut uvs = Vec::new();
+    let mut tangents = Vec::new();
     let mut indices = Vec::new();
 
     let half_w = width / 2.0;
@@ -135,6 +148,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
         &mut vertices,
         &mut normals,
         &mut uvs,
+        &mut tangents,
         &mut indices,
         [
             Vec3::new(-half_w, -half_h, half_d),
@@ -143,6 +157,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
             Vec3::new(-half_w, half_h, half_d),
         ],
         Vec3::new(0.0, 0.0, 1.0),
+        Vec3::new(1.0, 0.0, 0.0), // Tangent points right
     );
 
     // Back face (-Z)
@@ -150,6 +165,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
         &mut vertices,
         &mut normals,
         &mut uvs,
+        &mut tangents,
         &mut indices,
         [
             Vec3::new(half_w, -half_h, -half_d),
@@ -158,6 +174,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
             Vec3::new(half_w, half_h, -half_d),
         ],
         Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(-1.0, 0.0, 0.0), // Tangent points left
     );
 
     // Right face (+X)
@@ -165,6 +182,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
         &mut vertices,
         &mut normals,
         &mut uvs,
+        &mut tangents,
         &mut indices,
         [
             Vec3::new(half_w, -half_h, half_d),
@@ -173,6 +191,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
             Vec3::new(half_w, half_h, half_d),
         ],
         Vec3::new(1.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -1.0), // Tangent points back
     );
 
     // Left face (-X)
@@ -180,6 +199,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
         &mut vertices,
         &mut normals,
         &mut uvs,
+        &mut tangents,
         &mut indices,
         [
             Vec3::new(-half_w, -half_h, -half_d),
@@ -188,6 +208,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
             Vec3::new(-half_w, half_h, -half_d),
         ],
         Vec3::new(-1.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 1.0), // Tangent points forward
     );
 
     // Top face (+Y)
@@ -195,6 +216,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
         &mut vertices,
         &mut normals,
         &mut uvs,
+        &mut tangents,
         &mut indices,
         [
             Vec3::new(-half_w, half_h, half_d),
@@ -203,6 +225,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
             Vec3::new(-half_w, half_h, -half_d),
         ],
         Vec3::new(0.0, 1.0, 0.0),
+        Vec3::new(1.0, 0.0, 0.0), // Tangent points right
     );
 
     // Bottom face (-Y)
@@ -210,6 +233,7 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
         &mut vertices,
         &mut normals,
         &mut uvs,
+        &mut tangents,
         &mut indices,
         [
             Vec3::new(-half_w, -half_h, -half_d),
@@ -218,9 +242,10 @@ fn generate_cube(width: f32, height: f32, depth: f32) -> (Vec<Vec3>, Vec<Vec3>, 
             Vec3::new(-half_w, -half_h, half_d),
         ],
         Vec3::new(0.0, -1.0, 0.0),
+        Vec3::new(1.0, 0.0, 0.0), // Tangent points right
     );
 
-    (vertices, normals, uvs, indices)
+    (vertices, normals, uvs, tangents, indices)
 }
 
 /// Add a face to the mesh
@@ -228,9 +253,11 @@ fn add_face(
     vertices: &mut Vec<Vec3>,
     normals: &mut Vec<Vec3>,
     uvs: &mut Vec<(f32, f32)>,
+    tangents: &mut Vec<Vec4>,
     indices: &mut Vec<u32>,
     corners: [Vec3; 4],
     normal: Vec3,
+    tangent: Vec3,
 ) {
     let base_index = vertices.len() as u32;
 
@@ -242,6 +269,13 @@ fn add_face(
     normals.push(normal);
     normals.push(normal);
     normals.push(normal);
+
+    // All vertices on this face have the same tangent (with handedness = 1.0)
+    let tangent_vec4 = Vec4::new(tangent.x, tangent.y, tangent.z, 1.0);
+    tangents.push(tangent_vec4);
+    tangents.push(tangent_vec4);
+    tangents.push(tangent_vec4);
+    tangents.push(tangent_vec4);
 
     // Standard quad UVs
     uvs.push((0.0, 0.0));
@@ -300,7 +334,7 @@ mod tests {
         )];
 
         let result = Component::execute(inputs).unwrap();
-        assert_eq!(result.len(), 4);
+        assert_eq!(result.len(), 5);
 
         // Extract outputs
         let vertices = if let Value::StringListVal(v) = &result[0].1 {
@@ -309,7 +343,13 @@ mod tests {
             panic!("Expected StringListVal for vertices");
         };
 
-        let indices = if let Value::U32ListVal(i) = &result[3].1 {
+        let tangents = if let Value::StringListVal(t) = &result[3].1 {
+            t
+        } else {
+            panic!("Expected StringListVal for tangents");
+        };
+
+        let indices = if let Value::U32ListVal(i) = &result[4].1 {
             i
         } else {
             panic!("Expected U32ListVal for indices");
@@ -317,6 +357,7 @@ mod tests {
 
         // Cube has 6 faces * 4 vertices per face = 24 vertices
         assert_eq!(vertices.len(), 24);
+        assert_eq!(tangents.len(), 24);
 
         // Cube has 6 faces * 2 triangles per face * 3 indices per triangle = 36 indices
         assert_eq!(indices.len(), 36);
