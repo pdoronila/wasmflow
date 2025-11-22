@@ -1874,14 +1874,248 @@ Where:
 - Texture upload: <100ms for 1024×1024 RGBA8
 - GPU formats: Rgba8UnormSrgb (base color), Rgba8Unorm (normal maps)
 
-### Future Work (Phase 4)
+## Phase 4: Advanced Rendering - Shadow Mapping (Step 1 Complete ✓)
 
-- **Texture Maps**: Albedo, normal, metallic/roughness, AO, emissive texture support
+**Added**: 2025-11-22 (Phase 4: Shadow Mapping Complete)
+
+**Location**: `src/gpu/shadow.rs`, `components/graphics/shadow-*`, `examples/shaders/shadow/`
+
+Phase 4 implements advanced rendering features starting with a complete shadow mapping system.
+
+### Shadow System Foundation
+
+**Core Shadow Calculations** (`src/gpu/shadow.rs`, 443 lines):
+
+Provides shadow matrix calculation utilities for GPU and WASM components:
+
+```rust
+/// Calculate cascade splits using practical split scheme (λ=0.5)
+pub fn calculate_cascade_splits(
+    near: f32,
+    far: f32,
+    cascade_count: u32,
+    lambda: f32,
+) -> Vec<f32>
+
+/// Calculate directional light shadow matrix (frustum-fitted orthographic)
+pub fn calculate_directional_shadow_matrix(
+    light_direction: Vec3,
+    view_matrix: Mat4,
+    projection_matrix: Mat4,
+    near_distance: f32,
+    far_distance: f32,
+) -> Mat4
+
+/// Calculate point light shadow matrices (6 cubemap faces)
+pub fn calculate_point_shadow_matrices(
+    light_position: Vec3,
+    near: f32,
+    far: f32,
+) -> Vec<Mat4>  // Returns 6 matrices
+
+/// Calculate spot light shadow matrix (cone-matched perspective)
+pub fn calculate_spot_shadow_matrix(
+    light_position: Vec3,
+    light_direction: Vec3,
+    cone_angle: f32,
+    near: f32,
+    far: f32,
+) -> Mat4
+```
+
+**Key Features**:
+- Practical split scheme for CSM (balanced cascade distribution)
+- Frustum corner extraction in world space
+- AABB fitting in light space for tight bounds
+- Automatic up vector selection (avoids parallel-to-direction)
+- 9 unit tests covering all shadow types
+
+### Shadow Components (WASM)
+
+**shadow-directional** (`components/graphics/shadow-directional/`):
+- **Purpose**: Cascaded shadow maps for directional lights (sun/moon)
+- **Inputs**:
+  - `light_direction` (vec3) - normalized
+  - `view_matrix` (mat4) - camera view matrix
+  - `projection_matrix` (mat4) - camera projection matrix
+  - `near` (f32) - camera near plane
+  - `far` (f32) - camera far plane
+  - `cascade_count` (u32) - 1 to 4 cascades
+- **Outputs**:
+  - `shadow_matrices` (f32 list) - flattened matrices (cascade_count × 16)
+  - `cascade_splits` (f32 list) - split distances for cascade selection
+- **Features**:
+  - Practical split scheme (λ=0.5) for optimal distribution
+  - Frustum-fitted orthographic projection per cascade
+  - Tight AABB bounds for maximum shadow resolution
+- **Tests**: 6 unit tests
+- **Binary**: 105 KB
+
+**shadow-point** (`components/graphics/shadow-point/`):
+- **Purpose**: Omnidirectional shadows for point lights (cubemap)
+- **Inputs**:
+  - `light_position` (vec3) - world position
+  - `near` (f32) - shadow near plane
+  - `far` (f32) - shadow far plane (light radius)
+- **Outputs**:
+  - `shadow_matrices` (f32 list) - 6 matrices flattened (96 floats)
+- **Features**:
+  - 90° FOV perspective projection per cubemap face
+  - Face order: +X, -X, +Y, -Y, +Z, -Z
+  - Correct up vectors for each orientation
+- **Tests**: 7 unit tests (count, validity, position variations)
+- **Binary**: 97 KB
+
+**shadow-spot** (`components/graphics/shadow-spot/`):
+- **Purpose**: Cone-shaped shadows for spot lights
+- **Inputs**:
+  - `light_position` (vec3) - world position
+  - `light_direction` (vec3) - normalized direction
+  - `cone_angle` (f32) - cone angle in degrees (0-180)
+  - `near` (f32) - shadow near plane
+  - `far` (f32) - shadow far plane (light range)
+- **Outputs**:
+  - `shadow_matrix` (f32 list) - 16 floats (column-major)
+- **Features**:
+  - FOV matches cone angle for exact shadow coverage
+  - Perspective projection matching light frustum
+  - Automatic up vector selection
+- **Tests**: 9 unit tests (cone angles, directions, error handling)
+- **Binary**: 105 KB
+
+### Shadow Sampling Shaders (GLSL)
+
+**Location**: `examples/shaders/shadow/`
+
+All shaders use PCF (Percentage Closer Filtering) for soft shadows and slope-scale bias to prevent shadow acne.
+
+**shadow_common.glsl** - Shared PCF utilities:
+```glsl
+float pcf4(sampler2DShadow shadowMap, vec3 shadowCoord, vec2 texelSize);   // 2×2 samples
+float pcf9(sampler2DShadow shadowMap, vec3 shadowCoord, vec2 texelSize);   // 3×3 samples
+float pcf16(sampler2DShadow shadowMap, vec3 shadowCoord, vec2 texelSize);  // 4×4 samples
+float shadowTest(sampler2DShadow shadowMap, vec3 shadowCoord);             // Hard shadows
+float calculateShadowBias(vec3 normal, vec3 lightDir, float base, float max);
+```
+
+**shadow_directional.frag.glsl** - Directional light CSM:
+- Automatic cascade selection based on view-space depth
+- PCF filtering (9 samples per cascade)
+- Smooth transitions between cascades
+- Buffer layout: `DirectionalShadow` uniform with 4 cascade matrices
+
+**shadow_point.frag.glsl** - Point light cubemap:
+- PCF filtering (6 samples with offset pattern)
+- Distance attenuation (inverse square law)
+- Cubemap sampling in light-space
+- Buffer layout: `PointLight` uniform with position, radius, farPlane
+
+**shadow_spot.frag.glsl** - Spot light perspective:
+- PCF filtering (9 samples, 3×3 pattern)
+- Cone attenuation (smooth falloff between inner/outer angles)
+- Distance attenuation
+- Buffer layout: `SpotLight` uniform with position, direction, angles, shadow matrix
+
+### Shadow Workflows
+
+**Directional Shadow (CSM) Pipeline**:
+1. **Calculate matrices** (WASM component):
+   ```
+   shadow-directional → shadow_matrices (64 floats for 4 cascades)
+                     → cascade_splits (4 split distances)
+   ```
+2. **Render shadow maps**:
+   - 4 render passes (one per cascade)
+   - Depth-only framebuffer (2048×2048 recommended)
+   - Each cascade uses corresponding shadow matrix
+3. **Sample in fragment shader**:
+   - `shadow_directional.frag.glsl`
+   - Automatic cascade selection by depth
+   - PCF filtering for soft edges
+
+**Point Shadow (Cubemap) Pipeline**:
+1. **Calculate matrices** (WASM component):
+   ```
+   shadow-point → shadow_matrices (96 floats = 6 faces)
+   ```
+2. **Render cubemap**:
+   - 6 render passes (one per face)
+   - Depth cubemap (1024×1024 per face)
+3. **Sample in fragment shader**:
+   - `shadow_point.frag.glsl`
+   - Direction from fragment selects face
+   - PCF with offset pattern
+
+**Spot Shadow Pipeline**:
+1. **Calculate matrix** (WASM component):
+   ```
+   shadow-spot → shadow_matrix (16 floats)
+   ```
+2. **Render shadow map**:
+   - Single render pass
+   - Depth texture (1024×1024)
+3. **Sample in fragment shader**:
+   - `shadow_spot.frag.glsl`
+   - Cone attenuation applied
+   - PCF filtering
+
+### Performance Characteristics
+
+**WASM Components**:
+| Component           | Binary Size | Execution | Memory    |
+|---------------------|-------------|-----------|-----------|
+| shadow-directional  | 105 KB      | <1ms      | Stack only|
+| shadow-point        | 97 KB       | <1ms      | Stack only|
+| shadow-spot         | 105 KB      | <1ms      | Stack only|
+
+**GPU Shaders**:
+| Shader      | PCF Samples | ALU/Fragment | Texture Samples |
+|-------------|-------------|--------------|-----------------|
+| Directional | 9           | ~50-60       | 9 per cascade   |
+| Point       | 6           | ~40-50       | 6               |
+| Spot        | 9           | ~50-60       | 9               |
+
+**Shadow Map Memory** (depth24_stencil8):
+- Directional CSM (4×2048²): 16 MB
+- Point cubemap (6×1024²): 6 MB
+- Spot (1024²): 1 MB
+
+### Quality Tuning
+
+**Cascade Split Tuning**:
+- `λ = 0.0`: Uniform splits (equal distance)
+- `λ = 0.5`: Practical scheme (default, balanced)
+- `λ = 1.0`: Logarithmic (more detail near camera)
+
+**Shadow Bias**:
+- **Shadow acne**: Increase `shadowBias` or `maxBias`
+- **Peter panning**: Decrease `shadowBias`
+- Typical values:
+  - Directional/Spot: base=0.005, max=0.05
+  - Point: base=0.05 (larger due to cubemap)
+
+**PCF Quality**:
+| Samples | Quality      | Performance | Use Case     |
+|---------|--------------|-------------|--------------|
+| 1       | Hard edges   | Fastest     | Stylized     |
+| 4       | Soft edges   | Fast        | Mobile       |
+| 9       | Smooth       | Medium      | Default      |
+| 16      | Very smooth  | Slower      | High quality |
+
+### Documentation
+
+- **Shadow README**: `examples/shaders/shadow/README.md` (360 lines)
+  - Complete usage guide for all shadow types
+  - Buffer layout specifications
+  - Performance tuning recommendations
+  - Common issues and troubleshooting
+
+### Future Work (Phase 4 Remaining)
+
+- **Environment Maps & Cubemaps**: Skybox rendering, reflection probes
 - **IBL**: Image-based lighting with split-sum approximation
-- **Advanced PBR**: Clear coat, subsurface scattering, anisotropic reflections
-- **Shadow Mapping**: Directional, point, spot shadows with PCF/VSM
 - **Post-Processing**: Bloom, tone mapping, SSAO, DOF, motion blur
-- **Deferred Rendering**: Support for many lights (>8)
+- **Advanced PBR**: Clear coat, subsurface scattering, anisotropic reflections
 - **Performance**: Compute shaders, light culling, LOD systems
 
 <!-- MANUAL ADDITIONS END -->
