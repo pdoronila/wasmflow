@@ -7,6 +7,7 @@ pub mod buffer;
 pub mod context;
 pub mod pipeline;
 pub mod renderer;
+pub mod shadow;
 pub mod shader;
 pub mod texture;
 
@@ -16,6 +17,10 @@ pub use buffer::{
 pub use context::{GpuContext, GpuError, GpuInitResult};
 pub use pipeline::{PipelineBuilder, PipelineConfig, PipelineError, RenderPipeline};
 pub use renderer::{create_render_target, RenderError, RenderTarget, Renderer, SceneDescription};
+pub use shadow::{
+    calculate_directional_shadow_matrix, calculate_point_shadow_matrices,
+    calculate_spot_shadow_matrix, CascadeSplits, ShadowError, ShadowMapConfig,
+};
 pub use shader::{CompiledShader, CompilationResult, ShaderCompilationError, ShaderStage};
 pub use texture::{
     generate_checker, generate_gradient, generate_solid_color, GpuTexture, TextureError,

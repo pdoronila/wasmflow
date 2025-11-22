@@ -24,6 +24,7 @@ wgpu = "22.0"
 naga = { version = "22.0", features = ["glsl-in", "spv-out", "wgsl-out"] }
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
+glam = "0.25"  # Vector and matrix math for GPU operations
 
 # WASM Runtime
 wasmtime = { version = "27.0", features = ["component-model", "async"] }
