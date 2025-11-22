@@ -13,7 +13,7 @@ use exports::wasmflow::node::execution::Guest as ExecutionGuest;
 use exports::wasmflow::node::metadata::Guest as MetadataGuest;
 use wasmflow::node::types::*;
 
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 use std::f32::consts::PI;
 
 struct Component;
@@ -73,6 +73,12 @@ impl MetadataGuest for Component {
                 description: "UV coordinates as JSON strings (format: \"u,v\")".to_string(),
             },
             PortSpec {
+                name: "tangents".to_string(),
+                data_type: DataType::ListType,
+                optional: false,
+                description: "Tangent vectors as JSON strings (format: \"x,y,z,w\" where w=handedness)".to_string(),
+            },
+            PortSpec {
                 name: "indices".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
@@ -119,7 +125,7 @@ impl ExecutionGuest for Component {
         }
 
         // Generate sphere mesh using UV sphere algorithm
-        let (vertices, normals, uvs, indices) = generate_uv_sphere(radius, segments, rings);
+        let (vertices, normals, uvs, tangents, indices) = generate_uv_sphere(radius, segments, rings);
 
         // Convert to string representations
         let vertex_strings: Vec<String> = vertices
@@ -137,10 +143,16 @@ impl ExecutionGuest for Component {
             .map(|(u, v)| format!("{},{}", u, v))
             .collect();
 
+        let tangent_strings: Vec<String> = tangents
+            .iter()
+            .map(|t| format!("{},{},{},{}", t.x, t.y, t.z, t.w))
+            .collect();
+
         Ok(vec![
             ("vertices".to_string(), Value::StringListVal(vertex_strings)),
             ("normals".to_string(), Value::StringListVal(normal_strings)),
             ("uvs".to_string(), Value::StringListVal(uv_strings)),
+            ("tangents".to_string(), Value::StringListVal(tangent_strings)),
             ("indices".to_string(), Value::U32ListVal(indices)),
         ])
     }
@@ -151,13 +163,14 @@ fn generate_uv_sphere(
     radius: f32,
     segments: u32,
     rings: u32,
-) -> (Vec<Vec3>, Vec<Vec3>, Vec<(f32, f32)>, Vec<u32>) {
+) -> (Vec<Vec3>, Vec<Vec3>, Vec<(f32, f32)>, Vec<Vec4>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut normals = Vec::new();
     let mut uvs = Vec::new();
+    let mut tangents = Vec::new();
     let mut indices = Vec::new();
 
-    // Generate vertices, normals, and UVs
+    // Generate vertices, normals, UVs, and tangents
     for ring in 0..=rings {
         let phi = PI * (ring as f32) / (rings as f32); // Latitude angle (0 to π)
         let y = radius * phi.cos();
@@ -174,6 +187,13 @@ fn generate_uv_sphere(
             // Normal is the normalized position for a sphere centered at origin
             let normal = position.normalize();
 
+            // Tangent is the derivative with respect to theta (longitude)
+            // ∂P/∂θ = (-r·sin(φ)·sin(θ), 0, r·sin(φ)·cos(θ))
+            // Normalized: (-sin(θ), 0, cos(θ))
+            let tangent = Vec3::new(-theta.sin(), 0.0, theta.cos()).normalize();
+            let handedness = 1.0; // Right-handed coordinate system
+            let tangent_vec4 = Vec4::new(tangent.x, tangent.y, tangent.z, handedness);
+
             // UV coordinates
             let u = (segment as f32) / (segments as f32);
             let v = (ring as f32) / (rings as f32);
@@ -181,6 +201,7 @@ fn generate_uv_sphere(
             vertices.push(position);
             normals.push(normal);
             uvs.push((u, v));
+            tangents.push(tangent_vec4);
         }
     }
 
@@ -208,7 +229,7 @@ fn generate_uv_sphere(
         }
     }
 
-    (vertices, normals, uvs, indices)
+    (vertices, normals, uvs, tangents, indices)
 }
 
 // Helper functions
@@ -267,7 +288,7 @@ mod tests {
         ];
 
         let result = Component::execute(inputs).unwrap();
-        assert_eq!(result.len(), 4);
+        assert_eq!(result.len(), 5);
 
         // Extract outputs
         let vertices = if let Value::StringListVal(v) = &result[0].1 {
@@ -288,7 +309,13 @@ mod tests {
             panic!("Expected StringListVal for uvs");
         };
 
-        let indices = if let Value::U32ListVal(i) = &result[3].1 {
+        let tangents = if let Value::StringListVal(t) = &result[3].1 {
+            t
+        } else {
+            panic!("Expected StringListVal for tangents");
+        };
+
+        let indices = if let Value::U32ListVal(i) = &result[4].1 {
             i
         } else {
             panic!("Expected U32ListVal for indices");
@@ -299,6 +326,7 @@ mod tests {
         assert_eq!(vertices.len(), expected_vertices);
         assert_eq!(normals.len(), expected_vertices);
         assert_eq!(uvs.len(), expected_vertices);
+        assert_eq!(tangents.len(), expected_vertices);
 
         // Verify triangle count: segments * rings * 2 triangles * 3 indices
         let expected_indices = 8 * 4 * 2 * 3;
@@ -399,7 +427,7 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
 
-        let indices = if let Value::U32ListVal(i) = &result[3].1 {
+        let indices = if let Value::U32ListVal(i) = &result[4].1 {
             i
         } else {
             panic!("Expected U32ListVal");
