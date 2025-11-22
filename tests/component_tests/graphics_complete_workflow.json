@@ -1,0 +1,336 @@
+{
+  "metadata": {
+    "title": "Complete Shader Workflow Test (Phase 2)",
+    "description": "End-to-end graphics pipeline: geometry → camera → lighting → shader authoring → program linking → preview",
+    "category": "Graphics",
+    "created": "2025-11-22",
+    "phase": "Phase 2: GPU integration with shader compilation and lighting"
+  },
+  "nodes": [
+    {
+      "id": "sphere",
+      "component_id": "graphics:primitive-sphere",
+      "display_name": "Sphere Mesh",
+      "position": { "x": 100.0, "y": 100.0 },
+      "inputs": {
+        "radius": 1.0,
+        "segments": 32,
+        "rings": 16
+      }
+    },
+    {
+      "id": "cam_pos",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Position",
+      "position": { "x": 100.0, "y": 300.0 },
+      "inputs": { "x": 0.0, "y": 2.0, "z": 5.0 }
+    },
+    {
+      "id": "cam_target",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Target",
+      "position": { "x": 100.0, "y": 450.0 },
+      "inputs": { "x": 0.0, "y": 0.0, "z": 0.0 }
+    },
+    {
+      "id": "cam_up",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Camera Up",
+      "position": { "x": 100.0, "y": 600.0 },
+      "inputs": { "x": 0.0, "y": 1.0, "z": 0.0 }
+    },
+    {
+      "id": "camera",
+      "component_id": "graphics:perspective-camera",
+      "display_name": "Perspective Camera",
+      "position": { "x": 400.0, "y": 350.0 },
+      "inputs": {
+        "fov": 60.0,
+        "aspect_ratio": 1.777778,
+        "near": 0.1,
+        "far": 100.0
+      }
+    },
+    {
+      "id": "sun_dir",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Sun Direction",
+      "position": { "x": 100.0, "y": 800.0 },
+      "inputs": { "x": -0.5, "y": -1.0, "z": -0.3 }
+    },
+    {
+      "id": "sun_color",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Sun Color",
+      "position": { "x": 100.0, "y": 950.0 },
+      "inputs": { "x": 1.0, "y": 0.95, "z": 0.8 }
+    },
+    {
+      "id": "sun_light",
+      "component_id": "graphics:light-directional",
+      "display_name": "Directional Light (Sun)",
+      "position": { "x": 400.0, "y": 875.0 },
+      "inputs": {
+        "intensity": 1.2
+      }
+    },
+    {
+      "id": "point_pos",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Point Light Position",
+      "position": { "x": 700.0, "y": 800.0 },
+      "inputs": { "x": 3.0, "y": 2.0, "z": 2.0 }
+    },
+    {
+      "id": "point_color",
+      "component_id": "graphics:vec3-construct",
+      "display_name": "Point Light Color",
+      "position": { "x": 700.0, "y": 950.0 },
+      "inputs": { "x": 0.8, "y": 0.6, "z": 1.0 }
+    },
+    {
+      "id": "point_light",
+      "component_id": "graphics:light-point",
+      "display_name": "Point Light",
+      "position": { "x": 1000.0, "y": 875.0 },
+      "inputs": {
+        "intensity": 1.5,
+        "radius": 10.0
+      }
+    },
+    {
+      "id": "vertex_shader",
+      "component_id": "builtin:graphics:glsl-shader-editor",
+      "display_name": "Vertex Shader",
+      "position": { "x": 1300.0, "y": 200.0 },
+      "shader_editor_data": {
+        "shader_name": "basic_vertex",
+        "shader_type": "Vertex",
+        "source_code": "#version 450\n\nlayout(location = 0) in vec3 position;\nlayout(location = 1) in vec3 normal;\nlayout(location = 2) in vec2 uv;\n\nlayout(set = 0, binding = 0) uniform Camera {\n    mat4 view;\n    mat4 projection;\n    vec3 camera_position;\n};\n\nlayout(location = 0) out vec3 frag_pos;\nlayout(location = 1) out vec3 frag_normal;\nlayout(location = 2) out vec2 frag_uv;\n\nvoid main() {\n    frag_pos = position;\n    frag_normal = normal;\n    frag_uv = uv;\n    gl_Position = projection * view * vec4(position, 1.0);\n}\n",
+        "save_code": true
+      }
+    },
+    {
+      "id": "fragment_shader",
+      "component_id": "builtin:graphics:glsl-shader-editor",
+      "display_name": "Fragment Shader (Phong Lighting)",
+      "position": { "x": 1300.0, "y": 500.0 },
+      "shader_editor_data": {
+        "shader_name": "phong_fragment",
+        "shader_type": "Fragment",
+        "source_code": "#version 450\n\nlayout(location = 0) in vec3 frag_pos;\nlayout(location = 1) in vec3 frag_normal;\nlayout(location = 2) in vec2 frag_uv;\n\nlayout(set = 0, binding = 0) uniform Camera {\n    mat4 view;\n    mat4 projection;\n    vec3 camera_position;\n};\n\nlayout(set = 1, binding = 0) uniform Material {\n    vec4 base_color;\n    float metallic;\n    float roughness;\n};\n\nlayout(set = 2, binding = 0) uniform Light {\n    vec3 direction;\n    float _pad1;\n    vec3 color;\n    float intensity;\n};\n\nlayout(location = 0) out vec4 out_color;\n\nvoid main() {\n    vec3 N = normalize(frag_normal);\n    vec3 L = normalize(-direction);\n    vec3 V = normalize(camera_position - frag_pos);\n    \n    // Diffuse\n    float diffuse = max(dot(N, L), 0.0);\n    \n    // Specular (Phong)\n    vec3 R = reflect(-L, N);\n    float shininess = mix(128.0, 1.0, roughness);\n    float spec = pow(max(dot(R, V), 0.0), shininess);\n    \n    vec3 ambient = base_color.rgb * 0.1;\n    vec3 diffuse_color = base_color.rgb * color * diffuse * intensity;\n    vec3 spec_color = color * spec * intensity * (1.0 - roughness);\n    \n    out_color = vec4(ambient + diffuse_color + spec_color, base_color.a);\n}\n",
+        "save_code": true
+      }
+    },
+    {
+      "id": "program_linker",
+      "component_id": "builtin:graphics:shader-program-linker",
+      "display_name": "Shader Program Linker",
+      "position": { "x": 1700.0, "y": 350.0 }
+    },
+    {
+      "id": "render_target",
+      "component_id": "graphics:render-target",
+      "display_name": "Render Target",
+      "position": { "x": 1700.0, "y": 600.0 },
+      "inputs": {
+        "width": 800,
+        "height": 600,
+        "format": "rgba8",
+        "depth": true,
+        "multisample": 4
+      }
+    },
+    {
+      "id": "shader_preview",
+      "component_id": "builtin:graphics:shader-preview",
+      "display_name": "Shader Preview",
+      "position": { "x": 2100.0, "y": 400.0 },
+      "shader_preview_data": {
+        "preview_size": [800, 600],
+        "auto_refresh": true,
+        "refresh_rate": 30.0,
+        "zoom": 1.0
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from_node": "cam_pos",
+      "from_port": "vector",
+      "to_node": "camera",
+      "to_port": "position"
+    },
+    {
+      "from_node": "cam_target",
+      "from_port": "vector",
+      "to_node": "camera",
+      "to_port": "target"
+    },
+    {
+      "from_node": "cam_up",
+      "from_port": "vector",
+      "to_node": "camera",
+      "to_port": "up"
+    },
+    {
+      "from_node": "sun_dir",
+      "from_port": "vector",
+      "to_node": "sun_light",
+      "to_port": "direction"
+    },
+    {
+      "from_node": "sun_color",
+      "from_port": "vector",
+      "to_node": "sun_light",
+      "to_port": "color"
+    },
+    {
+      "from_node": "point_pos",
+      "from_port": "vector",
+      "to_node": "point_light",
+      "to_port": "position"
+    },
+    {
+      "from_node": "point_color",
+      "from_port": "vector",
+      "to_node": "point_light",
+      "to_port": "color"
+    },
+    {
+      "from_node": "vertex_shader",
+      "from_port": "shader_code",
+      "to_node": "program_linker",
+      "to_port": "vertex_shader"
+    },
+    {
+      "from_node": "fragment_shader",
+      "from_port": "shader_code",
+      "to_node": "program_linker",
+      "to_port": "fragment_shader"
+    }
+  ],
+  "expected_outputs": {
+    "sphere": {
+      "positions": "List of vec3 positions (33*17 = 561 vertices)",
+      "normals": "List of vec3 normals (normalized)",
+      "uvs": "List of (f32, f32) UV coordinates",
+      "indices": "List of u32 triangle indices (~3072 indices for 1024 triangles)"
+    },
+    "camera": {
+      "view_matrix": "4x4 look-at matrix (column-major)",
+      "projection_matrix": "4x4 perspective matrix (column-major)",
+      "camera_position": "vec3 (0, 2, 5)",
+      "view_direction": "vec3 normalized direction from camera to target"
+    },
+    "sun_light": {
+      "light_data": "JSON with type='directional', normalized direction, clamped color, intensity"
+    },
+    "point_light": {
+      "light_data": "JSON with type='point', position, clamped color, intensity, radius"
+    },
+    "program_linker": {
+      "program": "Binary (UUID of compiled shader program)",
+      "status": "Linked successfully or compilation errors in footer view"
+    },
+    "render_target": {
+      "config": "JSON with width=800, height=600, format=rgba8, depth=true, multisample=4"
+    },
+    "shader_preview": {
+      "note": "Phase 2: Shows real-time GPU-rendered output (if GPU available) or placeholder"
+    }
+  },
+  "workflow_description": "Complete Phase 2 shader authoring pipeline:\n\n1. **Geometry Generation**: Create sphere mesh with positions, normals, UVs, and indices\n2. **Camera Setup**: Configure perspective camera with look-at transform\n3. **Lighting**: Create directional light (sun) and point light with colors and intensities\n4. **Shader Authoring**: Write GLSL vertex and fragment shaders with Phong lighting\n5. **Shader Linking**: Compile and link shaders into executable GPU program\n6. **Render Configuration**: Set render target parameters (resolution, format, MSAA)\n7. **Preview**: Display real-time rendered output with shader preview node\n\nThis demonstrates the full graphics pipeline from data generation through shader compilation to rendering.",
+  "test_assertions": [
+    {
+      "node": "sphere",
+      "assertion": "Sphere has correct vertex count",
+      "expected": "(segments+1) * (rings+1) = 33 * 17 = 561 vertices"
+    },
+    {
+      "node": "camera",
+      "assertion": "Camera outputs 4 values (view, projection, position, direction)",
+      "expected": 4
+    },
+    {
+      "node": "sun_light",
+      "assertion": "Directional light JSON contains required fields",
+      "expected": "JSON with 'light_type', 'direction', 'color', 'intensity'"
+    },
+    {
+      "node": "point_light",
+      "assertion": "Point light JSON contains required fields including radius",
+      "expected": "JSON with 'light_type', 'position', 'color', 'intensity', 'radius'"
+    },
+    {
+      "node": "program_linker",
+      "assertion": "Shader program compiles successfully",
+      "expected": "Status = Success, program ID is UUID, no compilation errors"
+    },
+    {
+      "node": "render_target",
+      "assertion": "Render target configuration is valid",
+      "expected": "JSON with all specified parameters"
+    },
+    {
+      "node": "shader_preview",
+      "assertion": "Preview displays rendered output or shows error message",
+      "expected": "No runtime errors, either GPU texture or fallback placeholder"
+    }
+  ],
+  "component_coverage": {
+    "phase_1": [
+      "graphics:primitive-sphere",
+      "graphics:vec3-construct",
+      "graphics:perspective-camera",
+      "graphics:render-target",
+      "builtin:graphics:shader-preview (placeholder mode)"
+    ],
+    "phase_2_new": [
+      "graphics:light-directional",
+      "graphics:light-point",
+      "builtin:graphics:glsl-shader-editor",
+      "builtin:graphics:shader-program-linker",
+      "builtin:graphics:shader-preview (GPU rendering mode)"
+    ]
+  },
+  "manual_verification_steps": [
+    {
+      "step": 1,
+      "action": "Open graph in WasmFlow",
+      "expected": "All nodes load successfully, no component errors"
+    },
+    {
+      "step": 2,
+      "action": "Execute the graph",
+      "expected": "All nodes execute successfully, green checkmarks on all nodes"
+    },
+    {
+      "step": 3,
+      "action": "Inspect light outputs",
+      "expected": "JSON strings contain properly formatted light data"
+    },
+    {
+      "step": 4,
+      "action": "Open shader editor footer views",
+      "expected": "GLSL code displayed correctly with syntax highlighting"
+    },
+    {
+      "step": 5,
+      "action": "Open program linker footer view",
+      "expected": "Status shows 'Linked successfully' with program UUID"
+    },
+    {
+      "step": 6,
+      "action": "Open shader preview footer view",
+      "expected": "Preview shows rendered sphere with Phong lighting (if GPU available) or placeholder"
+    }
+  ],
+  "performance_expectations": {
+    "geometry_generation": "< 10ms for sphere with 561 vertices",
+    "camera_calculation": "< 1ms for matrix math",
+    "light_data_serialization": "< 1ms per light",
+    "shader_compilation": "< 500ms for both shaders (if GPU available)",
+    "total_execution": "< 600ms end-to-end (GPU) or < 50ms (CPU only)"
+  }
+}

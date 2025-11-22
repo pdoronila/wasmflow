@@ -264,6 +264,99 @@ Configure render target parameters and output JSON configuration.
 - `rgb8`: 8-bit without alpha
 - `r8`: Single channel 8-bit
 
+## Phase 2: Lighting Components (Step 8)
+
+### light-directional
+
+Create a directional light source (sun-like with parallel rays).
+
+**Inputs:**
+- `direction` (vec3): Light direction vector (automatically normalized)
+- `color` (vec3): Light color RGB (automatically clamped to [0.0, 1.0])
+- `intensity` (f32): Light intensity multiplier (must be non-negative)
+
+**Outputs:**
+- `light_data` (String): JSON-encoded light data compatible with GPU uniforms
+
+**Example:**
+```
+direction: [0, -1, 0] (down)
+color: [1, 1, 1] (white)
+intensity: 1.2
+→ light_data: {"light_type":"directional","direction":[0,-1,0],"color":[1,1,1],"intensity":1.2}
+```
+
+**Features:**
+- Automatic direction vector normalization
+- Color clamping to valid [0.0, 1.0] range
+- Validates intensity is non-negative
+- JSON output compatible with MultiLightUniforms GPU buffer
+
+### light-point
+
+Create a point light source with radial attenuation.
+
+**Inputs:**
+- `position` (vec3): Light position in world space
+- `color` (vec3): Light color RGB (automatically clamped to [0.0, 1.0])
+- `intensity` (f32): Light intensity multiplier (must be non-negative)
+- `radius` (f32): Attenuation radius (must be positive)
+
+**Outputs:**
+- `light_data` (String): JSON-encoded light data compatible with GPU uniforms
+
+**Example:**
+```
+position: [0, 5, 0]
+color: [1, 0.8, 0.6] (warm white)
+intensity: 1.5
+radius: 10.0
+→ light_data: {"light_type":"point","position":[0,5,0],"color":[1,0.8,0.6],"intensity":1.5,"radius":10}
+```
+
+**Features:**
+- Position-based lighting with distance falloff
+- Attenuation formula: `1 / (1 + (distance² / radius²))`
+- Color clamping and validation
+- JSON output compatible with MultiLightUniforms GPU buffer
+
+### lighting-phong
+
+Calculate Phong lighting (diffuse + specular) on CPU.
+
+**Inputs:**
+- `normal` (vec3): Surface normal vector (automatically normalized)
+- `light_dir` (vec3): Direction to light (automatically normalized)
+- `view_dir` (vec3): Direction to camera (automatically normalized)
+- `surface_color` (vec3): Material/surface color RGB
+- `light_color` (vec3): Light color RGB
+- `shininess` (f32): Specular shininess factor (typically 1-128, must be non-negative)
+
+**Outputs:**
+- `lit_color` (vec3): Resulting lit color (diffuse + specular)
+
+**Example:**
+```
+normal: [0, 1, 0] (up)
+light_dir: [0, 1, 0] (from above)
+view_dir: [0, 1, 0] (camera above)
+surface_color: [0.5, 0.5, 0.5] (gray)
+light_color: [1, 1, 1] (white)
+shininess: 32.0
+→ lit_color: [1.0, 1.0, 1.0] (full brightness due to alignment)
+```
+
+**Lighting Model:**
+- **Diffuse**: Lambertian reflection `max(N · L, 0)`
+- **Specular**: Phong reflection `(R · V)^shininess`
+- **Shininess**: Lower values = broader highlights, higher = tighter highlights
+- **Result**: Clamped to [0.0, 1.0] range
+
+**Use Cases:**
+- CPU-side lighting for validation
+- Per-vertex lighting calculations
+- Testing lighting formulas before GPU implementation
+
 ## Built-in Shader Nodes
 
 ### Shader Preview Node (Phase 1: Placeholder)
@@ -295,6 +388,69 @@ Displays rendered shader output in the node footer.
 - GPU performance metrics
 - Texture filtering and sampling controls
 
+### Shader Program Linker Node (Phase 2: Step 9)
+
+**Component ID:** `builtin:graphics:shader-program-linker`
+**Display Name:** Shader Program Linker
+**Category:** Graphics
+
+Links vertex and fragment shaders into an executable GPU program with compilation validation.
+
+**Phase 2 Status:** Fully implemented with GLSL compilation and error reporting.
+
+**Inputs:**
+- `vertex_shader` (string, required): Vertex shader GLSL source code
+- `fragment_shader` (string, required): Fragment shader GLSL source code
+
+**Outputs:**
+- `program` (binary): Linked shader program ID (UUID) on successful compilation
+
+**Footer UI Features:**
+- **Status Indicator**: Color-coded compilation status
+  - Gray: Not compiled (idle)
+  - Yellow: Compiling
+  - Green: ✓ Linked successfully
+  - Red: ✗ Linking failed
+- **Program ID Display**: Shows generated UUID for successfully linked programs
+- **Error Details**: Scrollable error message panel with detailed compilation errors
+- **Shader Source Info**: Line counts for vertex and fragment shaders
+- **Link Button**: Manual compilation trigger (when idle or failed)
+
+**Compilation Process:**
+1. Validates both vertex and fragment shaders using naga GLSL parser
+2. Compiles GLSL → WGSL via naga intermediate representation
+3. Creates wgpu::ShaderModule instances for both stages
+4. Validates shader interface compatibility (TODO: full interface matching)
+5. Generates unique program ID on successful linking
+
+**Example Usage:**
+```
+Vertex Shader (GLSL) → shader-program-linker ← Fragment Shader (GLSL)
+                              ↓
+                      Linked Program (UUID)
+                              ↓
+                    (Future: Render Pipeline)
+```
+
+**Error Handling:**
+- **Parse Errors**: Detailed GLSL syntax errors with context
+- **Validation Errors**: Shader semantic errors (types, uniforms, etc.)
+- **Interface Mismatches**: Vertex outputs vs fragment inputs (TODO)
+
+**Example Shaders:**
+See `examples/shaders/lighting/` for reference implementations:
+- `basic_diffuse.vert.glsl` / `.frag.glsl` - Simple Lambert diffuse
+- `phong.vert.glsl` / `.frag.glsl` - Phong with specular
+- `multi_light.vert.glsl` / `.frag.glsl` - Multi-light support (up to 8 lights)
+
+**GPU Buffer Compatibility:**
+The linker validates shaders that use the standard GPU buffer layouts:
+- Vertex buffers: positions, normals, uvs
+- Uniform buffers: MVP matrices, camera data
+- Light buffers: MultiLightUniforms (up to 8 lights)
+
+See `src/gpu/buffer.rs` and `examples/shaders/lighting/README.md` for buffer layout specifications.
+
 ## Testing
 
 Integration test graphs are available in `tests/component_tests/`:
@@ -318,6 +474,24 @@ Complete end-to-end shader pipeline:
 - Render target configuration (1920×1080, MSAA 4×)
 - Material color definition
 - Shader preview (Phase 1 placeholder)
+
+### graphics_lighting.json
+Tests Phase 2 lighting components:
+- Directional light creation with JSON output validation
+- Point light creation with radius-based attenuation
+- Phong lighting calculations (full brightness, perpendicular, colored surfaces)
+- Multi-component lighting workflow (directional + point lights)
+
+### graphics_complete_workflow.json
+Comprehensive end-to-end graphics pipeline (Phase 2):
+- Geometry generation (sphere primitive)
+- Camera configuration (perspective with look-at)
+- Lighting setup (directional + point lights)
+- Shader authoring (vertex + fragment GLSL)
+- Program linking with compilation validation
+- Render target configuration (1920×1080, MSAA 4×)
+- Shader preview integration
+- 16 nodes demonstrating complete workflow from primitives to rendering
 
 ## Build Instructions
 
@@ -406,19 +580,29 @@ just test
 - Render target configuration (1 component)
 - Shader preview placeholder (1 built-in node)
 
-### Phase 2: GPU Integration (Future)
-- WebGPU integration
-- Real-time shader rendering
-- Texture display and manipulation
-- GPU buffer management
-- Shader compilation and hot-reload
+### Phase 2: GPU Integration & Lighting (Complete ✓)
+- WebGPU integration (wgpu 22.0 + naga)
+- Shader compilation (GLSL → WGSL via naga)
+- GPU buffer management (vertex, index, uniform buffers)
+- Light uniform buffers (directional & point lights, multi-light support)
+- Basic lighting calculations (3 WASM components)
+- Shader program linker (1 built-in node)
+- Example GLSL shaders (diffuse, Phong, multi-light)
+
+**New Components (Step 8):**
+- `light-directional`: Directional light source (sun-like)
+- `light-point`: Point light with radial attenuation
+- `lighting-phong`: CPU-side Phong lighting calculation
+
+**New Built-in Nodes (Step 9):**
+- `shader-program-linker`: Links vertex + fragment shaders into executable GPU program
 
 ### Phase 3: Advanced Features (Future)
-- Lighting calculations
-- Material system
+- PBR materials and BRDF calculations
 - Post-processing effects
 - Compute shaders
 - Ray tracing utilities
+- Environment mapping and IBL
 
 ## License
 

@@ -1271,15 +1271,19 @@ just install      # Copy to components/bin/
 - Render target configuration
 - Shader preview placeholder
 
-**Phase 2: GPU Integration** (Future):
-- WebGPU integration for actual rendering
-- Real-time shader preview with texture display
-- GPU buffer management
-- Shader compilation and hot-reload
+**Phase 2: GPU Integration & Lighting** (Complete ✓):
+- WebGPU integration (wgpu 22.0 + naga)
+- GLSL shader compilation (GLSL → WGSL)
+- GPU buffer management (vertex, index, uniform)
+- Multi-light support (up to 8 lights)
+- Basic lighting components (directional, point, Phong)
+- Shader program linker built-in node
+- Example GLSL shaders (diffuse, Phong, multi-light)
 
 **Phase 3: Advanced Features** (Future):
-- Lighting and materials
-- Post-processing effects
+- PBR materials and BRDF calculations
+- Shadow mapping and deferred rendering
+- Post-processing effects (bloom, tone mapping, SSAO)
 - Compute shaders
 - Ray tracing utilities
 
@@ -1323,5 +1327,338 @@ camera_position, camera_target, camera_up
   → perspective-camera(fov: 60, aspect: 16:9, near: 0.1, far: 100)
   → view_matrix, projection_matrix
 ```
+
+## Phase 2: GPU Integration and Lighting System
+
+**Added**: 2025-11-22 (Phase 2: Steps 8-10)
+
+**Location**: `src/gpu/`, `components/graphics/light-*`, `src/builtin/shader_program_linker.rs`, `examples/shaders/lighting/`
+
+Phase 2 extends the graphics system with GPU integration, shader compilation, and lighting support.
+
+### GPU Architecture
+
+**WebGPU Integration** (`src/gpu/context.rs`):
+- wgpu 22.0 for WebGPU implementation
+- Async initialization with device/queue management
+- Surface creation for rendering output
+
+**Shader Compilation Pipeline** (`src/gpu/shader.rs`):
+```
+GLSL Source → naga Parser → naga IR → naga Validator → WGSL → wgpu::ShaderModule
+```
+
+**Key Types**:
+```rust
+pub struct CompiledShader {
+    pub id: Uuid,
+    pub source: String,
+    pub module: wgpu::ShaderModule,
+    pub stage: ShaderStage,  // Vertex or Fragment
+    pub entry_point: String,
+}
+
+pub enum ShaderCompilationError {
+    ParseError(String),
+    ValidationError(String),
+    SpirVGenerationError(String),
+    InvalidStage,
+    EntryPointNotFound(String),
+}
+```
+
+**Compilation API**:
+```rust
+let shader = CompiledShader::from_glsl(
+    &device,
+    glsl_source,
+    ShaderStage::Vertex,  // or ShaderStage::Fragment
+    Some("main"),         // Entry point
+)?;
+```
+
+### GPU Buffer System
+
+**Location**: `src/gpu/buffer.rs`
+
+**Vertex Buffer Layout**:
+```rust
+#[repr(C)]
+pub struct Vertex {
+    pub position: [f32; 3],  // 12 bytes
+    pub normal: [f32; 3],    // 12 bytes
+    pub uv: [f32; 2],        // 8 bytes
+}
+// Total: 32 bytes per vertex
+```
+
+**GLSL Attributes**:
+```glsl
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 uv;
+```
+
+**Uniform Buffer Layouts**:
+
+**Camera Uniforms**:
+```rust
+#[repr(C)]
+pub struct CameraUniforms {
+    pub view_matrix: [f32; 16],       // 64 bytes
+    pub projection_matrix: [f32; 16], // 64 bytes
+    pub camera_position: [f32; 3],    // 12 bytes
+    pub _padding: f32,                // 4 bytes
+}
+```
+
+**Multi-Light Uniforms** (up to 8 lights):
+```rust
+pub const MAX_LIGHTS: usize = 8;
+
+#[repr(C)]
+pub struct LightData {
+    pub position_or_direction: [f32; 3],  // 12 bytes
+    pub light_type: u32,                  // 4 bytes (0=directional, 1=point)
+    pub color: [f32; 3],                  // 12 bytes
+    pub intensity: f32,                   // 4 bytes
+    pub radius: f32,                      // 4 bytes (point lights)
+    pub _padding: [f32; 3],               // 12 bytes
+}
+
+#[repr(C)]
+pub struct MultiLightUniforms {
+    pub lights: [LightData; MAX_LIGHTS],  // 384 bytes
+    pub light_count: u32,                 // 4 bytes
+    pub _padding: [f32; 3],               // 12 bytes
+}
+```
+
+**GLSL Binding**:
+```glsl
+layout(set = 0, binding = 1) uniform Lights {
+    LightData lights[8];
+    uint lightCount;
+} u_lights;
+```
+
+### Lighting Components
+
+**light-directional** (`components/graphics/light-directional/`):
+- Sun-like directional lighting with parallel rays
+- Inputs: direction (vec3), color (vec3), intensity (f32)
+- Output: light_data (JSON string for GPU uniforms)
+- Features: Automatic direction normalization, color clamping
+
+**light-point** (`components/graphics/light-point/`):
+- Omni-directional point light with radius-based attenuation
+- Inputs: position (vec3), color (vec3), intensity (f32), radius (f32)
+- Output: light_data (JSON string for GPU uniforms)
+- Attenuation: `1 / (1 + (distance² / radius²))`
+
+**lighting-phong** (`components/graphics/lighting-phong/`):
+- CPU-side Phong lighting calculation (diffuse + specular)
+- Inputs: normal, light_dir, view_dir, surface_color, light_color, shininess
+- Output: lit_color (vec3)
+- Formula: `Diffuse = max(N·L, 0) * colors`, `Specular = (R·V)^shininess`
+
+**JSON Light Data Format**:
+```json
+{
+  "light_type": "directional",
+  "direction": [0.0, -1.0, 0.0],
+  "color": [1.0, 1.0, 1.0],
+  "intensity": 1.0
+}
+```
+
+### Shader Program Linker
+
+**Component ID**: `builtin:graphics:shader-program-linker`
+
+**Location**: `src/builtin/shader_program_linker.rs`
+
+Links vertex and fragment shaders into an executable GPU program.
+
+**Node Data**:
+```rust
+pub struct LinkedProgram {
+    pub id: Uuid,
+    pub vertex_shader_source: String,
+    pub fragment_shader_source: String,
+    pub compilation_status: ProgramStatus,
+    pub error_message: Option<String>,
+}
+
+pub enum ProgramStatus {
+    Idle,       // Not compiled
+    Compiling,  // In progress
+    Success,    // ✓ Linked successfully
+    Failed,     // ✗ Error
+}
+```
+
+**Linking Process**:
+1. Validates vertex shader (GLSL → WGSL)
+2. Validates fragment shader (GLSL → WGSL)
+3. Creates wgpu::ShaderModule for both stages
+4. TODO: Interface validation (vertex outputs match fragment inputs)
+5. Generates unique program ID on success
+
+**Footer UI Features**:
+- Color-coded status indicator (gray/yellow/green/red)
+- Program ID display (UUID)
+- Scrollable error details with compilation messages
+- Shader source line counts
+- Manual link button (when idle or failed)
+
+**Cloning Behavior**:
+```rust
+// In src/ui/app/duplication.rs
+linked_program: original.linked_program.clone(),
+```
+
+### Example GLSL Shaders
+
+**Location**: `examples/shaders/lighting/`
+
+**basic_diffuse.vert.glsl / .frag.glsl**:
+- Simple Lambert diffuse lighting
+- Single directional light
+- No specular highlights
+
+**phong.vert.glsl / .frag.glsl**:
+- Phong lighting model (diffuse + specular)
+- Shininess parameter for highlight control
+- View direction for specular calculation
+
+**multi_light.vert.glsl / .frag.glsl**:
+- Supports up to 8 mixed light types
+- Directional and point lights in same shader
+- Per-light attenuation for point lights
+- Ambient term (10% of albedo)
+
+**Shader Usage Pattern**:
+```glsl
+// Fragment shader with multi-light support
+for (uint i = 0u; i < u_lights.lightCount && i < MAX_LIGHTS; i++) {
+    LightData light = u_lights.lights[i];
+
+    if (light.lightType == LIGHT_TYPE_DIRECTIONAL) {
+        // Directional lighting
+        vec3 lightDir = normalize(light.positionOrDirection);
+        float diffuse = max(dot(normal, lightDir), 0.0);
+        // ... specular calculation
+
+    } else if (light.lightType == LIGHT_TYPE_POINT) {
+        // Point light with attenuation
+        vec3 lightVec = light.positionOrDirection - fragPosition;
+        float distance = length(lightVec);
+        float attenuation = 1.0 / (1.0 + (distance * distance) / (light.radius * light.radius));
+        // ... lighting calculation
+    }
+}
+```
+
+### Integration Testing
+
+**graphics_lighting.json**:
+- Directional light creation
+- Point light creation
+- Phong lighting calculations (aligned, perpendicular, colored)
+- Multi-component workflow (directional + point)
+
+**graphics_complete_workflow.json**:
+- Comprehensive 16-node pipeline
+- Geometry → Camera → Lighting → Shader Authoring → Linking → Preview
+- Demonstrates complete workflow from primitives to rendering
+
+### Phase 2 Build Requirements
+
+**Additional Dependencies**:
+```toml
+wgpu = "22.0"        # WebGPU implementation
+naga = "22.0"        # Shader translation
+bytemuck = "1.16"    # Pod/Zeroable for GPU buffers
+```
+
+**Build Commands**:
+```bash
+cd components/graphics
+just build light-directional
+just build light-point
+just build lighting-phong
+just install  # Copy all to components/bin/
+```
+
+### Critical Implementation Details
+
+**Buffer Alignment**:
+- All uniform buffers must use `#[repr(C)]`
+- Add padding for 16-byte alignment requirements
+- Use `bytemuck::Pod` and `bytemuck::Zeroable` derives
+
+**Shader Compilation**:
+- Always validate both stages before linking
+- Provide detailed error messages with line numbers
+- Cache compiled shaders by source hash (future optimization)
+
+**Light Data JSON Parsing** (`src/gpu/buffer.rs`):
+```rust
+impl LightData {
+    pub fn from_json(json_str: &str) -> Result<Self, String> {
+        // Parse JSON from WASM components
+        // Convert to GPU-compatible struct
+        // Validate light_type and parameters
+    }
+}
+```
+
+**Common Patterns**:
+
+**Loading Light Data**:
+```
+light-directional → light_data (JSON)
+                         ↓
+                GPU Buffer (parse JSON)
+                         ↓
+                    Shader Uniform
+```
+
+**Shader Pipeline**:
+```
+Vertex GLSL → shader-program-linker ← Fragment GLSL
+                      ↓
+              LinkedProgram (UUID)
+                      ↓
+         (Future: Render Pipeline Creation)
+```
+
+### Documentation
+
+**GPU Integration Guide**: `docs/GPU_INTEGRATION.md`
+- Complete shader compilation pipeline documentation
+- Buffer layout specifications
+- Lighting system reference
+- Example shader walkthroughs
+- Troubleshooting guide
+
+**Component README**: `components/graphics/README.md`
+- Updated with Phase 2 lighting components
+- Shader program linker documentation
+- Multi-light uniform buffer specs
+
+**Shader Examples**: `examples/shaders/lighting/README.md`
+- Buffer layout diagrams
+- Shader usage examples
+- Performance notes
+
+### Future Enhancements (Phase 3)
+
+- **PBR Materials**: Metallic/roughness workflow, IBL
+- **Shadow Mapping**: Directional and point light shadows
+- **Deferred Rendering**: Support for many lights (>8)
+- **Post-Processing**: Bloom, tone mapping, SSAO
+- **Texture Support**: Diffuse, normal, PBR texture sets
 
 <!-- MANUAL ADDITIONS END -->
