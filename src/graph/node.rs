@@ -835,6 +835,11 @@ pub struct GraphNode {
     /// Stores loaded texture file path and cached pixel data
     #[serde(default)]
     pub texture_loader_data: Option<TextureLoaderNodeData>,
+
+    /// Environment map loader data (Phase 4 Step 2)
+    /// Stores loaded cubemap face paths and cached pixel data
+    #[serde(default)]
+    pub envmap_loader_data: Option<crate::builtin::envmap_loader::EnvMapLoaderData>,
 }
 
 /// T084: Default dirty flag to true for new nodes
@@ -868,6 +873,7 @@ impl GraphNode {
             shader_preview_data: None, // Shader preview data only present for ShaderPreviewNode type
             linked_program: None, // Linked program data only present for ShaderProgramLinkerNode type
             texture_loader_data: None, // Texture loader data only present for TextureLoaderNode type (Phase 3)
+            envmap_loader_data: None, // EnvMap loader data only present for EnvMapLoaderNode type (Phase 4)
         }
     }
 

@@ -316,7 +316,7 @@ impl GpuTexture {
         }
 
         let expected_face_size = (size * size * 4) as usize;
-        for (i, face) in face_data.iter().enumerate() {
+        for face in face_data.iter() {
             if face.len() != expected_face_size {
                 return Err(TextureError::InvalidDataSize {
                     expected: expected_face_size,
