@@ -49,22 +49,22 @@ pub fn spec() -> ComponentSpec {
         // Camera inputs
         PortSpec {
             name: "view_matrix".to_string(),
-            data_type: DataType::List(Box::new(DataType::F32)),
+            data_type: DataType::Mat4,
             optional: true,
-            description: "Camera view matrix (16 floats, column-major)".to_string(),
+            description: "Camera view matrix".to_string(),
         },
         PortSpec {
             name: "projection_matrix".to_string(),
-            data_type: DataType::List(Box::new(DataType::F32)),
+            data_type: DataType::Mat4,
             optional: true,
-            description: "Projection matrix (16 floats, column-major)".to_string(),
+            description: "Projection matrix".to_string(),
         },
         // Material inputs
         PortSpec {
             name: "base_color".to_string(),
-            data_type: DataType::List(Box::new(DataType::F32)),
+            data_type: DataType::Vec3,
             optional: true,
-            description: "Material base color (vec3 RGB)".to_string(),
+            description: "Material base color".to_string(),
         },
         PortSpec {
             name: "metallic".to_string(),
