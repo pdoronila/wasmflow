@@ -122,11 +122,11 @@ fn create_basic_pbr_demo() -> Result<()> {
     set_input(
         &mut gold_mat,
         "base_color",
-        NodeValue::List(vec![
-            NodeValue::F32(1.0),
-            NodeValue::F32(0.71),
-            NodeValue::F32(0.29),
-        ]),
+        NodeValue::Vec3(wasmflow::graph::node::Vec3 {
+            x: 1.0,
+            y: 0.71,
+            z: 0.29,
+        }),
     );
     set_input(&mut gold_mat, "metallic", NodeValue::F32(1.0));
     set_input(&mut gold_mat, "roughness", NodeValue::F32(0.2));
@@ -225,11 +225,11 @@ fn create_multi_light_demo() -> Result<()> {
     set_input(
         &mut gold_mat,
         "base_color",
-        NodeValue::List(vec![
-            NodeValue::F32(1.0),
-            NodeValue::F32(0.71),
-            NodeValue::F32(0.29),
-        ]),
+        NodeValue::Vec3(wasmflow::graph::node::Vec3 {
+            x: 1.0,
+            y: 0.71,
+            z: 0.29,
+        }),
     );
     set_input(&mut gold_mat, "metallic", NodeValue::F32(1.0));
     set_input(&mut gold_mat, "roughness", NodeValue::F32(0.2));
@@ -301,11 +301,11 @@ fn create_material_showcase_demo() -> Result<()> {
         set_input(
             &mut mat,
             "base_color",
-            NodeValue::List(vec![
-                NodeValue::F32(color[0]),
-                NodeValue::F32(color[1]),
-                NodeValue::F32(color[2]),
-            ]),
+            NodeValue::Vec3(wasmflow::graph::node::Vec3 {
+                x: color[0],
+                y: color[1],
+                z: color[2],
+            }),
         );
         set_input(&mut mat, "metallic", NodeValue::F32(*metallic));
         set_input(&mut mat, "roughness", NodeValue::F32(*roughness));

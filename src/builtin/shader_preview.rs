@@ -143,6 +143,20 @@ fn extract_f32_list(inputs: &HashMap<String, NodeValue>, key: &str) -> Option<Ve
             }
             Some(result)
         }
+        Some(NodeValue::Vec3(vec3)) => {
+            // Also handle Vec3 inputs (e.g., from pbr-material base_color)
+            Some(vec![vec3.x, vec3.y, vec3.z])
+        }
+        Some(NodeValue::Mat4(mat)) => {
+            // Also handle Mat4 inputs (e.g., from perspective-camera)
+            // Column-major order for GLSL compatibility
+            Some(vec![
+                mat.m00, mat.m10, mat.m20, mat.m30,
+                mat.m01, mat.m11, mat.m21, mat.m31,
+                mat.m02, mat.m12, mat.m22, mat.m32,
+                mat.m03, mat.m13, mat.m23, mat.m33,
+            ])
+        }
         _ => None,
     }
 }
