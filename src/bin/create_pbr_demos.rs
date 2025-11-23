@@ -153,6 +153,36 @@ fn create_basic_pbr_demo() -> Result<()> {
     connect(&mut graph, sun_dir_id, "vec3", sun_id, "direction")?;
     connect(&mut graph, sun_color_id, "color", sun_id, "color")?;
 
+    // Node 10: Shader Preview (to visualize the scene)
+    let preview_id = uuid_from_u32(10);
+    let preview_spec = create_shader_preview_spec();
+    let mut preview = preview_spec.create_node(egui::pos2(700.0, 600.0));
+    preview.id = preview_id;
+    preview.display_name = "PBR Scene Preview".to_string();
+
+    graph.add_node(preview);
+
+    // Connect everything to the shader preview
+    // Geometry → Preview
+    connect(&mut graph, sphere_id, "positions", preview_id, "positions")?;
+    connect(&mut graph, sphere_id, "normals", preview_id, "normals")?;
+    connect(&mut graph, sphere_id, "uvs", preview_id, "uvs")?;
+    connect(&mut graph, sphere_id, "indices", preview_id, "indices")?;
+
+    // Camera → Preview
+    connect(&mut graph, camera_id, "view_matrix", preview_id, "view_matrix")?;
+    connect(&mut graph, camera_id, "projection_matrix", preview_id, "projection_matrix")?;
+
+    // Material → Preview
+    connect(&mut graph, gold_mat_id, "base_color", preview_id, "base_color")?;
+    connect(&mut graph, gold_mat_id, "roughness", preview_id, "roughness")?;
+
+    // Note: metallic is also available from gold_mat but preview expects it as input
+    // In a real implementation, we'd connect it or the preview would use f0
+
+    // Light → Preview
+    connect(&mut graph, sun_id, "light_data", preview_id, "light_data")?;
+
     graph.save_to_file("examples/basic_pbr.wasmflow")?;
     println!("  ✓ Saved examples/basic_pbr.wasmflow ({} nodes, {} connections)",
         graph.nodes.len(), graph.connections.len());
@@ -208,9 +238,23 @@ fn create_multi_light_demo() -> Result<()> {
     graph.add_node(sphere);
     graph.add_node(gold_mat);
 
+    // Add shader preview
+    let preview_id = uuid_from_u32(3);
+    let preview_spec = create_shader_preview_spec();
+    let mut preview = preview_spec.create_node(egui::pos2(550.0, 300.0));
+    preview.id = preview_id;
+    preview.display_name = "Scene Preview".to_string();
+    graph.add_node(preview);
+
+    // Connect geometry and material to preview
+    connect(&mut graph, sphere_id, "positions", preview_id, "positions")?;
+    connect(&mut graph, sphere_id, "normals", preview_id, "normals")?;
+    connect(&mut graph, mat_id, "base_color", preview_id, "base_color")?;
+    connect(&mut graph, mat_id, "roughness", preview_id, "roughness")?;
+
     graph.save_to_file("examples/multi_light_pbr.wasmflow")?;
-    println!("  ✓ Saved examples/multi_light_pbr.wasmflow ({} nodes)",
-        graph.nodes.len());
+    println!("  ✓ Saved examples/multi_light_pbr.wasmflow ({} nodes, {} connections)",
+        graph.nodes.len(), graph.connections.len());
 
     Ok(())
 }
@@ -269,11 +313,27 @@ fn create_material_showcase_demo() -> Result<()> {
 
         graph.add_node(sphere);
         graph.add_node(mat);
+
+        // Add shader preview for this sphere+material combo
+        let preview_id = uuid_from_u32((idx * 3 + 1) as u32 + 100); // Offset to avoid conflicts
+        let preview_spec = create_shader_preview_spec();
+        let mut preview = preview_spec.create_node(egui::pos2(*x_pos, 600.0));
+        preview.id = preview_id;
+        preview.display_name = format!("{} Preview", name.split_whitespace().next().unwrap());
+
+        // Add preview BEFORE connecting
+        graph.add_node(preview);
+
+        // Connect geometry and material
+        connect(&mut graph, sphere_id, "positions", preview_id, "positions")?;
+        connect(&mut graph, sphere_id, "normals", preview_id, "normals")?;
+        connect(&mut graph, mat_id, "base_color", preview_id, "base_color")?;
+        connect(&mut graph, mat_id, "roughness", preview_id, "roughness")?;
     }
 
     graph.save_to_file("examples/material_showcase.wasmflow")?;
-    println!("  ✓ Saved examples/material_showcase.wasmflow ({} nodes)",
-        graph.nodes.len());
+    println!("  ✓ Saved examples/material_showcase.wasmflow ({} nodes, {} connections)",
+        graph.nodes.len(), graph.connections.len());
 
     Ok(())
 }
@@ -461,6 +521,37 @@ fn create_pbr_material_spec() -> ComponentSpec {
         ],
         required_capabilities: vec![],
         category: Some("Graphics/PBR".to_string()),
+        footer_view: None,
+    }
+}
+
+fn create_shader_preview_spec() -> ComponentSpec {
+    ComponentSpec {
+        id: "builtin:graphics:shader-preview".to_string(),
+        name: "Shader Preview".to_string(),
+        description: "GPU shader preview and rendering".to_string(),
+        author: "WasmFlow".to_string(),
+        version: "1.0.0".to_string(),
+        component_type: ComponentType::Builtin,
+        input_spec: vec![
+            // Geometry inputs
+            PortSpec { name: "positions".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Vertex positions".to_string() },
+            PortSpec { name: "normals".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Vertex normals".to_string() },
+            PortSpec { name: "uvs".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "UV coordinates".to_string() },
+            PortSpec { name: "indices".to_string(), data_type: DataType::List(Box::new(DataType::U32)), optional: true, description: "Triangle indices".to_string() },
+            // Camera inputs
+            PortSpec { name: "view_matrix".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "View matrix".to_string() },
+            PortSpec { name: "projection_matrix".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Projection matrix".to_string() },
+            // Material inputs
+            PortSpec { name: "base_color".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Material base color".to_string() },
+            PortSpec { name: "metallic".to_string(), data_type: DataType::F32, optional: true, description: "Material metallic".to_string() },
+            PortSpec { name: "roughness".to_string(), data_type: DataType::F32, optional: true, description: "Material roughness".to_string() },
+            // Lighting inputs
+            PortSpec { name: "light_data".to_string(), data_type: DataType::String, optional: true, description: "Light data JSON".to_string() },
+        ],
+        output_spec: vec![],
+        required_capabilities: vec![],
+        category: Some("Graphics/Rendering".to_string()),
         footer_view: None,
     }
 }
