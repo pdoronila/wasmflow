@@ -39,7 +39,6 @@ fn create_basic_pbr_demo() -> Result<()> {
     let sphere_spec = create_sphere_spec();
     let vec3_spec = create_vec3_spec();
     let camera_spec = create_camera_spec();
-    let color_spec = create_color_spec();
     let light_dir_spec = create_light_directional_spec();
     let pbr_mat_spec = create_pbr_material_spec();
 
@@ -98,14 +97,14 @@ fn create_basic_pbr_demo() -> Result<()> {
     set_input(&mut sun_dir, "y", NodeValue::F32(-1.0));
     set_input(&mut sun_dir, "z", NodeValue::F32(0.2));
 
-    // Node 7: Sun Color
+    // Node 7: Sun Color (using vec3-construct instead of color-rgb)
     let sun_color_id = uuid_from_u32(7);
-    let mut sun_color = color_spec.create_node(egui::pos2(100.0, 950.0));
+    let mut sun_color = vec3_spec.create_node(egui::pos2(100.0, 950.0));
     sun_color.id = sun_color_id;
     sun_color.display_name = "Sun Color (Warm)".to_string();
-    set_input(&mut sun_color, "r", NodeValue::F32(1.0));
-    set_input(&mut sun_color, "g", NodeValue::F32(0.95));
-    set_input(&mut sun_color, "b", NodeValue::F32(0.85));
+    set_input(&mut sun_color, "x", NodeValue::F32(1.0));
+    set_input(&mut sun_color, "y", NodeValue::F32(0.95));
+    set_input(&mut sun_color, "z", NodeValue::F32(0.85));
 
     // Node 8: Sun Light
     let sun_id = uuid_from_u32(8);
@@ -145,13 +144,13 @@ fn create_basic_pbr_demo() -> Result<()> {
 
     // Create connections
     // Camera connections
-    connect(&mut graph, cam_pos_id, "vec3", camera_id, "position")?;
-    connect(&mut graph, cam_target_id, "vec3", camera_id, "target")?;
-    connect(&mut graph, cam_up_id, "vec3", camera_id, "up")?;
+    connect(&mut graph, cam_pos_id, "result", camera_id, "position")?;
+    connect(&mut graph, cam_target_id, "result", camera_id, "target")?;
+    connect(&mut graph, cam_up_id, "result", camera_id, "up")?;
 
     // Light connections
-    connect(&mut graph, sun_dir_id, "vec3", sun_id, "direction")?;
-    connect(&mut graph, sun_color_id, "color", sun_id, "color")?;
+    connect(&mut graph, sun_dir_id, "result", sun_id, "direction")?;
+    connect(&mut graph, sun_color_id, "result", sun_id, "color")?;
 
     // Node 10: Shader Preview (to visualize the scene)
     let preview_id = uuid_from_u32(10);
@@ -414,8 +413,8 @@ fn create_vec3_spec() -> ComponentSpec {
         ],
         output_spec: vec![
             PortSpec {
-                name: "vec3".to_string(),
-                data_type: DataType::List(Box::new(DataType::F32)),
+                name: "result".to_string(),
+                data_type: DataType::Vec3,
                 optional: false,
                 description: "3D vector".to_string(),
             },
