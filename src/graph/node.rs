@@ -426,7 +426,7 @@ impl GlslShaderEditorNodeData {
 }
 
 /// Shader Preview node data (serialized with the graph)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ShaderPreviewNodeData {
     /// Preview display size (width, height)
     pub preview_size: (u32, u32),
@@ -436,18 +436,83 @@ pub struct ShaderPreviewNodeData {
     pub refresh_rate: f32,
     /// Display zoom level (1.0 = 100%)
     pub zoom: f32,
-    /// Last received texture dimensions (for stats display)
-    #[serde(skip)]
-    pub last_texture_size: Option<(u32, u32)>,
+
+    // Runtime state (not serialized)
     /// Last update timestamp (for stats display)
     #[serde(skip)]
     pub last_update: Option<std::time::Instant>,
     /// GPU texture ID for egui (runtime only)
     #[serde(skip)]
     pub gpu_texture_id: Option<egui::TextureId>,
-    /// Cached texture data for GPU upload (runtime only)
+
+    // Cached input data for rendering
     #[serde(skip)]
-    pub cached_texture_data: Option<TextureData>,
+    pub cached_positions: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_normals: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_uvs: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_indices: Option<Vec<u32>>,
+    #[serde(skip)]
+    pub cached_view_matrix: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_projection_matrix: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_base_color: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_metallic: Option<f32>,
+    #[serde(skip)]
+    pub cached_roughness: Option<f32>,
+    #[serde(skip)]
+    pub cached_light_data: Option<String>,
+
+    // GPU rendering state
+    #[serde(skip)]
+    pub needs_rerender: bool,
+    #[serde(skip)]
+    pub needs_buffer_update: bool,
+    #[serde(skip)]
+    pub render_error: Option<String>,
+
+    // GPU resources (not serializable)
+    #[serde(skip)]
+    pub gpu_context: Option<crate::gpu::context::GpuContext>,
+    #[serde(skip)]
+    pub render_pipeline: Option<wgpu::RenderPipeline>,
+    #[serde(skip)]
+    pub camera_bind_group_layout: Option<wgpu::BindGroupLayout>,
+    #[serde(skip)]
+    pub material_bind_group_layout: Option<wgpu::BindGroupLayout>,
+    #[serde(skip)]
+    pub light_bind_group_layout: Option<wgpu::BindGroupLayout>,
+    #[serde(skip)]
+    pub camera_bind_group: Option<wgpu::BindGroup>,
+    #[serde(skip)]
+    pub material_bind_group: Option<wgpu::BindGroup>,
+    #[serde(skip)]
+    pub light_bind_group: Option<wgpu::BindGroup>,
+    #[serde(skip)]
+    pub vertex_buffer: Option<wgpu::Buffer>,
+    #[serde(skip)]
+    pub index_buffer: Option<wgpu::Buffer>,
+    #[serde(skip)]
+    pub index_count: u32,
+}
+
+impl std::fmt::Debug for ShaderPreviewNodeData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShaderPreviewNodeData")
+            .field("preview_size", &self.preview_size)
+            .field("auto_refresh", &self.auto_refresh)
+            .field("refresh_rate", &self.refresh_rate)
+            .field("zoom", &self.zoom)
+            .field("has_cached_data", &self.has_complete_scene_data())
+            .field("needs_rerender", &self.needs_rerender)
+            .field("gpu_context", &self.gpu_context.is_some())
+            .field("render_pipeline", &self.render_pipeline.is_some())
+            .finish()
+    }
 }
 
 impl ShaderPreviewNodeData {
@@ -457,17 +522,87 @@ impl ShaderPreviewNodeData {
             auto_refresh: false,
             refresh_rate: 30.0,
             zoom: 1.0,
-            last_texture_size: None,
             last_update: None,
             gpu_texture_id: None,
-            cached_texture_data: None,
+            cached_positions: None,
+            cached_normals: None,
+            cached_uvs: None,
+            cached_indices: None,
+            cached_view_matrix: None,
+            cached_projection_matrix: None,
+            cached_base_color: None,
+            cached_metallic: None,
+            cached_roughness: None,
+            cached_light_data: None,
+            needs_rerender: false,
+            needs_buffer_update: false,
+            render_error: None,
+            gpu_context: None,
+            render_pipeline: None,
+            camera_bind_group_layout: None,
+            material_bind_group_layout: None,
+            light_bind_group_layout: None,
+            camera_bind_group: None,
+            material_bind_group: None,
+            light_bind_group: None,
+            vertex_buffer: None,
+            index_buffer: None,
+            index_count: 0,
         }
+    }
+
+    /// Check if we have all required data for rendering
+    pub fn has_complete_scene_data(&self) -> bool {
+        self.cached_positions.is_some()
+            && self.cached_normals.is_some()
+            && self.cached_uvs.is_some()
+            && self.cached_indices.is_some()
+            && self.cached_view_matrix.is_some()
+            && self.cached_projection_matrix.is_some()
+            && self.cached_base_color.is_some()
     }
 }
 
 impl Default for ShaderPreviewNodeData {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Clone for ShaderPreviewNodeData {
+    fn clone(&self) -> Self {
+        Self {
+            preview_size: self.preview_size,
+            auto_refresh: self.auto_refresh,
+            refresh_rate: self.refresh_rate,
+            zoom: self.zoom,
+            last_update: None, // Reset runtime state
+            gpu_texture_id: None, // Reset GPU resources
+            cached_positions: self.cached_positions.clone(),
+            cached_normals: self.cached_normals.clone(),
+            cached_uvs: self.cached_uvs.clone(),
+            cached_indices: self.cached_indices.clone(),
+            cached_view_matrix: self.cached_view_matrix.clone(),
+            cached_projection_matrix: self.cached_projection_matrix.clone(),
+            cached_base_color: self.cached_base_color.clone(),
+            cached_metallic: self.cached_metallic,
+            cached_roughness: self.cached_roughness,
+            cached_light_data: self.cached_light_data.clone(),
+            needs_rerender: true, // Force rerender for cloned node
+            needs_buffer_update: true, // Force buffer update
+            render_error: None, // Reset error state
+            gpu_context: None, // GPU resources cannot be cloned
+            render_pipeline: None,
+            camera_bind_group_layout: None,
+            material_bind_group_layout: None,
+            light_bind_group_layout: None,
+            camera_bind_group: None,
+            material_bind_group: None,
+            light_bind_group: None,
+            vertex_buffer: None,
+            index_buffer: None,
+            index_count: 0,
+        }
     }
 }
 
