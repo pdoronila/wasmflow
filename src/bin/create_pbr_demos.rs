@@ -539,10 +539,10 @@ fn create_shader_preview_spec() -> ComponentSpec {
             PortSpec { name: "uvs".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "UV coordinates".to_string() },
             PortSpec { name: "indices".to_string(), data_type: DataType::List(Box::new(DataType::U32)), optional: true, description: "Triangle indices".to_string() },
             // Camera inputs
-            PortSpec { name: "view_matrix".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "View matrix".to_string() },
-            PortSpec { name: "projection_matrix".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Projection matrix".to_string() },
+            PortSpec { name: "view_matrix".to_string(), data_type: DataType::Mat4, optional: true, description: "View matrix".to_string() },
+            PortSpec { name: "projection_matrix".to_string(), data_type: DataType::Mat4, optional: true, description: "Projection matrix".to_string() },
             // Material inputs
-            PortSpec { name: "base_color".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Material base color".to_string() },
+            PortSpec { name: "base_color".to_string(), data_type: DataType::Vec3, optional: true, description: "Material base color".to_string() },
             PortSpec { name: "metallic".to_string(), data_type: DataType::F32, optional: true, description: "Material metallic".to_string() },
             PortSpec { name: "roughness".to_string(), data_type: DataType::F32, optional: true, description: "Material roughness".to_string() },
             // Lighting inputs
