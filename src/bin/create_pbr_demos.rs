@@ -340,7 +340,7 @@ fn create_material_showcase_demo() -> Result<()> {
 // Component spec creators
 fn create_sphere_spec() -> ComponentSpec {
     ComponentSpec {
-        id: "user:primitive-sphere".to_string(),
+        id: "user:primitive_sphere".to_string(),
         name: "Sphere Primitive".to_string(),
         description: "UV sphere geometry".to_string(),
         author: "WasmFlow".to_string(),
@@ -400,7 +400,7 @@ fn create_sphere_spec() -> ComponentSpec {
 
 fn create_vec3_spec() -> ComponentSpec {
     ComponentSpec {
-        id: "user:vec3-construct".to_string(),
+        id: "user:vec3_construct".to_string(),
         name: "Vec3 Constructor".to_string(),
         description: "Build 3D vector".to_string(),
         author: "WasmFlow".to_string(),
@@ -427,7 +427,7 @@ fn create_vec3_spec() -> ComponentSpec {
 
 fn create_camera_spec() -> ComponentSpec {
     ComponentSpec {
-        id: "user:perspective-camera".to_string(),
+        id: "user:perspective_camera".to_string(),
         name: "Perspective Camera".to_string(),
         description: "Look-at camera with perspective projection".to_string(),
         author: "WasmFlow".to_string(),
@@ -456,7 +456,7 @@ fn create_camera_spec() -> ComponentSpec {
 
 fn create_color_spec() -> ComponentSpec {
     ComponentSpec {
-        id: "user:color-rgb".to_string(),
+        id: "user:color_rgb".to_string(),
         name: "RGB Color".to_string(),
         description: "Create RGB color".to_string(),
         author: "WasmFlow".to_string(),
@@ -478,7 +478,7 @@ fn create_color_spec() -> ComponentSpec {
 
 fn create_light_directional_spec() -> ComponentSpec {
     ComponentSpec {
-        id: "user:light-directional".to_string(),
+        id: "user:light_directional".to_string(),
         name: "Directional Light".to_string(),
         description: "Sun-like directional light".to_string(),
         author: "WasmFlow".to_string(),
@@ -500,7 +500,7 @@ fn create_light_directional_spec() -> ComponentSpec {
 
 fn create_pbr_material_spec() -> ComponentSpec {
     ComponentSpec {
-        id: "user:pbr-material".to_string(),
+        id: "user:pbr_material".to_string(),
         name: "PBR Material".to_string(),
         description: "Physically-based material".to_string(),
         author: "WasmFlow".to_string(),
