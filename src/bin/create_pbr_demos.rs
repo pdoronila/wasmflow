@@ -434,9 +434,9 @@ fn create_camera_spec() -> ComponentSpec {
         version: "1.0.0".to_string(),
         component_type: ComponentType::UserDefined(PathBuf::from("components/bin/perspective_camera.wasm")),
         input_spec: vec![
-            PortSpec { name: "position".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: false, description: "Camera position".to_string() },
-            PortSpec { name: "target".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: false, description: "Look-at target".to_string() },
-            PortSpec { name: "up".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: false, description: "Up vector".to_string() },
+            PortSpec { name: "position".to_string(), data_type: DataType::Vec3, optional: false, description: "Camera position".to_string() },
+            PortSpec { name: "target".to_string(), data_type: DataType::Vec3, optional: false, description: "Look-at target".to_string() },
+            PortSpec { name: "up".to_string(), data_type: DataType::Vec3, optional: false, description: "Up vector".to_string() },
             PortSpec { name: "fov".to_string(), data_type: DataType::F32, optional: false, description: "Field of view (degrees)".to_string() },
             PortSpec { name: "aspect_ratio".to_string(), data_type: DataType::F32, optional: false, description: "Aspect ratio".to_string() },
             PortSpec { name: "near".to_string(), data_type: DataType::F32, optional: false, description: "Near plane".to_string() },
@@ -468,7 +468,7 @@ fn create_color_spec() -> ComponentSpec {
             PortSpec { name: "b".to_string(), data_type: DataType::F32, optional: false, description: "Blue".to_string() },
         ],
         output_spec: vec![
-            PortSpec { name: "color".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: false, description: "RGB color".to_string() },
+            PortSpec { name: "color".to_string(), data_type: DataType::Vec3, optional: false, description: "RGB color".to_string() },
         ],
         required_capabilities: vec![],
         category: Some("Graphics/Color".to_string()),
@@ -485,8 +485,8 @@ fn create_light_directional_spec() -> ComponentSpec {
         version: "1.0.0".to_string(),
         component_type: ComponentType::UserDefined(PathBuf::from("components/bin/light_directional.wasm")),
         input_spec: vec![
-            PortSpec { name: "direction".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: false, description: "Light direction".to_string() },
-            PortSpec { name: "color".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: false, description: "Light color".to_string() },
+            PortSpec { name: "direction".to_string(), data_type: DataType::Vec3, optional: false, description: "Light direction".to_string() },
+            PortSpec { name: "color".to_string(), data_type: DataType::Vec3, optional: false, description: "Light color".to_string() },
             PortSpec { name: "intensity".to_string(), data_type: DataType::F32, optional: false, description: "Light intensity".to_string() },
         ],
         output_spec: vec![
