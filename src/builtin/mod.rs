@@ -19,7 +19,7 @@ pub use continuous_example::{
     register_continuous_example, ContinuousCombinerExecutor, ContinuousTimerExecutor,
 }; // T050: Added ContinuousCombinerExecutor
 pub use glsl_shader_editor::register_glsl_shader_editor_node; // GLSL shader editor registration
-pub use shader_preview::register_shader_preview_node; // Shader preview registration
+pub use shader_preview::{register_shader_preview_node, ShaderPreviewExecutor}; // Shader preview registration
 pub use shader_program_linker::register_shader_program_linker_node; // Shader program linker registration
 pub use texture_loader::register_texture_loader_node; // Texture loader registration (Phase 3)
 pub use envmap_loader::register_envmap_loader_node; // Environment map loader registration (Phase 4)

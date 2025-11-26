@@ -144,13 +144,13 @@ fn create_basic_pbr_demo() -> Result<()> {
 
     // Create connections
     // Camera connections
-    connect(&mut graph, cam_pos_id, "result", camera_id, "position")?;
-    connect(&mut graph, cam_target_id, "result", camera_id, "target")?;
-    connect(&mut graph, cam_up_id, "result", camera_id, "up")?;
+    connect(&mut graph, cam_pos_id, "vector", camera_id, "position")?;
+    connect(&mut graph, cam_target_id, "vector", camera_id, "target")?;
+    connect(&mut graph, cam_up_id, "vector", camera_id, "up")?;
 
     // Light connections
-    connect(&mut graph, sun_dir_id, "result", sun_id, "direction")?;
-    connect(&mut graph, sun_color_id, "result", sun_id, "color")?;
+    connect(&mut graph, sun_dir_id, "vector", sun_id, "direction")?;
+    connect(&mut graph, sun_color_id, "vector", sun_id, "color")?;
 
     // Node 10: Shader Preview (to visualize the scene)
     let preview_id = uuid_from_u32(10);
@@ -163,9 +163,10 @@ fn create_basic_pbr_demo() -> Result<()> {
 
     // Connect everything to the shader preview
     // Geometry → Preview
-    connect(&mut graph, sphere_id, "positions", preview_id, "positions")?;
+    connect(&mut graph, sphere_id, "vertices", preview_id, "positions")?;
     connect(&mut graph, sphere_id, "normals", preview_id, "normals")?;
     connect(&mut graph, sphere_id, "uvs", preview_id, "uvs")?;
+    connect(&mut graph, sphere_id, "tangents", preview_id, "tangents")?;
     connect(&mut graph, sphere_id, "indices", preview_id, "indices")?;
 
     // Camera → Preview
@@ -246,7 +247,7 @@ fn create_multi_light_demo() -> Result<()> {
     graph.add_node(preview);
 
     // Connect geometry and material to preview
-    connect(&mut graph, sphere_id, "positions", preview_id, "positions")?;
+    connect(&mut graph, sphere_id, "vertices", preview_id, "positions")?;
     connect(&mut graph, sphere_id, "normals", preview_id, "normals")?;
     connect(&mut graph, mat_id, "base_color", preview_id, "base_color")?;
     connect(&mut graph, mat_id, "roughness", preview_id, "roughness")?;
@@ -324,7 +325,7 @@ fn create_material_showcase_demo() -> Result<()> {
         graph.add_node(preview);
 
         // Connect geometry and material
-        connect(&mut graph, sphere_id, "positions", preview_id, "positions")?;
+        connect(&mut graph, sphere_id, "vertices", preview_id, "positions")?;
         connect(&mut graph, sphere_id, "normals", preview_id, "normals")?;
         connect(&mut graph, mat_id, "base_color", preview_id, "base_color")?;
         connect(&mut graph, mat_id, "roughness", preview_id, "roughness")?;
@@ -368,7 +369,7 @@ fn create_sphere_spec() -> ComponentSpec {
         ],
         output_spec: vec![
             PortSpec {
-                name: "positions".to_string(),
+                name: "vertices".to_string(),
                 data_type: DataType::List(Box::new(DataType::F32)),
                 optional: false,
                 description: "Vertex positions".to_string(),
@@ -384,6 +385,12 @@ fn create_sphere_spec() -> ComponentSpec {
                 data_type: DataType::List(Box::new(DataType::F32)),
                 optional: false,
                 description: "UV coordinates".to_string(),
+            },
+            PortSpec {
+                name: "tangents".to_string(),
+                data_type: DataType::List(Box::new(DataType::F32)),
+                optional: false,
+                description: "Tangent vectors".to_string(),
             },
             PortSpec {
                 name: "indices".to_string(),
@@ -413,7 +420,7 @@ fn create_vec3_spec() -> ComponentSpec {
         ],
         output_spec: vec![
             PortSpec {
-                name: "result".to_string(),
+                name: "vector".to_string(),
                 data_type: DataType::Vec3,
                 optional: false,
                 description: "3D vector".to_string(),
@@ -537,6 +544,7 @@ fn create_shader_preview_spec() -> ComponentSpec {
             PortSpec { name: "positions".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Vertex positions".to_string() },
             PortSpec { name: "normals".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Vertex normals".to_string() },
             PortSpec { name: "uvs".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "UV coordinates".to_string() },
+            PortSpec { name: "tangents".to_string(), data_type: DataType::List(Box::new(DataType::F32)), optional: true, description: "Tangent vectors".to_string() },
             PortSpec { name: "indices".to_string(), data_type: DataType::List(Box::new(DataType::U32)), optional: true, description: "Triangle indices".to_string() },
             // Camera inputs
             PortSpec { name: "view_matrix".to_string(), data_type: DataType::Mat4, optional: true, description: "View matrix".to_string() },

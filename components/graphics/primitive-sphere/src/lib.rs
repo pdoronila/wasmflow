@@ -58,31 +58,31 @@ impl MetadataGuest for Component {
                 name: "vertices".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "Vertex positions as JSON strings (format: \"x,y,z\")".to_string(),
+                description: "Vertex positions as flat F32 array [x,y,z, x,y,z, ...]".to_string(),
             },
             PortSpec {
                 name: "normals".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "Vertex normals as JSON strings (format: \"x,y,z\")".to_string(),
+                description: "Vertex normals as flat F32 array [x,y,z, x,y,z, ...]".to_string(),
             },
             PortSpec {
                 name: "uvs".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "UV coordinates as JSON strings (format: \"u,v\")".to_string(),
+                description: "UV coordinates as flat F32 array [u,v, u,v, ...]".to_string(),
             },
             PortSpec {
                 name: "tangents".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "Tangent vectors as JSON strings (format: \"x,y,z,w\" where w=handedness)".to_string(),
+                description: "Tangent vectors as flat F32 array [x,y,z,w, x,y,z,w, ...] where w=handedness".to_string(),
             },
             PortSpec {
                 name: "indices".to_string(),
                 data_type: DataType::ListType,
                 optional: false,
-                description: "Triangle indices (3 indices per triangle)".to_string(),
+                description: "Triangle indices as U32 array (3 indices per triangle)".to_string(),
             },
         ]
     }
@@ -127,32 +127,32 @@ impl ExecutionGuest for Component {
         // Generate sphere mesh using UV sphere algorithm
         let (vertices, normals, uvs, tangents, indices) = generate_uv_sphere(radius, segments, rings);
 
-        // Convert to string representations
-        let vertex_strings: Vec<String> = vertices
+        // Convert to flat F32 arrays for GPU consumption
+        let vertex_floats: Vec<f32> = vertices
             .iter()
-            .map(|v| format!("{},{},{}", v.x, v.y, v.z))
+            .flat_map(|v| vec![v.x, v.y, v.z])
             .collect();
 
-        let normal_strings: Vec<String> = normals
+        let normal_floats: Vec<f32> = normals
             .iter()
-            .map(|n| format!("{},{},{}", n.x, n.y, n.z))
+            .flat_map(|n| vec![n.x, n.y, n.z])
             .collect();
 
-        let uv_strings: Vec<String> = uvs
+        let uv_floats: Vec<f32> = uvs
             .iter()
-            .map(|(u, v)| format!("{},{}", u, v))
+            .flat_map(|(u, v)| vec![*u, *v])
             .collect();
 
-        let tangent_strings: Vec<String> = tangents
+        let tangent_floats: Vec<f32> = tangents
             .iter()
-            .map(|t| format!("{},{},{},{}", t.x, t.y, t.z, t.w))
+            .flat_map(|t| vec![t.x, t.y, t.z, t.w])
             .collect();
 
         Ok(vec![
-            ("vertices".to_string(), Value::StringListVal(vertex_strings)),
-            ("normals".to_string(), Value::StringListVal(normal_strings)),
-            ("uvs".to_string(), Value::StringListVal(uv_strings)),
-            ("tangents".to_string(), Value::StringListVal(tangent_strings)),
+            ("vertices".to_string(), Value::F32ListVal(vertex_floats)),
+            ("normals".to_string(), Value::F32ListVal(normal_floats)),
+            ("uvs".to_string(), Value::F32ListVal(uv_floats)),
+            ("tangents".to_string(), Value::F32ListVal(tangent_floats)),
             ("indices".to_string(), Value::U32ListVal(indices)),
         ])
     }
@@ -291,28 +291,28 @@ mod tests {
         assert_eq!(result.len(), 5);
 
         // Extract outputs
-        let vertices = if let Value::StringListVal(v) = &result[0].1 {
+        let vertices = if let Value::F32ListVal(v) = &result[0].1 {
             v
         } else {
-            panic!("Expected StringListVal for vertices");
+            panic!("Expected F32ListVal for vertices");
         };
 
-        let normals = if let Value::StringListVal(n) = &result[1].1 {
+        let normals = if let Value::F32ListVal(n) = &result[1].1 {
             n
         } else {
-            panic!("Expected StringListVal for normals");
+            panic!("Expected F32ListVal for normals");
         };
 
-        let uvs = if let Value::StringListVal(u) = &result[2].1 {
+        let uvs = if let Value::F32ListVal(u) = &result[2].1 {
             u
         } else {
-            panic!("Expected StringListVal for uvs");
+            panic!("Expected F32ListVal for uvs");
         };
 
-        let tangents = if let Value::StringListVal(t) = &result[3].1 {
+        let tangents = if let Value::F32ListVal(t) = &result[3].1 {
             t
         } else {
-            panic!("Expected StringListVal for tangents");
+            panic!("Expected F32ListVal for tangents");
         };
 
         let indices = if let Value::U32ListVal(i) = &result[4].1 {
@@ -321,12 +321,16 @@ mod tests {
             panic!("Expected U32ListVal for indices");
         };
 
-        // Verify vertex count: (segments + 1) * (rings + 1)
-        let expected_vertices = (8 + 1) * (4 + 1);
-        assert_eq!(vertices.len(), expected_vertices);
-        assert_eq!(normals.len(), expected_vertices);
-        assert_eq!(uvs.len(), expected_vertices);
-        assert_eq!(tangents.len(), expected_vertices);
+        // Verify array lengths: flat arrays
+        // vertices: (segments + 1) * (rings + 1) * 3 floats per vertex
+        // normals: same as vertices
+        // uvs: (segments + 1) * (rings + 1) * 2 floats per UV
+        // tangents: (segments + 1) * (rings + 1) * 4 floats per tangent
+        let vertex_count = (8 + 1) * (4 + 1);
+        assert_eq!(vertices.len(), vertex_count * 3);
+        assert_eq!(normals.len(), vertex_count * 3);
+        assert_eq!(uvs.len(), vertex_count * 2);
+        assert_eq!(tangents.len(), vertex_count * 4);
 
         // Verify triangle count: segments * rings * 2 triangles * 3 indices
         let expected_indices = 8 * 4 * 2 * 3;
@@ -343,21 +347,25 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
 
-        let vertices = if let Value::StringListVal(v) = &result[0].1 {
+        let vertices = if let Value::F32ListVal(v) = &result[0].1 {
             v
         } else {
-            panic!("Expected StringListVal");
+            panic!("Expected F32ListVal");
         };
 
-        // Check that first vertex is parseable
-        let first_vertex = &vertices[0];
-        let parts: Vec<&str> = first_vertex.split(',').collect();
-        assert_eq!(parts.len(), 3);
+        // Flat array should be divisible by 3 (x, y, z per vertex)
+        assert_eq!(vertices.len() % 3, 0);
 
-        // Each part should be a valid float
-        for part in parts {
-            part.parse::<f32>().expect("Should be valid f32");
-        }
+        // Check that first vertex (first 3 floats) has correct properties
+        // Top pole should be at (0, radius, 0) = (0, 2.0, 0)
+        let x = vertices[0];
+        let y = vertices[1];
+        let z = vertices[2];
+
+        // Top pole: x ≈ 0, y ≈ radius, z ≈ 0
+        assert!((x.abs()) < 0.001, "Top pole x should be near 0");
+        assert!((y - 2.0).abs() < 0.001, "Top pole y should be near radius");
+        assert!((z.abs()) < 0.001, "Top pole z should be near 0");
     }
 
     #[test]
@@ -370,23 +378,21 @@ mod tests {
 
         let result = Component::execute(inputs).unwrap();
 
-        let vertices = if let Value::StringListVal(v) = &result[0].1 {
+        let vertices = if let Value::F32ListVal(v) = &result[0].1 {
             v
         } else {
-            panic!("Expected StringListVal");
+            panic!("Expected F32ListVal");
         };
 
-        // First ring should be top pole (y = radius)
-        let top_vertex = &vertices[0];
-        let parts: Vec<&str> = top_vertex.split(',').collect();
-        let y: f32 = parts[1].parse().unwrap();
-        assert!((y - 1.0).abs() < 0.001, "Top pole should be at y=1.0");
+        // First vertex should be top pole (y = radius)
+        // Flat array: [x0, y0, z0, x1, y1, z1, ...]
+        let y_top = vertices[1];  // Second element is Y of first vertex
+        assert!((y_top - 1.0).abs() < 0.001, "Top pole should be at y=1.0");
 
-        // Last ring should be bottom pole (y = -radius)
-        let bottom_vertex = &vertices[vertices.len() - 1];
-        let parts: Vec<&str> = bottom_vertex.split(',').collect();
-        let y: f32 = parts[1].parse().unwrap();
-        assert!((y - (-1.0)).abs() < 0.001, "Bottom pole should be at y=-1.0");
+        // Last vertex should be bottom pole (y = -radius)
+        let last_vertex_index = vertices.len() - 3;  // Last vertex starts 3 floats from end
+        let y_bottom = vertices[last_vertex_index + 1];  // Y component
+        assert!((y_bottom - (-1.0)).abs() < 0.001, "Bottom pole should be at y=-1.0");
     }
 
     #[test]

@@ -35,6 +35,21 @@ impl WasmFlowApp {
             return;
         }
 
+        // Log execution order with node details
+        log::info!("📋 Execution order: {} nodes", execution_order.len());
+        for (i, node_id) in execution_order.iter().enumerate() {
+            if let Some(node) = self.graph.nodes.get(node_id) {
+                log::info!(
+                    "  {}. '{}' ({})",
+                    i + 1,
+                    node.display_name,
+                    node.component_id
+                );
+            } else {
+                log::warn!("  {}. Unknown node {}", i + 1, node_id);
+            }
+        }
+
         // Reset all nodes to idle
         for node in self.graph.nodes.values_mut() {
             node.execution_state = crate::graph::node::ExecutionState::Idle;
@@ -85,6 +100,17 @@ impl WasmFlowApp {
 
         // If we don't have a receiver yet, start execution
         if exec_state.execution_receiver.is_none() {
+            // Log which node we're about to execute
+            if let Some(node) = self.graph.nodes.get(&node_id) {
+                log::info!(
+                    "🔄 Executing node {}/{}: '{}' ({})",
+                    exec_state.current_index + 1,
+                    exec_state.execution_order.len(),
+                    node.display_name,
+                    node.component_id
+                );
+            }
+
             // First frame: mark node as running
             if let Some(node) = self.graph.nodes.get_mut(&node_id) {
                 node.execution_state = crate::graph::node::ExecutionState::Running;
@@ -293,11 +319,25 @@ impl WasmFlowApp {
     ) {
         match result {
             Ok(outputs) => {
+                let node_name = self
+                    .graph
+                    .nodes
+                    .get(&node_id)
+                    .map(|n| n.display_name.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                log::info!(
+                    "✅ Node '{}' completed with {} outputs: {}",
+                    node_name,
+                    outputs.len(),
+                    outputs.keys().map(|k| k.as_str()).collect::<Vec<_>>().join(", ")
+                );
+
                 // Apply outputs to the node's output ports
                 if let Some(node) = self.graph.nodes.get_mut(&node_id) {
-                    for (port_name, value) in outputs {
+                    for (port_name, value) in &outputs {
                         if let Some(port) = node.get_output_mut(&port_name) {
-                            port.current_value = Some(value);
+                            port.current_value = Some(value.clone());
                         }
                     }
                     node.execution_state = crate::graph::node::ExecutionState::Completed;
@@ -305,6 +345,9 @@ impl WasmFlowApp {
                     node.execution_completed_at = Some(std::time::Instant::now());
                     node.dirty = false;
                 }
+
+                // Special handling for shader preview node: update node data
+                self.update_shader_preview_node_data(node_id, &outputs);
 
                 // Update footer view for WASM components
                 self.update_footer_view(node_id);
@@ -523,6 +566,43 @@ impl WasmFlowApp {
                     break;
                 }
             }
+        }
+    }
+
+    /// Special handling for shader preview node: update node data with execution results
+    fn update_shader_preview_node_data(
+        &mut self,
+        node_id: Uuid,
+        outputs: &std::collections::HashMap<String, crate::graph::node::NodeValue>,
+    ) {
+        let node = match self.graph.nodes.get_mut(&node_id) {
+            Some(n) => n,
+            None => return,
+        };
+
+        // Only process shader preview nodes
+        if node.component_id != "builtin:graphics:shader-preview" {
+            return;
+        }
+
+        let shader_preview_data = match &mut node.shader_preview_data {
+            Some(data) => data,
+            None => {
+                log::warn!(
+                    "Shader preview node {} has no shader_preview_data",
+                    node_id
+                );
+                return;
+            }
+        };
+
+        // Call the shader preview execute function to update cached data
+        if let Err(e) = crate::builtin::shader_preview::execute(shader_preview_data, outputs) {
+            log::error!(
+                "Failed to update shader preview node data for {}: {}",
+                node_id,
+                e
+            );
         }
     }
 

@@ -664,6 +664,12 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
             .map(|n| n.component_id == "builtin:continuous:scheduler")
             .unwrap_or(false);
 
+        // Check if this is a shader preview node (needs large footer for preview + controls)
+        let is_shader_preview = snarl
+            .get_node(node)
+            .map(|n| n.component_id == "builtin:graphics:shader-preview")
+            .unwrap_or(false);
+
         // Wrap all footer content in a scope with width constraint
         if is_wasm_creator {
             // WASM Creator nodes are resizable - use Resize container
@@ -763,6 +769,79 @@ impl<'a> SnarlViewer<SnarlNodeData> for CanvasViewer<'a> {
 
                         if let Some(graph_node) = self.graph.nodes.get_mut(&node_uuid) {
                             // Scheduler always has custom footer view
+                            let has_custom_footer = self
+                                .registry
+                                .get_by_id(&component_id)
+                                .map(|spec| spec.has_footer_view())
+                                .unwrap_or(false);
+
+                            // Performance timing
+                            let start_time = std::time::Instant::now();
+
+                            let result = if has_custom_footer {
+                                // Use custom footer view (read-only)
+                                if let Some(spec) = self.registry.get_by_id(&component_id) {
+                                    if let Some(view) = spec.get_footer_view() {
+                                        view.render_footer(ui, graph_node)
+                                    } else {
+                                        Ok(())
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            } else {
+                                // Use default footer view (with mutable access for input editing)
+                                DefaultFooterView::render_for_node(ui, graph_node, node, snarl)
+                            };
+
+                            // Performance logging
+                            let elapsed = start_time.elapsed();
+                            if elapsed.as_millis() > 50 {
+                                log::warn!(
+                                    "Slow footer view rendering for component '{}': {}ms (target: <50ms)",
+                                    component_id,
+                                    elapsed.as_millis()
+                                );
+                            } else {
+                                log::trace!(
+                                    "Footer view rendered for '{}' in {}ms",
+                                    component_id,
+                                    elapsed.as_millis()
+                                );
+                            }
+
+                            // Handle errors
+                            if let Err(err) = result {
+                                ui.colored_label(egui::Color32::RED, "⚠️ View render failed");
+                                ui.label(&err);
+                            }
+                        }
+
+                        // Add spacing at the bottom of footer
+                        ui.add_space(6.0);
+                    }
+                });
+            });
+        } else if is_shader_preview {
+            // Shader preview nodes - larger footer for preview image + controls
+            ui.scope(|ui| {
+                ui.set_max_width(800.0);  // Wide enough for preview controls
+                ui.set_max_height(1400.0); // Tall enough for XXL preview (1600×1200) + controls
+                ui.style_mut().spacing.item_spacing.x = 4.0;
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+
+                // Wrap content in scroll area
+                egui::ScrollArea::vertical()
+                    .max_height(1400.0)
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+
+                    if let Some(node_data) = snarl.get_node_mut(node) {
+                        let node_uuid = node_data.uuid;
+                        let component_id = node_data.component_id.clone();
+
+                        if let Some(graph_node) = self.graph.nodes.get_mut(&node_uuid) {
+                            // Shader preview always has custom footer view
                             let has_custom_footer = self
                                 .registry
                                 .get_by_id(&component_id)

@@ -73,6 +73,13 @@ impl ExecutionEngine {
         // Get execution order (topological sort)
         let execution_order = graph.execution_order()?;
 
+        log::info!("Execution order: {} nodes", execution_order.len());
+        for (i, node_id) in execution_order.iter().enumerate() {
+            let node_name = graph.nodes.get(node_id).map(|n| &n.display_name).map(|s| s.as_str()).unwrap_or("unknown");
+            let component_id = graph.nodes.get(node_id).map(|n| &n.component_id).map(|s| s.as_str()).unwrap_or("unknown");
+            log::info!("  {}. {} ({})", i + 1, node_name, component_id);
+        }
+
         // Reset all nodes to idle state
         for node in graph.nodes.values_mut() {
             node.execution_state = ExecutionState::Idle;
@@ -80,6 +87,11 @@ impl ExecutionEngine {
 
         // Execute nodes in dependency order
         for node_id in &execution_order {
+            // Log which node we're executing
+            let node_name = graph.nodes.get(node_id).map(|n| n.display_name.clone()).unwrap_or_else(|| "unknown".to_string());
+            let node_component_id = graph.nodes.get(node_id).map(|n| n.component_id.clone()).unwrap_or_else(|| "unknown".to_string());
+            log::info!("Executing node '{}' ({})", node_name, node_component_id);
+
             // Update input port values from connections (for UI display)
             Self::update_input_values_from_connections(graph, *node_id);
 
@@ -112,7 +124,10 @@ impl ExecutionEngine {
             match outputs_result {
                 Ok(outputs) => {
                     // Apply outputs to the node
-                    Self::apply_outputs(graph, *node_id, outputs)?;
+                    Self::apply_outputs(graph, *node_id, outputs.clone())?;
+
+                    // Special handling for shader preview node: update node data
+                    self.update_shader_preview_node_data(graph, *node_id, &outputs);
 
                     // Update footer view for WASM components with custom UI
                     self.update_footer_view(graph, *node_id);
@@ -204,7 +219,10 @@ impl ExecutionEngine {
             match outputs_result {
                 Ok(outputs) => {
                     // Apply outputs to the node
-                    Self::apply_outputs(graph, *node_id, outputs)?;
+                    Self::apply_outputs(graph, *node_id, outputs.clone())?;
+
+                    // Special handling for shader preview node: update node data
+                    self.update_shader_preview_node_data(graph, *node_id, &outputs);
 
                     // Update footer view for WASM components with custom UI
                     self.update_footer_view(graph, *node_id);
@@ -265,6 +283,7 @@ impl ExecutionEngine {
         // Gather input values from connected output ports
         let mut inputs = HashMap::new();
 
+        log::debug!("Gathering inputs for node {}", node_id);
         for connection in graph.incoming_connections(node_id) {
             let source_node = graph.nodes.get(&connection.from_node).ok_or_else(|| {
                 ComponentError::ExecutionError("Source node not found".to_string())
@@ -279,6 +298,12 @@ impl ExecutionEngine {
                 })?;
 
             let value = source_port.current_value.clone().ok_or_else(|| {
+                log::error!(
+                    "Source port '{}' on node '{}' ({}) has no value",
+                    source_port.name,
+                    source_node.display_name,
+                    source_node.component_id
+                );
                 ComponentError::ExecutionError(format!(
                     "Source port '{}' has no value",
                     source_port.name
@@ -293,6 +318,31 @@ impl ExecutionEngine {
                     ComponentError::ExecutionError("Target port not found".to_string())
                 })?;
 
+            log::debug!(
+                "Connected: {} -> {} ({})",
+                source_port.name,
+                target_port.name,
+                match &value {
+                    NodeValue::F32(v) => format!("F32({})", v),
+                    NodeValue::Vec3(_) => "Vec3".to_string(),
+                    NodeValue::Mat4(_) => "Mat4".to_string(),
+                    NodeValue::List(l) => {
+                        let first_type = if l.len() > 0 {
+                            match &l[0] {
+                                NodeValue::F32(_) => "F32",
+                                NodeValue::U32(_) => "U32",
+                                NodeValue::String(_) => "String",
+                                _ => "Other",
+                            }
+                        } else {
+                            "Empty"
+                        };
+                        format!("List[{}] of {}", l.len(), first_type)
+                    },
+                    _ => format!("{:?}", value),
+                }
+            );
+
             inputs.insert(target_port.name.clone(), value);
         }
 
@@ -301,11 +351,21 @@ impl ExecutionEngine {
         for input_port in &node.inputs {
             if !inputs.contains_key(&input_port.name) {
                 if let Some(value) = &input_port.current_value {
-                    log::debug!("Using pre-set value for input port '{}'", input_port.name);
+                    log::debug!(
+                        "Using pre-set value for input port '{}': {}",
+                        input_port.name,
+                        match value {
+                            NodeValue::F32(v) => format!("F32({})", v),
+                            NodeValue::Vec3(v) => format!("Vec3({}, {}, {})", v.x, v.y, v.z),
+                            _ => format!("{:?}", value),
+                        }
+                    );
                     inputs.insert(input_port.name.clone(), value.clone());
                 }
             }
         }
+
+        log::debug!("Node {} has {} inputs ready for execution", node_id, inputs.len());
 
         // Check if this is a composite node
         if let Some(composition_data) = &node.composition_data {
@@ -404,7 +464,25 @@ impl ExecutionEngine {
 
         match result {
             Ok(Ok(outputs)) => {
-                log::debug!("Component '{}' executed successfully", component_id);
+                log::info!(
+                    "Component '{}' executed successfully with {} outputs: {}",
+                    component_id,
+                    outputs.len(),
+                    outputs.keys().map(|k| k.as_str()).collect::<Vec<_>>().join(", ")
+                );
+                for (key, value) in &outputs {
+                    log::debug!(
+                        "  Output '{}': {}",
+                        key,
+                        match value {
+                            NodeValue::F32(v) => format!("F32({})", v),
+                            NodeValue::Vec3(v) => format!("Vec3({}, {}, {})", v.x, v.y, v.z),
+                            NodeValue::Mat4(_) => "Mat4(...)".to_string(),
+                            NodeValue::List(l) => format!("List[{}]", l.len()),
+                            _ => format!("{:?}", value),
+                        }
+                    );
+                }
                 Ok(outputs)
             }
             Ok(Err(e)) => {
@@ -637,10 +715,34 @@ impl ExecutionEngine {
             .get_mut(&node_id)
             .ok_or_else(|| ComponentError::ExecutionError(format!("Node {} not found", node_id)))?;
 
+        log::debug!(
+            "Applying {} outputs to node '{}' ({})",
+            outputs.len(),
+            node.display_name,
+            node.component_id
+        );
+
         for (output_name, output_value) in outputs {
             if let Some(output_port) = node.outputs.iter_mut().find(|p| p.name == output_name) {
+                log::debug!(
+                    "  Setting port '{}' = {}",
+                    output_name,
+                    match &output_value {
+                        NodeValue::F32(v) => format!("F32({})", v),
+                        NodeValue::Vec3(v) => format!("Vec3({}, {}, {})", v.x, v.y, v.z),
+                        NodeValue::Mat4(_) => "Mat4(...)".to_string(),
+                        NodeValue::List(l) => format!("List[{}]", l.len()),
+                        _ => format!("{:?}", output_value),
+                    }
+                );
                 output_port.current_value = Some(output_value);
             } else {
+                log::error!(
+                    "Output port '{}' not found on node '{}' (available ports: {})",
+                    output_name,
+                    node.display_name,
+                    node.outputs.iter().map(|p| p.name.as_str()).collect::<Vec<_>>().join(", ")
+                );
                 return Err(ComponentError::ExecutionError(format!(
                     "Output port '{}' not found on node",
                     output_name
@@ -649,6 +751,41 @@ impl ExecutionEngine {
         }
 
         Ok(())
+    }
+
+    /// Update shader preview node data after execution
+    ///
+    /// For shader preview nodes, this calls the shader_preview::execute() function
+    /// to update the cached rendering data in the node.
+    fn update_shader_preview_node_data(
+        &self,
+        graph: &mut NodeGraph,
+        node_id: Uuid,
+        outputs: &HashMap<String, NodeValue>,
+    ) {
+        let node = match graph.nodes.get_mut(&node_id) {
+            Some(n) => n,
+            None => return, // Node not found, skip silently
+        };
+
+        // Only handle shader preview nodes
+        if node.component_id != "builtin:graphics:shader-preview" {
+            return;
+        }
+
+        // Get the shader preview data
+        let shader_preview_data = match &mut node.shader_preview_data {
+            Some(data) => data,
+            None => {
+                log::warn!("Shader preview node {} has no shader_preview_data", node_id);
+                return;
+            }
+        };
+
+        // Call the actual execute function to update the node data
+        if let Err(e) = crate::builtin::shader_preview::execute(shader_preview_data, outputs) {
+            log::error!("Failed to update shader preview node data: {}", e);
+        }
     }
 
     /// Update footer view for a node after execution
@@ -777,6 +914,12 @@ pub fn register_builtin_executors(engine: &mut ExecutionEngine) {
     engine.register_executor(
         "builtin:continuous:scheduler".to_string(),
         Box::new(crate::builtin::TimePartitionedSchedulerExecutor::new()),
+    );
+
+    // Register shader preview executor
+    engine.register_executor(
+        "builtin:graphics:shader-preview".to_string(),
+        Box::new(crate::builtin::ShaderPreviewExecutor),
     );
 }
 
