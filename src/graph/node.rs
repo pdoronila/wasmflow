@@ -444,6 +444,9 @@ pub struct ShaderPreviewNodeData {
     /// GPU texture ID for egui (runtime only)
     #[serde(skip)]
     pub gpu_texture_id: Option<egui::TextureId>,
+    /// GPU texture handle (keeps texture alive)
+    #[serde(skip)]
+    pub gpu_texture_handle: Option<egui::TextureHandle>,
 
     // Cached input data for rendering
     #[serde(skip)]
@@ -452,6 +455,8 @@ pub struct ShaderPreviewNodeData {
     pub cached_normals: Option<Vec<f32>>,
     #[serde(skip)]
     pub cached_uvs: Option<Vec<f32>>,
+    #[serde(skip)]
+    pub cached_tangents: Option<Vec<f32>>,
     #[serde(skip)]
     pub cached_indices: Option<Vec<u32>>,
     #[serde(skip)]
@@ -524,9 +529,11 @@ impl ShaderPreviewNodeData {
             zoom: 1.0,
             last_update: None,
             gpu_texture_id: None,
+            gpu_texture_handle: None,
             cached_positions: None,
             cached_normals: None,
             cached_uvs: None,
+            cached_tangents: None,
             cached_indices: None,
             cached_view_matrix: None,
             cached_projection_matrix: None,
@@ -556,6 +563,7 @@ impl ShaderPreviewNodeData {
         self.cached_positions.is_some()
             && self.cached_normals.is_some()
             && self.cached_uvs.is_some()
+            && self.cached_tangents.is_some()
             && self.cached_indices.is_some()
             && self.cached_view_matrix.is_some()
             && self.cached_projection_matrix.is_some()
@@ -578,9 +586,11 @@ impl Clone for ShaderPreviewNodeData {
             zoom: self.zoom,
             last_update: None, // Reset runtime state
             gpu_texture_id: None, // Reset GPU resources
+            gpu_texture_handle: None, // Texture handle cannot be cloned
             cached_positions: self.cached_positions.clone(),
             cached_normals: self.cached_normals.clone(),
             cached_uvs: self.cached_uvs.clone(),
+            cached_tangents: self.cached_tangents.clone(),
             cached_indices: self.cached_indices.clone(),
             cached_view_matrix: self.cached_view_matrix.clone(),
             cached_projection_matrix: self.cached_projection_matrix.clone(),

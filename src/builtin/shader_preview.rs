@@ -4,6 +4,7 @@
 //! Accepts geometry, camera, material, and lighting data and produces rendered output.
 
 use crate::graph::node::{ComponentSpec, DataType, GraphNode, NodeValue, PortSpec, ShaderPreviewNodeData};
+use crate::runtime::engine::NodeExecutor;
 use crate::ui::component_view::ComponentFooterView;
 use crate::ComponentError;
 use egui::{Color32, ColorImage, RichText};
@@ -39,6 +40,12 @@ pub fn spec() -> ComponentSpec {
             data_type: DataType::List(Box::new(DataType::F32)),
             optional: true,
             description: "UV coordinates (flat list of u,v pairs)".to_string(),
+        },
+        PortSpec {
+            name: "tangents".to_string(),
+            data_type: DataType::List(Box::new(DataType::F32)),
+            optional: true,
+            description: "Tangent vectors (flat list of x,y,z,w where w is handedness)".to_string(),
         },
         PortSpec {
             name: "indices".to_string(),
@@ -103,6 +110,27 @@ pub fn execute(
     node_data: &mut ShaderPreviewNodeData,
     inputs: &HashMap<String, NodeValue>,
 ) -> Result<HashMap<String, NodeValue>, ComponentError> {
+    // Log what we received
+    log::info!("Shader preview execute() called with {} inputs", inputs.len());
+    for (key, value) in inputs {
+        let type_name = match value {
+            NodeValue::String(_) => "String",
+            NodeValue::F32(_) => "F32",
+            NodeValue::U32(_) => "U32",
+            NodeValue::I32(_) => "I32",
+            NodeValue::Bool(_) => "Bool",
+            NodeValue::List(_) => "List",
+            NodeValue::Record(_) => "Record",
+            NodeValue::Vec2(_) => "Vec2",
+            NodeValue::Vec3(_) => "Vec3",
+            NodeValue::Vec4(_) => "Vec4",
+            NodeValue::Mat4(_) => "Mat4",
+            NodeValue::Binary(_) => "Binary",
+            NodeValue::Texture(_) => "Texture",
+        };
+        log::info!("  Input '{}': {}", key, type_name);
+    }
+
     // Update zoom if provided
     if let Some(NodeValue::F32(zoom_val)) = inputs.get("zoom") {
         node_data.zoom = zoom_val.max(0.1).min(10.0);
@@ -112,6 +140,7 @@ pub fn execute(
     node_data.cached_positions = extract_f32_list(inputs, "positions");
     node_data.cached_normals = extract_f32_list(inputs, "normals");
     node_data.cached_uvs = extract_f32_list(inputs, "uvs");
+    node_data.cached_tangents = extract_f32_list(inputs, "tangents");
     node_data.cached_indices = extract_u32_list(inputs, "indices");
     node_data.cached_view_matrix = extract_f32_list(inputs, "view_matrix");
     node_data.cached_projection_matrix = extract_f32_list(inputs, "projection_matrix");
@@ -123,16 +152,73 @@ pub fn execute(
     // Mark that we have new data
     if node_data.has_complete_scene_data() {
         node_data.needs_rerender = true;
-        log::debug!("Shader preview received complete scene data");
+        log::info!("✓ Shader preview received complete scene data, flagging for rerender");
+        log::debug!("  - positions: {}", node_data.cached_positions.as_ref().map(|v| v.len()).unwrap_or(0));
+        log::debug!("  - normals: {}", node_data.cached_normals.as_ref().map(|v| v.len()).unwrap_or(0));
+        log::debug!("  - indices: {}", node_data.cached_indices.as_ref().map(|v| v.len()).unwrap_or(0));
+    } else {
+        log::warn!("Shader preview missing required data:");
+        log::warn!("  - positions: {}", node_data.cached_positions.is_some());
+        log::warn!("  - normals: {}", node_data.cached_normals.is_some());
+        log::warn!("  - uvs: {}", node_data.cached_uvs.is_some());
+        log::warn!("  - indices: {}", node_data.cached_indices.is_some());
+        log::warn!("  - view_matrix: {}", node_data.cached_view_matrix.is_some());
+        log::warn!("  - projection_matrix: {}", node_data.cached_projection_matrix.is_some());
+        log::warn!("  - base_color: {}", node_data.cached_base_color.is_some());
     }
 
     Ok(HashMap::new())
+}
+
+/// NodeExecutor implementation for graph execution
+pub struct ShaderPreviewExecutor;
+
+impl NodeExecutor for ShaderPreviewExecutor {
+    fn execute(
+        &self,
+        inputs: &HashMap<String, NodeValue>,
+    ) -> Result<HashMap<String, NodeValue>, ComponentError> {
+        // For the NodeExecutor, we just validate that we have inputs
+        // The actual caching happens in a post-execution step by the engine
+        // which calls the execute() function above with access to the node data
+
+        log::debug!("ShaderPreviewExecutor::execute called with {} inputs", inputs.len());
+
+        // Return inputs as outputs so they're available to the engine
+        // This allows the engine to update the node's shader_preview_data
+        Ok(inputs.clone())
+    }
 }
 
 // Helper functions to extract data from inputs
 fn extract_f32_list(inputs: &HashMap<String, NodeValue>, key: &str) -> Option<Vec<f32>> {
     match inputs.get(key) {
         Some(NodeValue::List(list)) => {
+            // Log what's in the list
+            if list.len() > 0 {
+                let first_type = match &list[0] {
+                    NodeValue::String(_) => "String",
+                    NodeValue::F32(_) => "F32",
+                    NodeValue::U32(_) => "U32",
+                    NodeValue::I32(_) => "I32",
+                    NodeValue::Bool(_) => "Bool",
+                    NodeValue::List(_) => "List",
+                    NodeValue::Record(_) => "Record",
+                    NodeValue::Vec2(_) => "Vec2",
+                    NodeValue::Vec3(_) => "Vec3",
+                    NodeValue::Vec4(_) => "Vec4",
+                    NodeValue::Mat4(_) => "Mat4",
+                    NodeValue::Binary(_) => "Binary",
+                    NodeValue::Texture(_) => "Texture",
+                };
+                log::info!("  List '{}' has {} items, first item type: {}", key, list.len(), first_type);
+
+                // If it's a string, log the first few characters
+                if let NodeValue::String(s) = &list[0] {
+                    log::info!("    First item value: {}", &s[..s.len().min(100)]);
+                }
+            }
+
             // Extract f32 values from list
             let mut result = Vec::with_capacity(list.len());
             for value in list {
@@ -150,11 +236,12 @@ fn extract_f32_list(inputs: &HashMap<String, NodeValue>, key: &str) -> Option<Ve
         Some(NodeValue::Mat4(mat)) => {
             // Also handle Mat4 inputs (e.g., from perspective-camera)
             // Column-major order for GLSL compatibility
+            // m00-m03 = column 0, m10-m13 = column 1, m20-m23 = column 2, m30-m33 = column 3
             Some(vec![
-                mat.m00, mat.m10, mat.m20, mat.m30,
-                mat.m01, mat.m11, mat.m21, mat.m31,
-                mat.m02, mat.m12, mat.m22, mat.m32,
-                mat.m03, mat.m13, mat.m23, mat.m33,
+                mat.m00, mat.m01, mat.m02, mat.m03,  // Column 0
+                mat.m10, mat.m11, mat.m12, mat.m13,  // Column 1
+                mat.m20, mat.m21, mat.m22, mat.m23,  // Column 2
+                mat.m30, mat.m31, mat.m32, mat.m33,  // Column 3
             ])
         }
         _ => None,
@@ -164,6 +251,26 @@ fn extract_f32_list(inputs: &HashMap<String, NodeValue>, key: &str) -> Option<Ve
 fn extract_u32_list(inputs: &HashMap<String, NodeValue>, key: &str) -> Option<Vec<u32>> {
     match inputs.get(key) {
         Some(NodeValue::List(list)) => {
+            // Log what's in the list
+            if list.len() > 0 {
+                let first_type = match &list[0] {
+                    NodeValue::String(_) => "String",
+                    NodeValue::F32(_) => "F32",
+                    NodeValue::U32(_) => "U32",
+                    NodeValue::I32(_) => "I32",
+                    NodeValue::Bool(_) => "Bool",
+                    NodeValue::List(_) => "List",
+                    NodeValue::Record(_) => "Record",
+                    NodeValue::Vec2(_) => "Vec2",
+                    NodeValue::Vec3(_) => "Vec3",
+                    NodeValue::Vec4(_) => "Vec4",
+                    NodeValue::Mat4(_) => "Mat4",
+                    NodeValue::Binary(_) => "Binary",
+                    NodeValue::Texture(_) => "Texture",
+                };
+                log::info!("  List '{}' has {} items, first item type: {}", key, list.len(), first_type);
+            }
+
             // Extract u32 values from list
             let mut result = Vec::with_capacity(list.len());
             for value in list {
@@ -238,17 +345,23 @@ impl ComponentFooterView for ShaderPreviewFooterView {
 
                 // Render if we have complete data
                 if preview_data.has_complete_scene_data() && preview_data.needs_rerender {
+                    log::info!("🎨 Attempting to render scene to texture...");
                     // Attempt GPU rendering
                     match render_scene_to_texture(ui, preview_data) {
                         Ok(()) => {
                             preview_data.needs_rerender = false;
                             preview_data.last_update = Some(std::time::Instant::now());
+                            log::info!("✓ Successfully rendered scene to texture");
                         }
                         Err(e) => {
                             preview_data.render_error = Some(e.clone());
-                            log::error!("GPU rendering failed: {}", e);
+                            log::error!("✗ GPU rendering failed: {}", e);
                         }
                     }
+                } else if !preview_data.has_complete_scene_data() {
+                    log::debug!("Footer view called but scene data incomplete");
+                } else if !preview_data.needs_rerender {
+                    log::trace!("Footer view called but rerender not needed");
                 }
 
                 // Display the rendered texture or placeholder
@@ -323,6 +436,20 @@ impl ComponentFooterView for ShaderPreviewFooterView {
                     preview_data.preview_size = (800, 600);
                     preview_data.needs_rerender = true;
                 }
+                if ui
+                    .selectable_label(preview_data.preview_size == (1200, 900), "XL")
+                    .clicked()
+                {
+                    preview_data.preview_size = (1200, 900);
+                    preview_data.needs_rerender = true;
+                }
+                if ui
+                    .selectable_label(preview_data.preview_size == (1600, 1200), "XXL")
+                    .clicked()
+                {
+                    preview_data.preview_size = (1600, 1200);
+                    preview_data.needs_rerender = true;
+                }
             });
 
             ui.horizontal(|ui| {
@@ -373,13 +500,17 @@ fn render_scene_to_texture(
     ui: &mut egui::Ui,
     preview_data: &mut ShaderPreviewNodeData,
 ) -> Result<(), String> {
+    log::info!("→ render_scene_to_texture() called");
+
     // Initialize GPU context if needed
     if preview_data.gpu_context.is_none() {
-        log::info!("Initializing GPU context for shader preview...");
+        log::info!("  Initializing GPU context for shader preview...");
         let context = pollster::block_on(crate::gpu::context::GpuContext::new())
             .map_err(|e| format!("Failed to initialize GPU: {}", e))?;
         preview_data.gpu_context = Some(context);
-        log::info!("GPU context initialized successfully");
+        log::info!("  ✓ GPU context initialized successfully");
+    } else {
+        log::debug!("  GPU context already initialized");
     }
 
     // Compile shaders if needed (before we borrow gpu_context)
@@ -479,7 +610,7 @@ fn render_scene_to_texture(
                 buffers: &[
                     // Vertex buffer layout
                     wgpu::VertexBufferLayout {
-                        array_stride: 32, // 3 floats (pos) + 3 floats (normal) + 2 floats (uv) = 8 floats * 4 bytes
+                        array_stride: 44, // 3 floats (pos) + 3 floats (normal) + 2 floats (uv) + 3 floats (tangent) = 11 floats * 4 bytes
                         step_mode: wgpu::VertexStepMode::Vertex,
                         attributes: &[
                             wgpu::VertexAttribute {
@@ -496,6 +627,11 @@ fn render_scene_to_texture(
                                 format: wgpu::VertexFormat::Float32x2,
                                 offset: 24,
                                 shader_location: 2, // uv
+                            },
+                            wgpu::VertexAttribute {
+                                format: wgpu::VertexFormat::Float32x3,
+                                offset: 32,
+                                shader_location: 3, // tangent
                             },
                         ],
                     },
@@ -551,19 +687,23 @@ fn render_scene_to_texture(
         let positions = preview_data.cached_positions.as_ref().ok_or("Missing positions")?;
         let normals = preview_data.cached_normals.as_ref().ok_or("Missing normals")?;
         let uvs = preview_data.cached_uvs.as_ref().ok_or("Missing UVs")?;
+        let tangents = preview_data.cached_tangents.as_ref().ok_or("Missing tangents")?;
         let indices = preview_data.cached_indices.as_ref().ok_or("Missing indices")?;
 
+        log::info!("  Creating vertex and index buffers...");
         create_vertex_and_index_buffers(
             gpu_context,
             positions,
             normals,
             uvs,
+            tangents,
             indices,
             &mut preview_data.vertex_buffer,
             &mut preview_data.index_buffer,
             &mut preview_data.index_count,
         )?;
         preview_data.needs_buffer_update = false;
+        log::info!("  ✓ Buffers created: {} vertices, {} indices", positions.len() / 3, indices.len());
     }
 
     // Create/update uniform buffers
@@ -583,6 +723,7 @@ fn render_scene_to_texture(
         let material_layout = preview_data.material_bind_group_layout.as_ref().ok_or("Missing material layout")?;
         let light_layout = preview_data.light_bind_group_layout.as_ref().ok_or("Missing light layout")?;
 
+        log::info!("  Creating uniform buffers (camera, material, light)...");
         create_uniform_buffers(
             gpu_context,
             view_matrix,
@@ -597,10 +738,12 @@ fn render_scene_to_texture(
             &mut preview_data.material_bind_group,
             &mut preview_data.light_bind_group,
         )?;
+        log::info!("  ✓ Uniform buffers created");
     }
 
     // Render to texture
     let (width, height) = preview_data.preview_size;
+    log::info!("  Rendering to {}x{} texture...", width, height);
     {
         let gpu_context = preview_data
             .gpu_context
@@ -627,10 +770,13 @@ fn render_scene_to_texture(
             width,
             height,
             &mut preview_data.gpu_texture_id,
+            &mut preview_data.gpu_texture_handle,
             ui,
         )?;
+        log::info!("  ✓ Texture rendered successfully, uploaded to egui");
     }
 
+    log::info!("← render_scene_to_texture() completed successfully");
     Ok(())
 }
 
@@ -667,6 +813,7 @@ fn create_vertex_and_index_buffers(
     cached_positions: &[f32],
     cached_normals: &[f32],
     cached_uvs: &[f32],
+    cached_tangents: &[f32],
     cached_indices: &[u32],
     vertex_buffer: &mut Option<wgpu::Buffer>,
     index_buffer: &mut Option<wgpu::Buffer>,
@@ -677,11 +824,12 @@ fn create_vertex_and_index_buffers(
     let positions = cached_positions;
     let normals = cached_normals;
     let uvs = cached_uvs;
+    let tangents = cached_tangents;
     let indices = cached_indices;
 
-    // Interleave vertex data: pos(3) + normal(3) + uv(2) = 8 floats per vertex
+    // Interleave vertex data: pos(3) + normal(3) + uv(2) + tangent(3) = 11 floats per vertex
     let vertex_count = positions.len() / 3;
-    let mut vertex_data = Vec::with_capacity(vertex_count * 8);
+    let mut vertex_data = Vec::with_capacity(vertex_count * 11);
 
     for i in 0..vertex_count {
         // Position
@@ -695,6 +843,11 @@ fn create_vertex_and_index_buffers(
         // UV
         vertex_data.push(uvs[i * 2]);
         vertex_data.push(uvs[i * 2 + 1]);
+        // Tangent (vec3 - we use only x,y,z from the vec4 tangent data)
+        vertex_data.push(tangents[i * 4]);     // x
+        vertex_data.push(tangents[i * 4 + 1]); // y
+        vertex_data.push(tangents[i * 4 + 2]); // z
+        // Note: Ignoring w (handedness) since shader expects vec3
     }
 
     // Convert to bytes
@@ -755,6 +908,10 @@ fn create_uniform_buffers(
     camera_data.extend_from_slice(projection_matrix);
     camera_data.extend_from_slice(&[0.0, 0.0, 10.0]); // Camera position (TODO: extract from view matrix)
     camera_data.push(0.0); // Padding
+
+    // Debug: Log the matrices
+    log::debug!("View matrix: {:?}", &view_matrix[..]);
+    log::debug!("Projection matrix: {:?}", &projection_matrix[..]);
 
     let camera_bytes: Vec<u8> = camera_data.iter().flat_map(|f| f.to_le_bytes()).collect();
 
@@ -852,6 +1009,7 @@ fn render_to_texture(
     width: u32,
     height: u32,
     gpu_texture_id_out: &mut Option<egui::TextureId>,
+    gpu_texture_handle_out: &mut Option<egui::TextureHandle>,
     ui: &mut egui::Ui,
 ) -> Result<(), String> {
     // Create render texture
@@ -1017,6 +1175,7 @@ fn render_to_texture(
     // Upload to egui
     let texture_handle = ui.ctx().load_texture("shader_preview_render", color_image, egui::TextureOptions::default());
     *gpu_texture_id_out = Some(texture_handle.id());
+    *gpu_texture_handle_out = Some(texture_handle); // Keep handle alive!
 
     log::debug!("Rendered scene to texture: {}x{}", width, height);
 
